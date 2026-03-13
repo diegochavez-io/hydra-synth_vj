@@ -43,7 +43,8 @@
       border-radius: 6px 6px 0 0;
       overflow: hidden;
       background: #000;
-      flex-shrink: 0;
+      flex-shrink: 1;
+      min-height: 200px;
     }
     #stage canvas { width: 100%; height: 100%; display: block; object-fit: contain; }
     #controls {
@@ -372,8 +373,8 @@
       let hydra = null
       let hydraCanvas = null
       let audioBootstrapCode = ''
-      fetch('audio-bootstrap.js', { cache: 'no-store' })
-        .then(function(r) { return r.text() })
+      fetch('/dist/audio-bootstrap.js', { cache: 'no-store' })
+        .then(function(r) { if (!r.ok) throw new Error('not found'); return r.text() })
         .then(function(t) { audioBootstrapCode = t; console.log('Audio bootstrap loaded.') })
         .catch(function() { console.warn('audio-bootstrap.js not found, skipping.') })
       let audienceWindow = null
@@ -1056,9 +1057,11 @@
       async function loadPresets (opts) {
         var suppressStatus = opts && opts.suppressStatus;
         try {
+          console.log('[hydra] loadPresets: fetching /api/presets...')
           const res = await fetch('/api/presets', { cache: 'no-store' })
           if (!res.ok) throw new Error(`HTTP ${res.status}`)
           const list = await res.json()
+          console.log('[hydra] loadPresets: got', list.length, 'presets, presetsEl=', presetsEl)
 
           presetsEl.innerHTML = ''
           list.forEach(function (entry) {
@@ -1085,21 +1088,22 @@
             presetsEl.appendChild(btn)
           })
 
+          console.log('[hydra] loadPresets: created', list.length, 'buttons. presetsEl.children.length =', presetsEl.children.length)
           if (!suppressStatus) setStatus(`${list.length} presets loaded.`, false)
           highlightActivePreset()
 
           // Auto-load first preset if editor is empty
-          if (!cm.getValue().trim() && list.length > 0) {
+          if (!(cm ? cm.getValue() : editorEl.value).trim() && list.length > 0) {
             var first = list[0]
             try {
               var p = await fetch('/api/presets/' + first.file, { cache: 'no-store' })
               var data = await p.json()
-              cm.setValue(parsePresetMarkdown(data.content))
-              localStorage.setItem(STORAGE_EDITOR, cm.getValue())
+              editorEl.value = parsePresetMarkdown(data.content)
+              localStorage.setItem(STORAGE_EDITOR, editorEl.value)
               pendingFilters = parsePresetFilters(data.content)
               currentPresetName = first.name || first.file.replace(/\.md$/, '')
               currentPresetFile = first.file
-              runCode(cm.getValue(), 'autoloaded: ' + (first.name || first.file))
+              runCode(editorEl.value, 'autoloaded: ' + (first.name || first.file))
               setStatus('Loaded: ' + (first.name || first.file), false)
               highlightActivePreset()
             } catch (e) {}
@@ -1158,7 +1162,9 @@
       }
 
       // Init CodeMirror
-      var cm = CodeMirror.fromTextArea(editorEl, {
+      var cm = null
+      try {
+      cm = CodeMirror.fromTextArea(editorEl, {
         mode: 'javascript',
         theme: 'hydra',
         lineNumbers: false,
@@ -1254,9 +1260,13 @@
       // Override editorEl references to use CodeMirror
       // (for preset loading, autoplay, etc.)
       Object.defineProperty(editorEl, 'value', {
-        get: function () { return cm.getValue() },
-        set: function (v) { cm.setValue(v) }
+        get: function () { return cm ? cm.getValue() : '' },
+        set: function (v) { if (cm) cm.setValue(v) }
       })
+      } catch (cmErr) {
+        console.error('CodeMirror init failed:', cmErr)
+        setStatus('Editor init failed: ' + cmErr.message, true)
+      }
 
       runAllBtn.addEventListener('click', cmRunAll)
       saveBtn.addEventListener('click', savePreset)
@@ -1810,6 +1820,7 @@
         }
       })
 
+      console.log('[hydra] Init complete. Calling loadPresets()...')
       loadPresets()
       setNdiButtonState()
       startAudio()
