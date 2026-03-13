@@ -65,3 +65,10 @@ typings/
 
 # jetbrains config
 .idea
+
+# Large media files (served locally, not tracked)
+dist/media/
+
+# Temp/swap files
+.*.swp
+.tmp-*

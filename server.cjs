@@ -36,7 +36,10 @@ const MIME = {
   '.jpg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.md': 'text/markdown',
-  '.woff2': 'font/woff2'
+  '.woff2': 'font/woff2',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mov': 'video/quicktime'
 }
 
 function jsonResponse (res, code, data) {
@@ -151,13 +154,47 @@ const server = http.createServer(function (req, res) {
     return
   }
 
+  var ext = path.extname(staticPath).toLowerCase()
+
+  // Stream video files with range request support
+  if (ext === '.mp4' || ext === '.webm' || ext === '.mov') {
+    fs.stat(staticPath, function (err, stat) {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' })
+        res.end('Not found')
+        return
+      }
+      var total = stat.size
+      var range = req.headers.range
+      if (range) {
+        var parts = range.replace(/bytes=/, '').split('-')
+        var start = parseInt(parts[0], 10)
+        var end = parts[1] ? parseInt(parts[1], 10) : total - 1
+        res.writeHead(206, {
+          'Content-Range': 'bytes ' + start + '-' + end + '/' + total,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': end - start + 1,
+          'Content-Type': MIME[ext] || 'application/octet-stream'
+        })
+        fs.createReadStream(staticPath, { start: start, end: end }).pipe(res)
+      } else {
+        res.writeHead(200, {
+          'Content-Length': total,
+          'Accept-Ranges': 'bytes',
+          'Content-Type': MIME[ext] || 'application/octet-stream'
+        })
+        fs.createReadStream(staticPath).pipe(res)
+      }
+    })
+    return
+  }
+
   fs.readFile(staticPath, function (err, data) {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/plain' })
       res.end('Not found')
       return
     }
-    var ext = path.extname(staticPath).toLowerCase()
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
       'Cache-Control': 'no-cache'

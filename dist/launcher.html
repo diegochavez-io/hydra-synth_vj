@@ -73,13 +73,13 @@
     .btn {
       border: 1px solid #222;
       background: #111;
-      color: #777;
+      color: var(--muted);
       padding: 8px 10px;
       border-radius: 6px;
-      font-size: 13px;
+      font-size: 12px;
       cursor: pointer;
     }
-    .btn:hover { border-color: #444; color: #aaa; }
+    .btn:hover { border-color: #444; color: #ddd; }
     .btn.main { background: #153028; border-color: var(--accent); color: var(--accent); font-weight: 700; }
     #status {
       padding: 8px 10px;
@@ -115,7 +115,7 @@
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
-      font-size: 11px;
+      font-size: 12px;
       color: var(--muted);
     }
     #globalControls label { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
@@ -133,10 +133,10 @@
     .presetBtn {
       border: 1px solid #222;
       background: #0e0e12;
-      color: #fff;
+      color: var(--muted);
       border-radius: 999px;
       padding: 6px 10px;
-      font-size: 13px;
+      font-size: 12px;
       cursor: pointer;
       max-width: 280px;
       white-space: nowrap;
@@ -166,13 +166,13 @@
     #autoplayBar input[type="number"] {
       width: 56px; padding: 4px 6px;
       border: 1px solid #222; border-radius: 6px;
-      background: #0a0a0e; color: #777;
+      background: #0a0a0e; color: var(--muted);
       font-size: 12px; text-align: center;
     }
     #autoplayBar select {
       padding: 4px 6px;
       border: 1px solid #222; border-radius: 6px;
-      background: #0a0a0e; color: #777;
+      background: #0a0a0e; color: var(--muted);
       font-size: 12px;
     }
     #autoplayBar .divider { width: 1px; height: 20px; background: var(--line); }
@@ -233,6 +233,7 @@
         <div id="status">Ready</div>
         <div id="presets"></div>
         <div id="globalControls">
+          <button id="resetFiltersBtn" class="btn" style="padding:4px 8px;font-size:11px;">Reset</button>
           <label>Hue <input type="range" id="hueCtrl" min="0" max="360" value="0"><span id="hueVal">0</span>°</label>
           <label>Sat <input type="range" id="satCtrl" min="0" max="300" value="100"><span id="satVal">100</span>%</label>
           <label>Bright <input type="range" id="brightCtrl" min="0" max="300" value="100"><span id="brightVal">100</span>%</label>
@@ -240,12 +241,12 @@
           <div class="divider" style="width:1px;height:16px;background:var(--line);"></div>
           <label>Speed <input type="range" id="speedCtrl" min="0" max="4" step="0.1" value="1"><span id="speedVal">1.0</span>x</label>
           <label>BPM <span id="bpmVal" style="width:32px">30</span></label>
-          <button id="tapTempoBtn" class="btn" style="padding:4px 8px;font-size:11px;">Tap</button>
-          <button id="linkBtn" class="btn" style="padding:4px 8px;font-size:11px;display:none;">Link</button>
-          <span id="linkPeers" style="display:none;font-size:10px;color:var(--muted);"></span>
+          <button id="tapTempoBtn" class="btn" style="padding:4px 8px;">Tap</button>
+          <button id="linkBtn" class="btn" style="padding:4px 8px;display:none;">Link</button>
+          <span id="linkPeers" style="display:none;color:var(--muted);"></span>
           <div class="divider" style="width:1px;height:16px;background:var(--line);"></div>
           <label>Res
-            <select id="resolutionCtrl" style="padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:#777;font-size:11px;">
+            <select id="resolutionCtrl" style="padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:var(--muted);font-size:12px;">
               <option value="auto">Auto (fit stage)</option>
               <option value="1920x1200" selected>1920x1200 (16:10 Projector)</option>
               <option value="1920x1080">1920x1080 (16:9 HD)</option>
@@ -257,8 +258,7 @@
               <option value="custom">Custom...</option>
             </select>
           </label>
-          <span id="resLabel" style="font-size:10px;color:var(--muted);"></span>
-          <button id="resetFiltersBtn" class="btn" style="padding:4px 8px;font-size:11px;">Reset</button>
+          <span id="resLabel" style="color:var(--muted);"></span>
         </div>
         <div id="autoplayBar">
           <button id="autoplayBtn" class="btn">Autoplay</button>
@@ -269,7 +269,7 @@
           <div class="divider"></div>
           <label id="autoplayTimeLabel" style="display:none">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999"></label>
           <label id="autoplayBarsLabel">Bars:
-            <select id="autoplayBars" style="padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#0a0a0e;color:#777;font-size:12px;">
+            <select id="autoplayBars" style="padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#0a0a0e;color:var(--muted);font-size:12px;">
               <option value="8" selected>8</option>
               <option value="16">16</option>
               <option value="32">32</option>
@@ -277,9 +277,9 @@
               <option value="128">128</option>
             </select>
           </label>
-          <span id="autoplayBpmDisplay" style="display:none;font-size:11px;color:var(--muted);"></span>
+          <span id="autoplayBpmDisplay" style="display:none;color:var(--muted);"></span>
           <input type="hidden" id="autoplayBpm" value="120">
-          <span id="autoplayCountdown" style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;"></span>
+          <span id="autoplayCountdown" style="color:var(--muted);font-variant-numeric:tabular-nums;"></span>
           <div id="beatGrid"></div>
           <div id="autoplayProgress" style="display:none;"><div id="autoplayProgressFill"></div></div>
         </div>
@@ -344,6 +344,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/matchbrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/closebrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/selection/active-line.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/comment/comment.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0.7/dist/obs-ws.global.js"></script>
   <script src="https://unpkg.com/prettier@3.3.3/standalone.js"></script>
@@ -353,6 +354,8 @@
     (function () {
       const STORAGE_EDITOR = 'hydra-live-editor-v1'
       const STORAGE_OBS_NDI = 'hydra-live-obs-ndi-v1'
+      const STORAGE_PRESET_NAME = 'hydra-live-preset-name'
+      const STORAGE_PRESET_FILE = 'hydra-live-preset-file'
       const DEFAULT_OBS_URL = 'ws://127.0.0.1:4455'
       const appEl = document.getElementById('app')
       const stageEl = document.getElementById('stage')
@@ -361,8 +364,8 @@
       const presetsEl = document.getElementById('presets')
       const saveBtn = document.getElementById('saveBtn')
       const saveAsBtn = document.getElementById('saveAsBtn')
-      var currentPresetFile = null
-      var currentPresetName = null
+      var currentPresetFile = localStorage.getItem(STORAGE_PRESET_FILE) || null
+      var currentPresetName = localStorage.getItem(STORAGE_PRESET_NAME) || null
       const runAllBtn = document.getElementById('runAllBtn')
       const startAudioBtn = document.getElementById('startAudioBtn')
       const openOutBtn = document.getElementById('openOutBtn')
@@ -957,7 +960,7 @@
           }
         }
 
-        const url = new URL('./output.html', window.location.href).toString()
+        const url = new URL('/dist/output.html', window.location.href).toString()
         var outW = currentResW || 1280
         var outH = currentResH || 720
         // Cap popup size to screen bounds
@@ -1024,6 +1027,8 @@
           if (!res.ok) throw new Error(data.error || 'Save failed')
           currentPresetName = name.trim()
           currentPresetFile = data.saved
+          localStorage.setItem(STORAGE_PRESET_NAME, currentPresetName)
+          localStorage.setItem(STORAGE_PRESET_FILE, currentPresetFile)
           setStatus(`\u2714 Saved: ${currentPresetName}`, false)
           statusEl.style.color = '#4ade80'
           await loadPresets({ suppressStatus: true })
@@ -1079,6 +1084,8 @@
                 pendingFilters = parsePresetFilters(data.content)
                 currentPresetName = entry.name || entry.file.replace(/\.md$/, '')
                 currentPresetFile = entry.file
+                localStorage.setItem(STORAGE_PRESET_NAME, currentPresetName)
+                localStorage.setItem(STORAGE_PRESET_FILE, currentPresetFile)
                 setStatus(`Loaded: ${currentPresetName}`, false)
                 highlightActivePreset()
               } catch (error) {
@@ -1103,6 +1110,8 @@
               pendingFilters = parsePresetFilters(data.content)
               currentPresetName = first.name || first.file.replace(/\.md$/, '')
               currentPresetFile = first.file
+              localStorage.setItem(STORAGE_PRESET_NAME, currentPresetName)
+              localStorage.setItem(STORAGE_PRESET_FILE, currentPresetFile)
               runCode(editorEl.value, 'autoloaded: ' + (first.name || first.file))
               setStatus('Loaded: ' + (first.name || first.file), false)
               highlightActivePreset()
@@ -1191,7 +1200,9 @@
           'Shift-Cmd-H': function () { toggleAudienceMode() },
           'Shift-Ctrl-H': function () { toggleAudienceMode() },
           'Shift-Cmd-N': function () { toggleNdiOutput(false) },
-          'Shift-Ctrl-N': function () { toggleNdiOutput(false) }
+          'Shift-Ctrl-N': function () { toggleNdiOutput(false) },
+          'Cmd-/': function () { cm.toggleComment() },
+          'Ctrl-/': function () { cm.toggleComment() }
         }
       })
       cm.setValue(localStorage.getItem(STORAGE_EDITOR) || '')
@@ -1527,6 +1538,11 @@
         }
         autoplayActive = true
         autoplayIndex = 0
+        if (currentPresetFile) {
+          for (var i = 0; i < autoplayPresetList.length; i++) {
+            if (autoplayPresetList[i].file === currentPresetFile) { autoplayIndex = i; break }
+          }
+        }
         autoplayBtnEl.textContent = 'Stop'
         autoplayBtnEl.classList.add('main')
         autoplayLoadPreset(0)
