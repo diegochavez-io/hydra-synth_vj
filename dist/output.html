@@ -6,7 +6,7 @@
   <style>
     * { margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
-    video { width: 100vw; height: 100vh; display: block; object-fit: contain; background: #000; }
+    video { width: 100vw; height: 100vh; display: block; object-fit: cover; background: #000; }
   </style>
 </head>
 <body>
@@ -19,6 +19,28 @@
         document.documentElement.requestFullscreen().catch(function () {})
       }
     })
+
+    // Listen for filter updates from the launcher via WebSocket
+    var video = document.getElementById('v')
+    var ws = null
+    var wsRetry = 500
+    function connectWs () {
+      try {
+        ws = new WebSocket('ws://' + window.location.host)
+        ws.onopen = function () { wsRetry = 500 }
+        ws.onmessage = function (event) {
+          try {
+            var data = JSON.parse(event.data)
+            if (data.type === 'filters' && video) {
+              video.style.filter = data.filter
+            }
+          } catch (e) {}
+        }
+        ws.onclose = function () { ws = null; setTimeout(connectWs, wsRetry); wsRetry = Math.min(wsRetry * 2, 5000) }
+        ws.onerror = function () { if (ws) ws.close() }
+      } catch (e) { ws = null }
+    }
+    connectWs()
   </script>
 </body>
 </html>
