@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hydra Audience Display</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+    canvas, video {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      background: #000;
+      object-fit: contain;
+    }
+    /* When captureStream video is active, hide the local hydra canvas */
+    body.cast canvas { display: none; }
+    body.cast video { display: block; }
+    #status {
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      color: #bbb;
+      font-size: 12px;
+      background: rgba(0, 0, 0, 0.45);
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #333;
+      z-index: 10;
+      transition: opacity 2s;
+    }
+    #audienceFsBtn {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      border: 1px solid #444;
+      background: rgba(16,16,16,0.8);
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 10;
+      transition: opacity 0.3s;
+    }
+    body.live #status { opacity: 0; }
+    body.live #audienceFsBtn { opacity: 0; }
+    body.live #audienceFsBtn:hover { opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <video id="audienceVideo" autoplay muted playsinline style="display:none;"></video>
+  <div id="status">Waiting for code from launcher...</div>
+  <button id="audienceFsBtn">Fullscreen</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"></script>
+  <script>
+    (function () {
+      var statusEl = document.getElementById('status')
+      var fsBtn = document.getElementById('audienceFsBtn')
+      var audienceVideo = document.getElementById('audienceVideo')
+      var hydra = null
+      var usingCast = false
+      var codeCh = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('hydra-live-code') : null
+
+      function setStatus (text) {
+        statusEl.textContent = text
+        document.body.classList.remove('live')
+      }
+
+      function goLive () {
+        document.body.classList.add('live')
+      }
+
+      // Provide audio stub so eval'd code referencing a.fft etc. doesn't crash
+      if (!window.a) {
+        window.a = {
+          fft: [0, 0, 0, 0],
+          setBins: function (n) {
+            var size = Math.max(1, Number(n) || 4)
+            this.fft = new Array(size).fill(0)
+          },
+          setSmooth: function () {},
+          setCutoff: function () {},
+          setScale: function () {},
+          show: function () {},
+          hide: function () {}
+        }
+      }
+
+      // Init own Hydra instance (used when receiving code via BroadcastChannel)
+      try {
+        hydra = new Hydra({ detectAudio: false, makeGlobal: true })
+        solid(0, 0, 0, 1).out()
+        setStatus('Connected. Waiting for code from launcher...')
+      } catch (err) {
+        try {
+          hydra = new Hydra({ detectAudio: false, makeGlobal: true, canvas: document.createElement('canvas') })
+        } catch (err2) {
+          setStatus('Hydra init failed: ' + err2.message)
+        }
+      }
+
+      function fitCanvas () {
+        if (!hydra || !hydra.canvas) return
+        hydra.canvas.style.width = '100vw'
+        hydra.canvas.style.height = '100vh'
+        var w = Math.max(640, window.innerWidth)
+        var h = Math.max(360, window.innerHeight)
+        hydra.canvas.width = w
+        hydra.canvas.height = h
+        if (typeof setResolution === 'function') setResolution(w, h)
+      }
+
+      fitCanvas()
+      window.addEventListener('resize', fitCanvas)
+
+      // When the launcher attaches a captureStream to our <video>, switch to cast mode
+      // This is detected by checking if audienceVideo.srcObject gets set by the parent window
+      function checkCastMode () {
+        if (audienceVideo && audienceVideo.srcObject && !usingCast) {
+          usingCast = true
+          document.body.classList.add('cast')
+          goLive()
+        }
+      }
+      // Poll briefly for cast attachment from launcher's openOutput()
+      var castPollCount = 0
+      var castPoll = setInterval(function () {
+        castPollCount++
+        checkCastMode()
+        if (usingCast || castPollCount > 100) clearInterval(castPoll)
+      }, 200)
+
+      // Listen for code from launcher — poll localStorage directly
+      // (BroadcastChannel and storage events can fail in Arc/Safari)
+      var lastCodeTs = 0
+
+      function handleCode (code) {
+        if (usingCast) return
+        if (!hydra || !code) return
+        try {
+          hydra.eval(code)
+          goLive()
+        } catch (err) {
+          setStatus('Eval error: ' + err.message)
+          console.error(err)
+        }
+      }
+
+      // Poll localStorage as fallback
+      setInterval(function () {
+        if (usingCast) return
+        try {
+          var raw = localStorage.getItem('hydra-live-code')
+          if (!raw) return
+          var data = JSON.parse(raw)
+          if (data && data.code && data.ts && data.ts > lastCodeTs) {
+            lastCodeTs = data.ts
+            handleCode(data.code)
+          }
+        } catch (err) {}
+      }, 100)
+
+      // WebSocket relay (primary — works in TD Web Render TOP and any browser)
+      var wsUrl = 'ws://' + window.location.host
+      var ws = null
+      var wsRetry = 500
+      function connectWs () {
+        try {
+          ws = new WebSocket(wsUrl)
+          ws.onopen = function () { wsRetry = 500 }
+          ws.onmessage = function (event) {
+            if (usingCast) return
+            try {
+              var data = JSON.parse(event.data)
+              if (data && data.code) handleCode(data.code)
+            } catch (err) {}
+          }
+          ws.onclose = function () { setTimeout(connectWs, wsRetry); wsRetry = Math.min(wsRetry * 2, 5000) }
+          ws.onerror = function () { ws.close() }
+        } catch (err) {}
+      }
+      connectWs()
+
+      // Fullscreen
+      fsBtn.addEventListener('click', function () {
+        // Fullscreen the video if in cast mode, otherwise the whole page
+        var el = usingCast ? audienceVideo : document.documentElement
+        if (el && el.requestFullscreen) el.requestFullscreen().catch(function () {})
+      })
+
+      window.addEventListener('keydown', function (event) {
+        if (event.key.toLowerCase() === 'f') {
+          var el = usingCast ? audienceVideo : document.documentElement
+          if (el && el.requestFullscreen) el.requestFullscreen().catch(function () {})
+        }
+      })
+    })()
+  </script>
+</body>
+</html>
