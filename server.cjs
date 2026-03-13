@@ -60,14 +60,18 @@ const server = http.createServer(function (req, res) {
 
   // ---- API: list presets ----
   if (req.method === 'GET' && urlPath === '/api/presets') {
-    fs.readdir(PRESETS_DIR, function (err, files) {
-      if (err) return jsonResponse(res, 500, { error: 'Cannot read presets dir' })
-      var presets = files
-        .filter(function (f) { return f.endsWith('.md') })
-        .map(function (f) {
-          return { file: f, name: f.replace(/\.md$/, '').replace(/-/g, ' ') }
+    var indexPath = path.join(PRESETS_DIR, 'index.json')
+    fs.readFile(indexPath, 'utf8', function (err, data) {
+      if (err) return jsonResponse(res, 500, { error: 'Cannot read index.json' })
+      try {
+        var entries = JSON.parse(data)
+        var presets = entries.map(function (e) {
+          return { file: e.file, name: e.name || e.file.replace(/\.md$/, '').replace(/-/g, ' ') }
         })
-      jsonResponse(res, 200, presets)
+        jsonResponse(res, 200, presets)
+      } catch (e) {
+        jsonResponse(res, 500, { error: 'Invalid index.json' })
+      }
     })
     return
   }
@@ -94,6 +98,9 @@ const server = http.createServer(function (req, res) {
         if (!slug) return jsonResponse(res, 400, { error: 'Invalid name' })
         var file = slug + '.md'
         var content = '# ' + data.name + '\n\n```js\n' + data.code.trim() + '\n```\n'
+        if (data.filters) {
+          content += '\n<!-- filters:' + JSON.stringify(data.filters) + ' -->\n'
+        }
         fs.writeFile(path.join(PRESETS_DIR, file), content, 'utf8', function (err) {
           if (err) return jsonResponse(res, 500, { error: 'Write failed' })
           // Update index.json

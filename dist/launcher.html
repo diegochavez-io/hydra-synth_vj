@@ -6,20 +6,20 @@
   <title>Hydra Live Launcher</title>
   <style>
     :root {
-      --bg: #0b1018;
-      --panel: #111a26;
-      --line: #263a57;
-      --text: #d8e4f8;
-      --muted: #8fa2bf;
+      --bg: #050508;
+      --panel: #0a0a0e;
+      --line: #1a1a22;
+      --text: #fff;
+      --muted: #bbb;
       --accent: #42d08f;
-      --danger: #f06a6a;
+      --danger: #c44;
     }
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
       width: 100%;
       height: 100%;
-      background: radial-gradient(circle at 20% 0%, #132238, var(--bg) 55%);
+      background: var(--bg);
       color: var(--text);
       font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
     }
@@ -27,25 +27,40 @@
       width: 100%;
       height: 100%;
       display: grid;
-      grid-template-columns: 62vw 38vw;
-      gap: 10px;
-      padding: 10px;
+      grid-template-columns: 55vw 1fr;
+      gap: 6px;
+      padding: 6px;
     }
-    #stage {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      overflow: hidden;
-      background: #000;
-      min-width: 360px;
-    }
-    #stage canvas { width: 100%; height: 100%; display: block; }
-    #panel {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: linear-gradient(180deg, #131d2a, #101723);
+    #leftCol {
       display: flex;
       flex-direction: column;
-      min-width: 420px;
+      gap: 0;
+      min-width: 360px;
+      overflow-y: auto;
+    }
+    #stage {
+      border: 1px solid #111;
+      border-radius: 6px 6px 0 0;
+      overflow: hidden;
+      background: #000;
+      flex-shrink: 0;
+    }
+    #stage canvas { width: 100%; height: 100%; display: block; object-fit: contain; }
+    #controls {
+      background: var(--panel);
+      border: 1px solid #111;
+      border-top: 0;
+      border-radius: 0 0 6px 6px;
+      flex-shrink: 0;
+    }
+    #panel {
+      border: 1px solid #111;
+      border-radius: 6px;
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      min-width: 300px;
+      overflow: hidden;
     }
     #toolbar {
       padding: 10px;
@@ -55,16 +70,16 @@
       gap: 8px;
     }
     .btn {
-      border: 1px solid var(--line);
-      background: #1a2738;
-      color: var(--text);
+      border: 1px solid #222;
+      background: #111;
+      color: #777;
       padding: 8px 10px;
-      border-radius: 8px;
+      border-radius: 6px;
       font-size: 13px;
       cursor: pointer;
     }
-    .btn:hover { border-color: var(--accent); }
-    .btn.main { background: linear-gradient(90deg, #2f7d53, #28714f); border-color: #3ea16f; font-weight: 700; }
+    .btn:hover { border-color: #444; color: #aaa; }
+    .btn.main { background: #153028; border-color: var(--accent); color: var(--accent); font-weight: 700; }
     #status {
       padding: 8px 10px;
       border-bottom: 1px solid var(--line);
@@ -74,20 +89,20 @@
     }
     #editorWrap {
       flex: 1;
-      display: grid;
-      grid-template-rows: 1fr auto;
+      display: flex;
+      flex-direction: column;
       min-height: 0;
     }
     #editor {
       width: 100%;
       height: 100%;
-      min-height: 320px;
+      min-height: 200px;
       resize: none;
       border: 0;
       outline: 0;
       padding: 12px;
-      background: #0b1420;
-      color: #dce8ff;
+      background: #08080c;
+      color: #888;
       font-family: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
       font-size: 14px;
       line-height: 1.48;
@@ -115,30 +130,30 @@
       overflow: auto;
     }
     .presetBtn {
-      border: 1px solid #37527b;
-      background: #182539;
-      color: #b8cbea;
+      border: 1px solid #222;
+      background: #0e0e12;
+      color: #fff;
       border-radius: 999px;
       padding: 6px 10px;
-      font-size: 11px;
+      font-size: 13px;
       cursor: pointer;
       max-width: 280px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .presetBtn:hover { border-color: var(--accent); color: #fff; }
-    .presetBtn.active { border-color: var(--accent); background: #1e3a2a; color: #fff; font-weight: 600; }
+    .presetBtn:hover { border-color: #444; color: var(--accent); }
+    .presetBtn.active { border-color: var(--accent); background: #0c1a14; color: var(--accent); font-weight: 600; }
     .presetBtn.saved {
-      border-color: #4ade80; background: #15392a; color: #4ade80;
+      border-color: var(--accent); background: #0c1a14; color: var(--accent);
       transition: all 0.15s ease-out;
     }
     @keyframes saveFlash {
-      0%   { background: #22c55e; color: #000; border-color: #22c55e; }
-      100% { background: #1e3a2a; color: #fff; border-color: var(--accent); }
+      0%   { background: var(--accent); color: #000; border-color: var(--accent); }
+      100% { background: #0c1a14; color: var(--accent); border-color: var(--accent); }
     }
     #autoplayBar {
-      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
       padding: 8px 10px;
       display: flex;
       align-items: center;
@@ -149,25 +164,37 @@
     #autoplayBar label { color: var(--muted); white-space: nowrap; }
     #autoplayBar input[type="number"] {
       width: 56px; padding: 4px 6px;
-      border: 1px solid var(--line); border-radius: 6px;
-      background: #0b1420; color: var(--text);
+      border: 1px solid #222; border-radius: 6px;
+      background: #0a0a0e; color: #777;
       font-size: 12px; text-align: center;
     }
     #autoplayBar select {
       padding: 4px 6px;
-      border: 1px solid var(--line); border-radius: 6px;
-      background: #0b1420; color: var(--text);
+      border: 1px solid #222; border-radius: 6px;
+      background: #0a0a0e; color: #777;
       font-size: 12px;
     }
     #autoplayBar .divider { width: 1px; height: 20px; background: var(--line); }
     #autoplayProgress {
       flex: 1; height: 4px; min-width: 60px;
-      background: #1a2738; border-radius: 2px; overflow: hidden;
+      background: #151518; border-radius: 2px; overflow: hidden;
     }
     #autoplayProgressFill {
       height: 100%; width: 0%; background: var(--accent);
-      transition: width 0.3s linear;
     }
+    #beatGrid {
+      flex: 1; min-width: 80px; display: flex; gap: 1px; align-items: center; height: 16px;
+    }
+    #beatGrid .beat-group {
+      display: flex; gap: 1px; flex: 1; height: 100%;
+    }
+    #beatGrid .beat-group + .beat-group { margin-left: 3px; }
+    #beatGrid .beat-step {
+      flex: 1; height: 100%; background: #151518; border-radius: 2px; transition: background 0.05s;
+    }
+    #beatGrid .beat-step.lit { background: var(--accent); }
+    #beatGrid .beat-group:nth-child(odd) .beat-step.lit { background: #3ab8e0; }
+    #beatGrid .beat-group:nth-child(even) .beat-step.lit { background: var(--accent); }
     #app.audience #panel { display: none; }
     #app.audience {
       grid-template-columns: 1fr;
@@ -189,20 +216,20 @@
 </head>
 <body>
   <div id="app">
-    <div id="stage"></div>
-    <div id="panel">
-      <div id="toolbar">
-        <button id="runAllBtn" class="btn main">Run (Cmd/Ctrl+Shift+Enter)</button>
-        <button id="startAudioBtn" class="btn">Start Audio</button>
-        <button id="saveBtn" class="btn">Save</button>
-        <button id="saveAsBtn" class="btn">Save As</button>
-        <button id="openOutBtn" class="btn">Open Output</button>
-        <button id="openNdiBtn" class="btn">NDI Out: Off</button>
-        <button id="fsOutBtn" class="btn">Fullscreen Output</button>
-        <button id="toggleCodeBtn" class="btn">Audience Mode</button>
-      </div>
-      <div id="status">Ready</div>
-      <div id="editorWrap">
+    <div id="leftCol">
+      <div id="stage"></div>
+      <div id="controls">
+        <div id="toolbar">
+          <button id="runAllBtn" class="btn main">Run (Cmd/Ctrl+Shift+Enter)</button>
+          <button id="openOutBtn" class="btn">Open Output</button>
+          <button id="startAudioBtn" class="btn">Start Audio</button>
+          <button id="saveBtn" class="btn">Save</button>
+          <button id="saveAsBtn" class="btn">Save As</button>
+          <button id="openNdiBtn" class="btn" style="display:none;">NDI Out: Off</button>
+          <button id="fsOutBtn" class="btn" style="display:none;">Fullscreen Output</button>
+          <button id="toggleCodeBtn" class="btn" style="display:none;">Audience Mode</button>
+        </div>
+        <div id="status">Ready</div>
         <div id="presets"></div>
         <div id="globalControls">
           <label>Hue <input type="range" id="hueCtrl" min="0" max="360" value="0"><span id="hueVal">0</span>°</label>
@@ -215,21 +242,51 @@
           <button id="tapTempoBtn" class="btn" style="padding:4px 8px;font-size:11px;">Tap</button>
           <button id="linkBtn" class="btn" style="padding:4px 8px;font-size:11px;display:none;">Link</button>
           <span id="linkPeers" style="display:none;font-size:10px;color:var(--muted);"></span>
+          <div class="divider" style="width:1px;height:16px;background:var(--line);"></div>
+          <label>Res
+            <select id="resolutionCtrl" style="padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:#777;font-size:11px;">
+              <option value="auto">Auto (fit stage)</option>
+              <option value="1920x1200" selected>1920x1200 (16:10 Projector)</option>
+              <option value="1920x1080">1920x1080 (16:9 HD)</option>
+              <option value="1280x720">1280x720 (720p)</option>
+              <option value="3840x2160">3840x2160 (4K)</option>
+              <option value="1080x1920">1080x1920 (9:16 Vertical)</option>
+              <option value="1080x1350">1080x1350 (4:5 Portrait)</option>
+              <option value="1080x1080">1080x1080 (1:1 Square)</option>
+              <option value="custom">Custom...</option>
+            </select>
+          </label>
+          <span id="resLabel" style="font-size:10px;color:var(--muted);"></span>
           <button id="resetFiltersBtn" class="btn" style="padding:4px 8px;font-size:11px;">Reset</button>
         </div>
-        <textarea id="editor" spellcheck="false" placeholder="Hydra live code here..."></textarea>
         <div id="autoplayBar">
           <button id="autoplayBtn" class="btn">Autoplay</button>
           <select id="autoplayMode">
             <option value="time">Time</option>
-            <option value="bars">Bars</option>
+            <option value="bars" selected>Bars (BPM)</option>
           </select>
           <div class="divider"></div>
-          <label id="autoplayTimeLabel">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999"></label>
-          <label id="autoplayBpmLabel" style="display:none">BPM: <input type="number" id="autoplayBpm" value="120" min="1" max="999"></label>
-          <label id="autoplayBarsLabel" style="display:none">Bars: <input type="number" id="autoplayBars" value="32" min="1" max="9999"></label>
-          <div id="autoplayProgress"><div id="autoplayProgressFill"></div></div>
+          <label id="autoplayTimeLabel" style="display:none">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999"></label>
+          <label id="autoplayBarsLabel">Bars:
+            <select id="autoplayBars" style="padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#0a0a0e;color:#777;font-size:12px;">
+              <option value="8" selected>8</option>
+              <option value="16">16</option>
+              <option value="32">32</option>
+              <option value="64">64</option>
+              <option value="128">128</option>
+            </select>
+          </label>
+          <span id="autoplayBpmDisplay" style="display:none;font-size:11px;color:var(--muted);"></span>
+          <input type="hidden" id="autoplayBpm" value="120">
+          <span id="autoplayCountdown" style="font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;"></span>
+          <div id="beatGrid"></div>
+          <div id="autoplayProgress" style="display:none;"><div id="autoplayProgressFill"></div></div>
         </div>
+      </div>
+    </div>
+    <div id="panel">
+      <div id="editorWrap">
+        <textarea id="editor" spellcheck="false" placeholder="Hydra live code here..."></textarea>
       </div>
     </div>
   </div>
@@ -259,7 +316,7 @@
     /* Line background highlight like official Hydra */
     .CodeMirror pre.CodeMirror-line,
     .CodeMirror pre.CodeMirror-line-like {
-      background: rgba(20, 30, 60, 0.65);
+      background: rgba(10, 10, 16, 0.7);
       border-radius: 2px;
       padding: 1px 4px !important;
     }
@@ -627,20 +684,63 @@
         setStatus('Audio started (or stub active).', false)
       }
 
+      // ---- Resolution / aspect ratio ----
+      var currentResW = 0
+      var currentResH = 0
+      var resolutionMode = '1920x1200'
+
+      function getResolution () {
+        return { w: currentResW, h: currentResH, mode: resolutionMode }
+      }
+
+      function parseResolution (val) {
+        if (val === 'auto' || val === 'custom') return null
+        var parts = val.split('x')
+        return { w: parseInt(parts[0], 10), h: parseInt(parts[1], 10) }
+      }
+
       function fitCanvas () {
         if (!hydraCanvas) return
-        const rect = stageEl.getBoundingClientRect()
-        hydraCanvas.width = Math.max(640, Math.floor(rect.width))
-        hydraCanvas.height = Math.max(360, Math.floor(rect.height))
+        var res = parseResolution(resolutionMode)
+        if (res) {
+          // Fixed resolution — set canvas to exact pixel dimensions
+          hydraCanvas.width = res.w
+          hydraCanvas.height = res.h
+          currentResW = res.w
+          currentResH = res.h
+          // Apply aspect ratio to stage so preview isn't stretched
+          stageEl.style.aspectRatio = res.w + '/' + res.h
+          stageEl.style.maxHeight = '100%'
+        } else {
+          // Auto — fill stage area
+          stageEl.style.aspectRatio = ''
+          stageEl.style.maxHeight = ''
+          var rect = stageEl.getBoundingClientRect()
+          hydraCanvas.width = Math.max(640, Math.floor(rect.width))
+          hydraCanvas.height = Math.max(360, Math.floor(rect.height))
+          currentResW = hydraCanvas.width
+          currentResH = hydraCanvas.height
+        }
         if (typeof setResolution === 'function') {
           setResolution(hydraCanvas.width, hydraCanvas.height)
         }
+        // Update label
+        var resLabel = document.getElementById('resLabel')
+        if (resLabel) resLabel.textContent = currentResW + 'x' + currentResH
       }
 
       function parsePresetMarkdown (source) {
         const fenced = source.match(/```(?:js|javascript|hydra)?\s*([\s\S]*?)```/m)
         if (fenced && fenced[1]) return fenced[1].trim()
         return source.trim()
+      }
+
+      function parsePresetFilters (source) {
+        var match = source.match(/<!-- filters:(.*?) -->/)
+        if (match) {
+          try { return JSON.parse(match[1]) } catch (e) {}
+        }
+        return null
       }
 
       function getCurrentLineRange () {
@@ -681,6 +781,8 @@
         return { start: start, end: end }
       }
 
+      var pendingFilters = null
+
       function runCode (code, label) {
         const snippet = (code || '').trim()
         if (!snippet) {
@@ -694,6 +796,11 @@
         try {
           if (audioBootstrapCode) { hydra.eval(audioBootstrapCode) }
           hydra.eval(snippet)
+          // Apply pending filters now that the new code is running
+          if (pendingFilters) {
+            applyFilterState(pendingFilters)
+            pendingFilters = null
+          }
           if (codeCh) codeCh.postMessage({ type: 'hydra-code', code: snippet })
           localStorage.setItem('hydra-live-code', JSON.stringify({ code: snippet, ts: Date.now() }))
           if (relayWs && relayWs.readyState === 1) relayWs.send(JSON.stringify({ code: snippet }))
@@ -850,7 +957,12 @@
         }
 
         const url = new URL('./output.html', window.location.href).toString()
-        const win = window.open(url, 'hydra-output', 'width=1280,height=720')
+        var outW = currentResW || 1280
+        var outH = currentResH || 720
+        // Cap popup size to screen bounds
+        outW = Math.min(outW, screen.availWidth - 40)
+        outH = Math.min(outH, screen.availHeight - 80)
+        const win = window.open(url, 'hydra-output', 'width=' + outW + ',height=' + outH)
         if (!win) {
           setStatus('Popup blocked. Allow popups for this site.', true)
           return
@@ -905,7 +1017,7 @@
           const res = await fetch('/api/presets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name.trim(), code: code })
+            body: JSON.stringify({ name: name.trim(), code: code, filters: getFilterState() })
           })
           const data = await res.json()
           if (!res.ok) throw new Error(data.error || 'Save failed')
@@ -928,7 +1040,7 @@
           const res = await fetch('/api/presets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: currentPresetName, code: code })
+            body: JSON.stringify({ name: currentPresetName, code: code, filters: getFilterState() })
           })
           const data = await res.json()
           if (!res.ok) throw new Error(data.error || 'Save failed')
@@ -961,6 +1073,7 @@
                 const data = await p.json()
                 editorEl.value = parsePresetMarkdown(data.content)
                 localStorage.setItem(STORAGE_EDITOR, editorEl.value)
+                pendingFilters = parsePresetFilters(data.content)
                 currentPresetName = entry.name || entry.file.replace(/\.md$/, '')
                 currentPresetFile = entry.file
                 setStatus(`Loaded: ${currentPresetName}`, false)
@@ -983,6 +1096,7 @@
               var data = await p.json()
               cm.setValue(parsePresetMarkdown(data.content))
               localStorage.setItem(STORAGE_EDITOR, cm.getValue())
+              pendingFilters = parsePresetFilters(data.content)
               currentPresetName = first.name || first.file.replace(/\.md$/, '')
               currentPresetFile = first.file
               runCode(cm.getValue(), 'autoloaded: ' + (first.name || first.file))
@@ -1235,25 +1349,70 @@
       var autoplayBpmEl = document.getElementById('autoplayBpm')
       var autoplayBarsEl = document.getElementById('autoplayBars')
       var autoplayTimeLabelEl = document.getElementById('autoplayTimeLabel')
-      var autoplayBpmLabelEl = document.getElementById('autoplayBpmLabel')
       var autoplayBarsLabelEl = document.getElementById('autoplayBarsLabel')
+      var autoplayBpmDisplayEl = document.getElementById('autoplayBpmDisplay')
       var autoplayFillEl = document.getElementById('autoplayProgressFill')
+      var autoplayCountdownEl = document.getElementById('autoplayCountdown')
+      var beatGridEl = document.getElementById('beatGrid')
+      var beatGridSteps = []
+
+      function buildBeatGrid (totalBars) {
+        beatGridEl.innerHTML = ''
+        beatGridSteps = []
+        for (var bar = 0; bar < totalBars; bar++) {
+          var group = document.createElement('div')
+          group.className = 'beat-group'
+          for (var b = 0; b < 4; b++) {
+            var step = document.createElement('div')
+            step.className = 'beat-step'
+            group.appendChild(step)
+            beatGridSteps.push(step)
+          }
+          beatGridEl.appendChild(group)
+        }
+      }
+
+      function updateBeatGrid (completedBeats) {
+        for (var i = 0; i < beatGridSteps.length; i++) {
+          beatGridSteps[i].classList.toggle('lit', i < completedBeats)
+        }
+      }
+
+      // Link beat tracking for beat-synced autoplay
+      var linkBeat = 0       // absolute beat from Link (updated at ~20Hz)
+      var linkStartBeat = 0  // beat when current preset started
+
+      function getCurrentBpm () {
+        var liveBpm = parseFloat(bpmValEl.textContent)
+        if (liveBpm && liveBpm > 0) return liveBpm
+        return Math.max(1, parseInt(autoplayBpmEl.value, 10) || 120)
+      }
+
+      function getAutoplayBars () {
+        return Math.max(1, parseInt(autoplayBarsEl.value, 10) || 32)
+      }
 
       function getAutoplayDurationMs () {
         if (autoplayModeEl.value === 'bars') {
-          var bpm = Math.max(1, parseInt(autoplayBpmEl.value, 10) || 120)
-          var bars = Math.max(1, parseInt(autoplayBarsEl.value, 10) || 32)
-          var beatsPerBar = 4
-          return (bars * beatsPerBar / bpm) * 60 * 1000
+          var bpm = getCurrentBpm()
+          var bars = getAutoplayBars()
+          return (bars * 4 / bpm) * 60 * 1000
         }
         return Math.max(1, parseInt(autoplaySecondsEl.value, 10) || 120) * 1000
+      }
+
+      function updateAutoplayBpmDisplay () {
+        if (autoplayModeEl.value !== 'bars') return
+        var bpm = getCurrentBpm()
+        var bars = getAutoplayBars()
+        var dur = (bars * 4 / bpm) * 60
+        autoplayBpmDisplayEl.textContent = bpm + ' BPM \u2022 ' + dur.toFixed(1) + 's'
       }
 
       function autoplayLoadPreset (index) {
         if (!autoplayPresetList.length) return
         autoplayIndex = index % autoplayPresetList.length
         var entry = autoplayPresetList[autoplayIndex]
-        // Highlight active preset
         presetsEl.querySelectorAll('.presetBtn').forEach(function (b, i) {
           b.classList.toggle('active', i === autoplayIndex)
         })
@@ -1262,33 +1421,92 @@
           .then(function (data) {
             editorEl.value = parsePresetMarkdown(data.content)
             localStorage.setItem(STORAGE_EDITOR, editorEl.value)
+            pendingFilters = parsePresetFilters(data.content)
             runCode(editorEl.value, 'autoplay: ' + (entry.name || entry.file))
           })
           .catch(function (err) { setStatus('Autoplay load failed: ' + err.message, true) })
       }
 
-      function autoplayScheduleNext () {
+      // Called from Link message handler — drives beat-synced transitions
+      function autoplayOnLinkBeat (beat) {
+        linkBeat = beat
+        if (!autoplayActive || autoplayModeEl.value !== 'bars') return
+        var totalBars = getAutoplayBars()
+        var totalBeats = totalBars * 4
+        var elapsed = beat - linkStartBeat
+        // Discrete beat-step display — no smooth interpolation
+        var completedBeats = Math.floor(elapsed)
+        var currentBar = Math.floor(completedBeats / 4) + 1
+        var currentBeat = (completedBeats % 4) + 1
+        updateBeatGrid(completedBeats)
+        autoplayCountdownEl.textContent = 'Bar ' + Math.min(currentBar, totalBars) + '/' + totalBars + ' beat ' + currentBeat
+        updateAutoplayBpmDisplay()
+        // Transition on bar boundary
+        if (elapsed >= totalBeats) {
+          // Cancel the fallback timer so we don't double-fire
+          if (autoplayTimer) { clearTimeout(autoplayTimer); autoplayTimer = null }
+          if (autoplayAnimFrame) { cancelAnimationFrame(autoplayAnimFrame); autoplayAnimFrame = null }
+          linkStartBeat = beat
+          autoplayLoadPreset(autoplayIndex + 1)
+          // Restart fallback timer for next cycle
+          autoplayScheduleBars()
+        }
+      }
+
+      function autoplayScheduleTime () {
+        // Time-based mode: use setTimeout + rAF for countdown
         var duration = getAutoplayDurationMs()
         autoplayStartTime = Date.now()
         if (autoplayTimer) clearTimeout(autoplayTimer)
         autoplayTimer = setTimeout(function () {
           autoplayLoadPreset(autoplayIndex + 1)
-          if (autoplayActive) autoplayScheduleNext()
+          if (autoplayActive) autoplayScheduleTime()
         }, duration)
-        // Animate progress bar
         if (autoplayAnimFrame) cancelAnimationFrame(autoplayAnimFrame)
         function tick () {
           if (!autoplayActive) return
           var elapsed = Date.now() - autoplayStartTime
           var pct = Math.min(100, (elapsed / duration) * 100)
           autoplayFillEl.style.width = pct + '%'
+          var remaining = Math.max(0, Math.ceil((duration - elapsed) / 1000))
+          autoplayCountdownEl.textContent = remaining + 's'
+          autoplayAnimFrame = requestAnimationFrame(tick)
+        }
+        tick()
+      }
+
+      // Bars mode: always runs a setTimeout + rAF as baseline.
+      // When Link is active, autoplayOnLinkBeat overrides the display
+      // and fires transitions on real beat boundaries.
+      function autoplayScheduleBars () {
+        var duration = getAutoplayDurationMs()
+        autoplayStartTime = Date.now()
+        updateAutoplayBpmDisplay()
+        if (autoplayTimer) clearTimeout(autoplayTimer)
+        autoplayTimer = setTimeout(function () {
+          autoplayLoadPreset(autoplayIndex + 1)
+          if (autoplayActive) autoplayScheduleBars()
+        }, duration)
+        var totalBars = getAutoplayBars()
+        if (autoplayAnimFrame) cancelAnimationFrame(autoplayAnimFrame)
+        function tick () {
+          if (!autoplayActive) return
+          var elapsed = Date.now() - autoplayStartTime
+          var bpm = getCurrentBpm()
+          var msPerBeat = 60000 / bpm
+          var elapsedBeats = elapsed / msPerBeat
+          var totalBeats = totalBars * 4
+          var completedBeats = Math.floor(elapsedBeats)
+          updateBeatGrid(completedBeats)
+          var currentBar = Math.floor(completedBeats / 4) + 1
+          var currentBeat = (completedBeats % 4) + 1
+          autoplayCountdownEl.textContent = 'Bar ' + Math.min(currentBar, totalBars) + '/' + totalBars + ' beat ' + currentBeat
           autoplayAnimFrame = requestAnimationFrame(tick)
         }
         tick()
       }
 
       function startAutoplay () {
-        // Snapshot current preset list
         autoplayPresetList = []
         presetsEl.querySelectorAll('.presetBtn').forEach(function (btn, i) {
           autoplayPresetList.push({ name: btn.textContent, file: btn.title })
@@ -1302,7 +1520,19 @@
         autoplayBtnEl.textContent = 'Stop'
         autoplayBtnEl.classList.add('main')
         autoplayLoadPreset(0)
-        autoplayScheduleNext()
+
+        if (autoplayModeEl.value === 'bars') {
+          buildBeatGrid(getAutoplayBars())
+          linkStartBeat = linkBeat
+          if (linkActive) {
+            // Beat-driven: Link handler does the work, but also start
+            // the timer as fallback in case Link messages stop
+            updateAutoplayBpmDisplay()
+          }
+          autoplayScheduleBars()
+        } else {
+          autoplayScheduleTime()
+        }
       }
 
       function stopAutoplay () {
@@ -1313,6 +1543,9 @@
         autoplayBtnEl.textContent = 'Autoplay'
         autoplayBtnEl.classList.remove('main')
         presetsEl.querySelectorAll('.presetBtn').forEach(function (b) { b.classList.remove('active') })
+        autoplayBpmDisplayEl.style.display = 'none'
+        autoplayCountdownEl.textContent = ''
+        beatGridEl.innerHTML = ''; beatGridSteps = []
         setStatus('Autoplay stopped.', false)
       }
 
@@ -1321,11 +1554,19 @@
         else startAutoplay()
       })
 
+      autoplayBarsEl.addEventListener('change', function () {
+        if (autoplayActive) buildBeatGrid(getAutoplayBars())
+        updateAutoplayBpmDisplay()
+        // Live update: if bars changed mid-autoplay, just let the beat counter
+        // run against the new target — no need to restart
+      })
+
       autoplayModeEl.addEventListener('change', function () {
         var isTime = autoplayModeEl.value === 'time'
         autoplayTimeLabelEl.style.display = isTime ? '' : 'none'
-        autoplayBpmLabelEl.style.display = isTime ? 'none' : ''
         autoplayBarsLabelEl.style.display = isTime ? 'none' : ''
+        autoplayBpmDisplayEl.style.display = isTime ? 'none' : ''
+        if (!isTime) updateAutoplayBpmDisplay()
         if (autoplayActive) { stopAutoplay(); startAutoplay() }
       })
 
@@ -1339,6 +1580,44 @@
       var brightVal = document.getElementById('brightVal')
       var contrastVal = document.getElementById('contrastVal')
 
+      function getFilterState () {
+        return {
+          hue: parseInt(hueCtrl.value, 10),
+          sat: parseInt(satCtrl.value, 10),
+          bright: parseInt(brightCtrl.value, 10),
+          contrast: parseInt(contrastCtrl.value, 10),
+          speed: parseFloat(speedCtrlEl.value)
+        }
+      }
+
+      function applyFilterState (state) {
+        if (!state) return
+        if (state.hue !== undefined) hueCtrl.value = state.hue
+        if (state.sat !== undefined) satCtrl.value = state.sat
+        if (state.bright !== undefined) brightCtrl.value = state.bright
+        if (state.contrast !== undefined) contrastCtrl.value = state.contrast
+        if (state.speed !== undefined) { speedCtrlEl.value = state.speed; updateSpeed() }
+        applyFilters()
+      }
+
+      function buildFilterString (h, s, b, c) {
+        return 'hue-rotate(' + h + 'deg) saturate(' + s + '%) brightness(' + b + '%) contrast(' + c + '%)'
+      }
+
+      function broadcastFilters (filterStr) {
+        // Send to output window via WebSocket relay
+        if (relayWs && relayWs.readyState === 1) {
+          relayWs.send(JSON.stringify({ type: 'filters', filter: filterStr }))
+        }
+        // Also apply directly if output window is open (for instant response)
+        if (audienceWindow && !audienceWindow.closed) {
+          try {
+            var v = audienceWindow.document.getElementById('v') || audienceWindow.document.getElementById('audienceVideo')
+            if (v) v.style.filter = filterStr
+          } catch (e) {}
+        }
+      }
+
       function applyFilters () {
         if (!hydraCanvas) return
         var h = hueCtrl.value
@@ -1349,8 +1628,9 @@
         satVal.textContent = s
         brightVal.textContent = b
         contrastVal.textContent = c
-        hydraCanvas.style.filter =
-          'hue-rotate(' + h + 'deg) saturate(' + s + '%) brightness(' + b + '%) contrast(' + c + '%)'
+        var filterStr = buildFilterString(h, s, b, c)
+        hydraCanvas.style.filter = filterStr
+        broadcastFilters(filterStr)
       }
 
       hueCtrl.addEventListener('input', applyFilters)
@@ -1361,6 +1641,35 @@
         hueCtrl.value = 0; satCtrl.value = 100; brightCtrl.value = 100; contrastCtrl.value = 100
         applyFilters()
         speedCtrlEl.value = 1; updateSpeed()
+      })
+
+      // ---- Resolution picker ----
+      var resolutionCtrlEl = document.getElementById('resolutionCtrl')
+      resolutionCtrlEl.addEventListener('change', function () {
+        var val = resolutionCtrlEl.value
+        if (val === 'custom') {
+          var input = window.prompt('Enter resolution (WxH):', currentResW + 'x' + currentResH)
+          if (!input) { resolutionCtrlEl.value = resolutionMode; return }
+          var match = input.match(/^(\d+)\s*[x×X]\s*(\d+)$/)
+          if (!match) { resolutionCtrlEl.value = resolutionMode; setStatus('Invalid format. Use WxH (e.g. 1920x1200)', true); return }
+          var cw = parseInt(match[1], 10), ch = parseInt(match[2], 10)
+          if (cw < 100 || ch < 100 || cw > 7680 || ch > 7680) { resolutionCtrlEl.value = resolutionMode; setStatus('Resolution out of range (100–7680).', true); return }
+          // Add custom option and select it
+          var customVal = cw + 'x' + ch
+          var existing = resolutionCtrlEl.querySelector('option[value="' + customVal + '"]')
+          if (!existing) {
+            var opt = document.createElement('option')
+            opt.value = customVal
+            opt.textContent = customVal + ' (custom)'
+            resolutionCtrlEl.insertBefore(opt, resolutionCtrlEl.querySelector('option[value="custom"]'))
+          }
+          resolutionCtrlEl.value = customVal
+          resolutionMode = customVal
+        } else {
+          resolutionMode = val
+        }
+        fitCanvas()
+        setStatus('Resolution: ' + currentResW + 'x' + currentResH, false)
       })
 
       // ---- Speed control ----
@@ -1454,6 +1763,10 @@
             // Show peer count
             linkPeersEl.style.display = ''
             linkPeersEl.textContent = data.numPeers + (data.numPeers === 1 ? ' peer' : ' peers')
+            // Drive beat-synced autoplay from Link's actual beat position
+            if (typeof data.beat === 'number') {
+              autoplayOnLinkBeat(data.beat)
+            }
             return
           }
         } catch (e) {}
