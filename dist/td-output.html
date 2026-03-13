@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hydra TD Output</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"></script>
+  <script>
+    // Audio stub — matches all methods from hydra-synth/src/lib/audio.js
+    window.a = {
+      fft: [0, 0, 0, 0],
+      vol: 0,
+      bins: [0, 0, 0, 0],
+      setBins: function (n) {
+        var size = Math.max(1, Number(n) || 4)
+        this.fft = new Array(size).fill(0)
+        this.bins = new Array(size).fill(0)
+        // Create per-bin shortcut functions: a0, a1, a2...
+        for (var i = 0; i < size; i++) {
+          (function (idx) {
+            window['a' + idx] = function (scale, offset) {
+              var s = scale === undefined ? 1 : scale
+              var o = offset === undefined ? 0 : offset
+              return function () { return window.a.fft[idx] * s + o }
+            }
+          })(i)
+        }
+      },
+      setSmooth: function () {},
+      setCutoff: function () {},
+      setScale: function () {},
+      setMax: function () {},
+      show: function () {},
+      hide: function () {},
+      onBeat: function () {}
+    }
+    // Init default bin shortcuts
+    window.a.setBins(4)
+
+    // Init Hydra
+    var hydra = new Hydra({ detectAudio: false, makeGlobal: true })
+    solid(0, 0, 0, 1).out()
+
+    function fit () {
+      if (!hydra || !hydra.canvas) return
+      hydra.canvas.width = window.innerWidth
+      hydra.canvas.height = window.innerHeight
+      if (typeof setResolution === 'function') setResolution(hydra.canvas.width, hydra.canvas.height)
+    }
+    fit()
+    window.addEventListener('resize', fit)
+
+    // Receive code from launcher via WebSocket relay
+    var ws = null
+    var retryMs = 500
+    function connect () {
+      ws = new WebSocket('ws://' + window.location.host)
+      ws.onopen = function () { retryMs = 500 }
+      ws.onmessage = function (event) {
+        try {
+          var data = JSON.parse(event.data)
+          if (data && data.code) hydra.eval(data.code)
+        } catch (err) {
+          console.error('[td-output]', err)
+        }
+      }
+      ws.onclose = function () { setTimeout(connect, retryMs); retryMs = Math.min(retryMs * 2, 5000) }
+      ws.onerror = function () { ws.close() }
+    }
+    connect()
+  </script>
+</body>
+</html>
