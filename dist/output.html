@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hydra Output</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    video { width: 100vw; height: 100vh; display: block; object-fit: contain; background: #000; }
+  </style>
+</head>
+<body>
+  <video id="v" autoplay muted playsinline></video>
+  <script>
+    // This page must be opened via the launcher's "Open Output" button.
+    // The launcher sets video.srcObject directly — no encoding, no compression.
+    window.addEventListener('keydown', function (e) {
+      if (e.key.toLowerCase() === 'f') {
+        document.documentElement.requestFullscreen().catch(function () {})
+      }
+    })
+  </script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hydra NDI Output</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+    #audienceVideo {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      object-fit: contain;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <video id="audienceVideo" autoplay muted playsinline></video>
+
+  <script>
+    (function () {
+      const video = document.getElementById('audienceVideo')
+
+      function requestAttachFromOpener () {
+        try {
+          if (!window.opener || window.opener.closed) return false
+          if (typeof window.opener.__hydraAttachToOutputWindow !== 'function') return false
+          return !!window.opener.__hydraAttachToOutputWindow(window)
+        } catch (error) {
+          return false
+        }
+      }
+
+      function startAttachPolling () {
+        let attempts = 0
+        const timer = setInterval(function () {
+          attempts += 1
+          const hasVideo = !!video.srcObject
+          if (hasVideo && attempts > 30) {
+            clearInterval(timer)
+            return
+          }
+          requestAttachFromOpener()
+        }, 300)
+      }
+
+      window.addEventListener('keydown', function (event) {
+        if (event.key.toLowerCase() === 'f' && video.requestFullscreen) {
+          video.requestFullscreen().catch(function () {})
+        }
+      })
+
+      window.addEventListener('load', function () {
+        startAttachPolling()
+      })
+    })()
+  </script>
+</body>
+</html>
