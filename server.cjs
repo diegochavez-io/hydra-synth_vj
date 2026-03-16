@@ -6,6 +6,7 @@
 // Default port: 8080
 
 const http = require('http')
+const https = require('https')
 const fs = require('fs')
 const path = require('path')
 const WsServer = require('ws').Server
@@ -26,6 +27,114 @@ try {
 const PORT = parseInt(process.argv[2], 10) || 8080
 const ROOT = __dirname
 const PRESETS_DIR = path.join(ROOT, 'presets')
+
+// Daydream API config
+function getDaydreamConfig () {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(ROOT, 'daydream.config.json'), 'utf8'))
+  } catch (e) { return {} }
+}
+function getDaydreamKey () {
+  return process.env.DAYDREAM_API_KEY || getDaydreamConfig().apiKey || null
+}
+function getScopeUrl () {
+  return process.env.SCOPE_URL || getDaydreamConfig().scopeUrl || null
+}
+
+// Shared Daydream stream state (browser creates, TD can update)
+var activeDaydreamStreamId = null
+var activeDaydreamPlaybackId = null
+
+// Scope process management
+var scopeProcess = null
+var SCOPE_DIR = path.join(ROOT, '..', 'scope')
+var SCOPE_PORT = 8000
+
+function isScopeRunning (cb) {
+  http.get('http://localhost:' + SCOPE_PORT + '/health', function (res) {
+    var chunks = []
+    res.on('data', function (c) { chunks.push(c) })
+    res.on('end', function () {
+      try {
+        var data = JSON.parse(Buffer.concat(chunks).toString())
+        cb(data.status === 'healthy')
+      } catch (e) { cb(false) }
+    })
+  }).on('error', function () { cb(false) })
+}
+
+function startScope (cb) {
+  isScopeRunning(function (running) {
+    if (running) return cb(null, { status: 'already_running' })
+    // Check scope dir exists
+    if (!fs.existsSync(SCOPE_DIR)) return cb(new Error('Scope not found at ' + SCOPE_DIR))
+    var spawn = require('child_process').spawn
+    var uvPath = process.env.HOME + '/.local/bin/uv'
+    scopeProcess = spawn(uvPath, ['run', 'daydream-scope', '--host', '0.0.0.0', '--port', String(SCOPE_PORT)], {
+      cwd: SCOPE_DIR,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true,
+      env: Object.assign({}, process.env, { PYTHONDONTWRITEBYTECODE: '1' })
+    })
+    scopeProcess.unref()
+    console.log('  Scope: starting (pid ' + scopeProcess.pid + ')...')
+    // Capture early output for debugging
+    scopeProcess.stderr.on('data', function (d) {
+      var line = d.toString().trim()
+      if (line) console.log('  Scope: ' + line.split('\n')[0])
+    })
+    scopeProcess.on('exit', function (code) {
+      console.log('  Scope: process exited (code ' + code + ')')
+      scopeProcess = null
+    })
+    // Poll for healthy
+    var attempts = 0
+    var maxAttempts = 60 // 60 seconds
+    var poll = setInterval(function () {
+      attempts++
+      isScopeRunning(function (healthy) {
+        if (healthy) {
+          clearInterval(poll)
+          console.log('  Scope: healthy after ' + attempts + 's')
+          cb(null, { status: 'started', pid: scopeProcess ? scopeProcess.pid : null })
+        } else if (attempts >= maxAttempts) {
+          clearInterval(poll)
+          cb(new Error('Scope failed to start within ' + maxAttempts + 's'))
+        }
+      })
+    }, 1000)
+  })
+}
+
+function daydreamRequest (method, urlPath, body) {
+  return new Promise(function (resolve, reject) {
+    var key = getDaydreamKey()
+    if (!key) return reject(new Error('No Daydream API key'))
+    var postData = body ? JSON.stringify(body) : ''
+    var opts = {
+      hostname: 'api.daydream.live',
+      path: urlPath,
+      method: method,
+      headers: {
+        'Authorization': 'Bearer ' + key,
+        'Content-Type': 'application/json'
+      }
+    }
+    if (postData) opts.headers['Content-Length'] = Buffer.byteLength(postData)
+    var req = https.request(opts, function (res) {
+      var chunks = []
+      res.on('data', function (c) { chunks.push(c) })
+      res.on('end', function () {
+        var raw = Buffer.concat(chunks).toString()
+        try { resolve({ status: res.statusCode, data: JSON.parse(raw), headers: res.headers }) }
+        catch (e) { resolve({ status: res.statusCode, data: raw, headers: res.headers }) }
+      })
+    })
+    req.on('error', reject)
+    if (postData) req.write(postData)
+    req.end()
+  })
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -141,6 +250,290 @@ const server = http.createServer(function (req, res) {
         fs.writeFileSync(indexPath, JSON.stringify(index, null, 2) + '\n')
       } catch (e) {}
       jsonResponse(res, 200, { archived: delName })
+    })
+    return
+  }
+
+  // ---- API: Scope start ----
+  if (req.method === 'POST' && urlPath === '/api/scope/start') {
+    startScope(function (err, result) {
+      if (err) return jsonResponse(res, 500, { error: err.message })
+      jsonResponse(res, 200, result)
+    })
+    return
+  }
+
+  // ---- API: Scope health ----
+  if (req.method === 'GET' && urlPath === '/api/scope/health') {
+    isScopeRunning(function (healthy) {
+      jsonResponse(res, 200, { running: healthy })
+    })
+    return
+  }
+
+  // ---- API: Scope apply preset (configure pipeline, LoRA, outputs, prompt) ----
+  if (req.method === 'POST' && urlPath === '/api/scope/preset') {
+    readBody(req, function (body) {
+      try {
+        var preset = JSON.parse(body)
+        var scopeBase = getScopeUrl()
+        if (!scopeBase) return jsonResponse(res, 400, { error: 'No Scope URL' })
+        var scopeIsHttps = scopeBase.startsWith('https')
+        var scopeLib = scopeIsHttps ? https : http
+
+        function scopePost (apiPath, data, cb) {
+          var postData = JSON.stringify(data)
+          var urlObj = new URL(scopeBase + apiPath)
+          var opts = {
+            hostname: urlObj.hostname, port: urlObj.port || (scopeIsHttps ? 443 : 80),
+            path: urlObj.pathname, method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
+          }
+          var req2 = scopeLib.request(opts, function (r) {
+            var chunks = []
+            r.on('data', function (c) { chunks.push(c) })
+            r.on('end', function () { cb(null, r.statusCode, Buffer.concat(chunks).toString()) })
+          })
+          req2.on('error', function (e) { cb(e) })
+          req2.write(postData)
+          req2.end()
+        }
+
+        // Step 1: Load pipeline (if specified and different from current)
+        var loadParams = {}
+        if (preset.pipeline) loadParams.pipeline_ids = [preset.pipeline]
+        if (preset.width) loadParams.width = preset.width
+        if (preset.height) loadParams.height = preset.height
+        if (preset.loras) loadParams.loras = preset.loras
+        if (preset.vace_enabled !== undefined) loadParams.vace_enabled = preset.vace_enabled
+        if (preset.vace_context_scale !== undefined) loadParams.vace_context_scale = preset.vace_context_scale
+
+        var steps = []
+
+        // Load pipeline
+        if (preset.pipeline) {
+          steps.push(function (next) {
+            scopePost('/api/v1/pipeline/load', { pipeline_ids: [preset.pipeline], load_params: loadParams }, function (err, status, body2) {
+              console.log('  Scope preset: pipeline load →', status)
+              next()
+            })
+          })
+        }
+
+        // Apply output sinks + prompt via parameters (once pipeline is running)
+        steps.push(function (next) {
+          // Wait for pipeline to be loaded
+          var attempts = 0
+          var poll = setInterval(function () {
+            attempts++
+            var urlObj2 = new URL(scopeBase + '/api/v1/pipeline/status')
+            scopeLib.get({ hostname: urlObj2.hostname, port: urlObj2.port || (scopeIsHttps ? 443 : 80), path: urlObj2.pathname }, function (r) {
+              var chunks = []
+              r.on('data', function (c) { chunks.push(c) })
+              r.on('end', function () {
+                try {
+                  var st = JSON.parse(Buffer.concat(chunks).toString())
+                  if (st.status === 'loaded' || attempts > 120) {
+                    clearInterval(poll)
+                    next()
+                  }
+                } catch (e) { if (attempts > 120) { clearInterval(poll); next() } }
+              })
+            }).on('error', function () { if (attempts > 120) { clearInterval(poll); next() } })
+          }, 1000)
+        })
+
+        function runSteps (i) {
+          if (i >= steps.length) {
+            // All done — send prompt and output_sinks via OSC or summary
+            var summary = { applied: true, pipeline: preset.pipeline, prompt: preset.prompt }
+            console.log('  Scope preset: applied', JSON.stringify(summary))
+            jsonResponse(res, 200, summary)
+            return
+          }
+          steps[i](function () { runSteps(i + 1) })
+        }
+        runSteps(0)
+
+      } catch (e) {
+        jsonResponse(res, 400, { error: 'Invalid JSON: ' + e.message })
+      }
+    })
+    return
+  }
+
+  // ---- API: Daydream status ----
+  if (req.method === 'GET' && urlPath === '/api/daydream/status') {
+    var key = getDaydreamKey()
+    var scope = getScopeUrl()
+    jsonResponse(res, 200, { available: !!(key || scope), hasCloud: !!key, hasScope: !!scope, scopeUrl: scope || null })
+    return
+  }
+
+  // ---- API: Scope proxy (forward requests to Scope — local or remote) ----
+  if (urlPath.startsWith('/api/scope/')) {
+    var scopeBase = getScopeUrl()
+    if (!scopeBase) return jsonResponse(res, 400, { error: 'No Scope URL configured' })
+    var scopePath = urlPath.replace('/api/scope', '')
+    var scopeUrlObj = new URL(scopeBase + scopePath)
+    var scopeIsHttps = scopeUrlObj.protocol === 'https:'
+    var scopeLib = scopeIsHttps ? https : http
+    var scopeOpts = {
+      hostname: scopeUrlObj.hostname,
+      port: scopeUrlObj.port || (scopeIsHttps ? 443 : 80),
+      path: scopeUrlObj.pathname + (scopeUrlObj.search || ''),
+      method: req.method,
+      headers: { 'Content-Type': 'application/json' },
+      rejectUnauthorized: false
+    }
+    if (req.method === 'GET') {
+      var scopeReq = scopeLib.request(scopeOpts, function (scopeRes) {
+        var chunks = []
+        scopeRes.on('data', function (c) { chunks.push(c) })
+        scopeRes.on('end', function () {
+          res.writeHead(scopeRes.statusCode, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' })
+          res.end(Buffer.concat(chunks).toString())
+        })
+      })
+      scopeReq.on('error', function (err) { jsonResponse(res, 502, { error: err.message }) })
+      scopeReq.end()
+    } else {
+      readBody(req, function (body) {
+        if (body) {
+          scopeOpts.headers['Content-Length'] = Buffer.byteLength(body)
+        }
+        var scopeReq = scopeLib.request(scopeOpts, function (scopeRes) {
+          var chunks = []
+          scopeRes.on('data', function (c) { chunks.push(c) })
+          scopeRes.on('end', function () {
+            res.writeHead(scopeRes.statusCode, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' })
+            res.end(Buffer.concat(chunks).toString())
+          })
+        })
+        scopeReq.on('error', function (err) { jsonResponse(res, 502, { error: err.message }) })
+        if (body) scopeReq.write(body)
+        scopeReq.end()
+      })
+    }
+    return
+  }
+
+  // ---- API: Daydream create stream ----
+  if (req.method === 'POST' && urlPath === '/api/daydream/stream') {
+    readBody(req, function (body) {
+      try {
+        var data = JSON.parse(body)
+        var prompt = data.prompt || 'abstract fluid art'
+        var modelId = data.model_id || 'stabilityai/sdxl-turbo'
+        var params = { model_id: modelId, prompt: prompt }
+        // Pass through any extra params (lora_dict, controlnets, etc.)
+        var passthrough = ['lora_dict', 'controlnets', 'ip_adapter', 'negative_prompt',
+          'guidance_scale', 'delta', 'seed', 'width', 'height', 'use_lcm_lora']
+        passthrough.forEach(function (k) { if (data[k] !== undefined) params[k] = data[k] })
+        daydreamRequest('POST', '/v1/streams', {
+          pipeline: 'streamdiffusion',
+          params: params
+        }).then(function (r) {
+          // Store stream ID so TD bridge can update it
+          if (r.data && r.data.id) {
+            activeDaydreamStreamId = r.data.id
+            activeDaydreamPlaybackId = r.data.output_playback_id || null
+            console.log('  Daydream stream created:', activeDaydreamStreamId)
+          }
+          jsonResponse(res, r.status, r.data)
+        }).catch(function (err) {
+          jsonResponse(res, 500, { error: err.message })
+        })
+      } catch (e) {
+        jsonResponse(res, 400, { error: 'Invalid JSON' })
+      }
+    })
+    return
+  }
+
+  // ---- API: Daydream update stream ----
+  if (req.method === 'PATCH' && urlPath === '/api/daydream/stream') {
+    readBody(req, function (body) {
+      try {
+        var data = JSON.parse(body)
+        if (!data.id) return jsonResponse(res, 400, { error: 'id required' })
+        daydreamRequest('PATCH', '/v1/streams/' + data.id, {
+          pipeline: 'streamdiffusion',
+          params: data.params || {}
+        }).then(function (r) {
+          jsonResponse(res, r.status, r.data)
+        }).catch(function (err) {
+          jsonResponse(res, 500, { error: err.message })
+        })
+      } catch (e) {
+        jsonResponse(res, 400, { error: 'Invalid JSON' })
+      }
+    })
+    return
+  }
+
+  // ---- API: TD → Daydream bridge ----
+  // Uses the shared activeDaydreamStreamId set by the browser's create endpoint.
+  // TD sends: POST /api/td/daydream {action: "update"|"status", prompt, guidance_scale, ...}
+  // Browser creates the stream (WHIP/WHEP), TD updates params on it.
+  if (req.method === 'POST' && urlPath === '/api/td/daydream') {
+    readBody(req, function (body) {
+      try {
+        var data = JSON.parse(body)
+        var action = data.action || 'update'
+
+        if (action === 'update') {
+          if (!activeDaydreamStreamId) return jsonResponse(res, 400, { error: 'No active stream. Connect from browser first.' })
+          var updateParams = {}
+          if (data.prompt !== undefined) updateParams.prompt = data.prompt
+          if (data.model_id !== undefined) updateParams.model_id = data.model_id
+          if (data.guidance_scale !== undefined) updateParams.guidance_scale = data.guidance_scale
+          if (data.negative_prompt !== undefined) updateParams.negative_prompt = data.negative_prompt
+          if (data.seed !== undefined) updateParams.seed = data.seed
+          daydreamRequest('PATCH', '/v1/streams/' + activeDaydreamStreamId, {
+            pipeline: 'streamdiffusion',
+            params: updateParams
+          }).then(function (r) {
+            console.log('  TD bridge: prompt updated →', updateParams.prompt || '(no prompt change)')
+            jsonResponse(res, r.status, r.data)
+          }).catch(function (err) {
+            jsonResponse(res, 500, { error: err.message })
+          })
+
+        } else if (action === 'status') {
+          jsonResponse(res, 200, {
+            active: !!activeDaydreamStreamId,
+            streamId: activeDaydreamStreamId,
+            playbackId: activeDaydreamPlaybackId
+          })
+
+        } else {
+          jsonResponse(res, 400, { error: 'Use browser to create/stop streams. TD can only update and check status.' })
+        }
+      } catch (e) {
+        jsonResponse(res, 400, { error: 'Invalid JSON' })
+      }
+    })
+    return
+  }
+
+  // ---- API: Daydream stop stream ----
+  if (req.method === 'POST' && urlPath === '/api/daydream/stop') {
+    readBody(req, function (body) {
+      try {
+        var data = JSON.parse(body)
+        if (!data.id) return jsonResponse(res, 400, { error: 'id required' })
+        daydreamRequest('DELETE', '/v1/streams/' + data.id).then(function (r) {
+          activeDaydreamStreamId = null
+          activeDaydreamPlaybackId = null
+          console.log('  Daydream stream stopped:', data.id)
+          jsonResponse(res, r.status, r.data || { stopped: true })
+        }).catch(function (err) {
+          jsonResponse(res, 500, { error: err.message })
+        })
+      } catch (e) {
+        jsonResponse(res, 400, { error: 'Invalid JSON' })
+      }
     })
     return
   }
@@ -300,5 +693,16 @@ server.listen(PORT, function () {
   console.log('    GET    /api/presets/:file     — load a preset')
   console.log('    POST   /api/presets           — save {name, code}')
   console.log('    DELETE /api/presets/:file     — archive a preset')
+  console.log('')
+  var ddKey = getDaydreamKey()
+  if (ddKey) {
+    console.log('  Daydream: API key loaded (' + ddKey.substring(0, 8) + '...)')
+    console.log('    POST   /api/daydream/stream  — create AI stream')
+    console.log('    PATCH  /api/daydream/stream  — update prompt/model')
+    console.log('    POST   /api/daydream/stop    — stop stream')
+    console.log('    POST   /api/td/daydream      — TD bridge (create/update/stop/status)')
+  } else {
+    console.log('  Daydream: No API key (create daydream.config.json or set DAYDREAM_API_KEY)')
+  }
   console.log('')
 })

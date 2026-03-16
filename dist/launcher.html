@@ -26,17 +26,35 @@
     #app {
       width: 100%;
       height: 100%;
-      display: grid;
-      grid-template-columns: 55vw 1fr;
-      gap: 6px;
+      display: flex;
+      flex-direction: row;
+      gap: 0;
       padding: 6px;
+    }
+    .v-splitter {
+      width: 6px;
+      cursor: col-resize;
+      background: linear-gradient(90deg, transparent, #333, transparent);
+      flex-shrink: 0;
+      border-radius: 3px;
+      margin: 0 2px;
+    }
+    .h-splitter {
+      height: 6px;
+      cursor: row-resize;
+      background: linear-gradient(180deg, transparent, #333, transparent);
+      flex-shrink: 0;
+      border-radius: 3px;
+      margin: 2px 0;
     }
     #leftCol {
       display: flex;
       flex-direction: column;
       gap: 0;
+      width: 55vw;
       min-width: 360px;
-      overflow-y: auto;
+      overflow: hidden;
+      flex-shrink: 0;
     }
     #stage {
       border: 1px solid #111;
@@ -52,7 +70,10 @@
       border: 1px solid #111;
       border-top: 0;
       border-radius: 0 0 6px 6px;
-      flex-shrink: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     #panel {
       border: 1px solid #111;
@@ -60,7 +81,8 @@
       background: var(--panel);
       display: flex;
       flex-direction: column;
-      min-width: 300px;
+      min-width: 200px;
+      flex: 1;
       overflow: hidden;
     }
     #toolbar {
@@ -81,6 +103,8 @@
     }
     .btn:hover { border-color: #444; color: #ddd; }
     .btn.main { background: #153028; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+    .btn.stop { background: #2a0a0a; border-color: var(--danger); color: var(--danger); font-weight: 700; }
+    .btn.stop:hover { background: #3a1010; border-color: #e55; color: #e55; }
     #status {
       padding: 8px 10px;
       border-bottom: 1px solid var(--line);
@@ -119,7 +143,7 @@
       color: var(--muted);
     }
     #globalControls label { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-    #globalControls input[type="range"] { width: 70px; height: 4px; accent-color: var(--accent); }
+    #globalControls input[type="range"] { flex: 1; min-width: 120px; height: 4px; accent-color: var(--accent); }
     #globalControls span { width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
     #presets {
       border-bottom: 1px solid var(--line);
@@ -196,6 +220,33 @@
     #beatGrid .beat-step.lit { background: var(--accent); }
     #beatGrid .beat-group:nth-child(odd) .beat-step.lit { background: #3ab8e0; }
     #beatGrid .beat-group:nth-child(even) .beat-step.lit { background: var(--accent); }
+    #daydreamBar {
+      border-top: 1px solid var(--line);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .dd-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; flex-shrink: 0; }
+    .dd-dot.on { background: var(--accent); animation: dd-pulse 2s ease infinite; }
+    .dd-dot.err { background: var(--danger); }
+    .dd-dot.connecting { background: #e8a320; animation: dd-pulse 0.8s ease infinite; }
+    @keyframes dd-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    #ddPrompt {
+      flex: 1; min-width: 150px; padding: 4px 8px;
+      border: 1px solid #222; border-radius: 6px;
+      background: #0a0a0e; color: var(--muted);
+      font-family: inherit; font-size: 12px; outline: none;
+    }
+    #ddPrompt:focus { border-color: #444; }
+    #daydreamBar select {
+      padding: 4px 6px; border: 1px solid #222; border-radius: 6px;
+      background: #0a0a0e; color: var(--muted); font-size: 12px;
+    }
+    #ddInfo { font-size: 11px; color: #555; }
     #app.audience #panel { display: none; }
     #app.audience {
       grid-template-columns: 1fr;
@@ -219,6 +270,7 @@
   <div id="app">
     <div id="leftCol">
       <div id="stage"></div>
+      <div class="h-splitter" id="hSplitter" title="Drag to resize preview"></div>
       <div id="controls">
         <div id="toolbar">
           <button id="runAllBtn" class="btn main">Run (Cmd/Ctrl+Shift+Enter)</button>
@@ -226,9 +278,50 @@
           <button id="startAudioBtn" class="btn">Start Audio</button>
           <button id="saveBtn" class="btn">Save</button>
           <button id="saveAsBtn" class="btn">Save As</button>
+          <button id="stopBtn" class="btn stop">Stop</button>
           <button id="openNdiBtn" class="btn" style="display:none;">NDI Out: Off</button>
           <button id="fsOutBtn" class="btn" style="display:none;">Fullscreen Output</button>
           <button id="toggleCodeBtn" class="btn" style="display:none;">Audience Mode</button>
+          <span style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+            <label style="display:flex;align-items:center;gap:4px;white-space:nowrap;font-size:12px;color:var(--muted);">Res
+              <select id="resolutionCtrl" style="padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:var(--muted);font-size:12px;">
+                <option value="auto">Auto (fit stage)</option>
+                <option value="1920x1200" selected>1920x1200 (16:10 Projector)</option>
+                <option value="1920x1080">1920x1080 (16:9 HD)</option>
+                <option value="1280x720">1280x720 (720p)</option>
+                <option value="3840x2160">3840x2160 (4K)</option>
+                <option value="1080x1920">1080x1920 (9:16 Vertical)</option>
+                <option value="1080x1350">1080x1350 (4:5 Portrait)</option>
+                <option value="1080x1080">1080x1080 (1:1 Square)</option>
+                <option value="custom">Custom...</option>
+              </select>
+            </label>
+            <span id="resLabel" style="color:var(--muted);font-size:12px;"></span>
+            <div class="divider" style="width:1px;height:16px;background:var(--line);"></div>
+            <button id="autoplayBtn" class="btn" style="padding:4px 8px;">Autoplay</button>
+            <select id="autoplayMode" style="padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:var(--muted);font-size:12px;">
+              <option value="time">Time</option>
+              <option value="bars" selected>Bars (BPM)</option>
+            </select>
+            <label id="autoplayTimeLabel" style="display:none;font-size:12px;color:var(--muted);">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999" style="width:50px;padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:var(--muted);font-size:12px;"></label>
+            <label id="autoplayBarsLabel" style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);">Bars:
+              <select id="autoplayBars" style="padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:var(--muted);font-size:12px;">
+                <option value="8" selected>8</option>
+                <option value="16">16</option>
+                <option value="32">32</option>
+                <option value="64">64</option>
+                <option value="128">128</option>
+              </select>
+            </label>
+            <span id="autoplayBpmDisplay" style="display:none;color:var(--muted);font-size:12px;"></span>
+            <input type="hidden" id="autoplayBpm" value="120">
+            <span id="autoplayCountdown" style="color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px;"></span>
+            <div class="divider" style="width:1px;height:16px;background:var(--line);"></div>
+            <label style="display:flex;align-items:center;gap:4px;white-space:nowrap;font-size:12px;color:var(--muted);">BPM <span id="bpmVal" style="width:32px;text-align:right;font-variant-numeric:tabular-nums;">30</span></label>
+            <button id="tapTempoBtn" class="btn" style="padding:4px 8px;">Tap</button>
+            <button id="linkBtn" class="btn" style="padding:4px 8px;display:none;">Link</button>
+            <span id="linkPeers" style="display:none;color:var(--muted);font-size:12px;"></span>
+          </span>
         </div>
         <div id="status">Ready</div>
         <div id="presets"></div>
@@ -240,51 +333,31 @@
           <label>Contrast <input type="range" id="contrastCtrl" min="0" max="300" value="100"><span id="contrastVal">100</span>%</label>
           <div class="divider" style="width:1px;height:16px;background:var(--line);"></div>
           <label>Speed <input type="range" id="speedCtrl" min="0" max="4" step="0.1" value="1"><span id="speedVal">1.0</span>x</label>
-          <label>BPM <span id="bpmVal" style="width:32px">30</span></label>
-          <button id="tapTempoBtn" class="btn" style="padding:4px 8px;">Tap</button>
-          <button id="linkBtn" class="btn" style="padding:4px 8px;display:none;">Link</button>
-          <span id="linkPeers" style="display:none;color:var(--muted);"></span>
-          <div class="divider" style="width:1px;height:16px;background:var(--line);"></div>
-          <label>Res
-            <select id="resolutionCtrl" style="padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:var(--muted);font-size:12px;">
-              <option value="auto">Auto (fit stage)</option>
-              <option value="1920x1200" selected>1920x1200 (16:10 Projector)</option>
-              <option value="1920x1080">1920x1080 (16:9 HD)</option>
-              <option value="1280x720">1280x720 (720p)</option>
-              <option value="3840x2160">3840x2160 (4K)</option>
-              <option value="1080x1920">1080x1920 (9:16 Vertical)</option>
-              <option value="1080x1350">1080x1350 (4:5 Portrait)</option>
-              <option value="1080x1080">1080x1080 (1:1 Square)</option>
-              <option value="custom">Custom...</option>
-            </select>
-          </label>
-          <span id="resLabel" style="color:var(--muted);"></span>
         </div>
-        <div id="autoplayBar">
-          <button id="autoplayBtn" class="btn">Autoplay</button>
-          <select id="autoplayMode">
-            <option value="time">Time</option>
-            <option value="bars" selected>Bars (BPM)</option>
-          </select>
-          <div class="divider"></div>
-          <label id="autoplayTimeLabel" style="display:none">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999"></label>
-          <label id="autoplayBarsLabel">Bars:
-            <select id="autoplayBars" style="padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#0a0a0e;color:var(--muted);font-size:12px;">
-              <option value="8" selected>8</option>
-              <option value="16">16</option>
-              <option value="32">32</option>
-              <option value="64">64</option>
-              <option value="128">128</option>
-            </select>
-          </label>
-          <span id="autoplayBpmDisplay" style="display:none;color:var(--muted);"></span>
-          <input type="hidden" id="autoplayBpm" value="120">
-          <span id="autoplayCountdown" style="color:var(--muted);font-variant-numeric:tabular-nums;"></span>
+        <div id="autoplayBar" style="display:none;">
           <div id="beatGrid"></div>
           <div id="autoplayProgress" style="display:none;"><div id="autoplayProgressFill"></div></div>
         </div>
+        <div id="daydreamBar">
+          <div class="dd-dot" id="ddDot"></div>
+          <select id="ddMode" style="display:none;">
+            <option value="scope">Scope</option>
+            <option value="cloud">Cloud</option>
+          </select>
+          <select id="ddModel" style="display:none;"></select>
+          <span style="font-size:12px;color:var(--muted);margin-right:6px;">Daydream Scope</span>
+          <button id="ddScopeStart" class="btn" style="padding:4px 8px;font-size:11px;">Start</button>
+          <button id="ddToggle" class="btn" style="padding:4px 8px;display:none;">Connect</button>
+          <input type="text" id="ddPrompt" placeholder="Prompt..." value="abstract fluid art, iridescent light" style="display:none;">
+          <button id="ddSend" class="btn" style="padding:4px 8px;display:none;">Send</button>
+          <span id="ddInfo" style="font-size:12px;color:var(--muted);"></span>
+          <button id="ddScopeToggle" class="btn" style="padding:4px 8px;font-size:11px;display:none;" onclick="var f=document.getElementById('scopeFrame'),d=document.getElementById('scopeDivider'),v=f.style.display==='none'?'block':'none';f.style.display=v;d.style.display=v;">Show / Hide</button>
+        </div>
+        <div id="scopeDivider" style="display:none;height:6px;cursor:row-resize;background:linear-gradient(180deg,transparent,#333,transparent);margin:2px 0;border-radius:3px;" title="Drag to resize"></div>
+        <iframe id="scopeFrame" src="http://localhost:8000" style="display:none;width:100%;height:600px;border:1px solid #222;border-radius:6px;background:#0a0a0e;"></iframe>
       </div>
     </div>
+    <div class="v-splitter" id="vSplitter" title="Drag to resize"></div>
     <div id="panel">
       <div id="editorWrap">
         <textarea id="editor" spellcheck="false" placeholder="Hydra live code here..."></textarea>
@@ -787,6 +860,20 @@
 
       var pendingFilters = null
 
+      function cleanupSources () {
+        if (!hydra) return
+        // stop and detach any video elements on s0-s3
+        // Skip s0 if Daydream is active — it owns that source
+        for (var i = 0; i < 4; i++) {
+          if (i === 0 && ddActive) continue
+          var s = hydra.synth['s' + i]
+          if (s && s.src && s.src.pause) { s.src.pause(); s.src.src = '' }
+          if (s) { s.src = null; s.dynamic = false }
+        }
+        // clear all buffers to black before new code runs
+        hydra.eval('solid(0,0,0,1).out(o0); solid(0,0,0,1).out(o1); solid(0,0,0,1).out(o2); solid(0,0,0,1).out(o3)')
+      }
+
       function runCode (code, label) {
         const snippet = (code || '').trim()
         if (!snippet) {
@@ -798,6 +885,8 @@
           return
         }
         try {
+          // clean up previous video sources and buffers before running new preset
+          if (label === 'all code') cleanupSources()
           if (audioBootstrapCode) { hydra.eval(audioBootstrapCode) }
           hydra.eval(snippet)
           // Apply pending filters now that the new code is running
@@ -1290,6 +1379,18 @@
       })
       fsOutBtn.addEventListener('click', fullscreenOutput)
       toggleCodeBtn.addEventListener('click', toggleAudienceMode)
+      document.getElementById('stopBtn').addEventListener('click', function () {
+        if (!hydra) return
+        // clear all buffers to black and stop any video sources
+        hydra.eval('solid(0,0,0,1).out(o0); solid(0,0,0,1).out(o1); solid(0,0,0,1).out(o2); solid(0,0,0,1).out(o3); render(o0)')
+        // stop video elements on s0-s3
+        for (var i = 0; i < 4; i++) {
+          var s = hydra.synth['s' + i]
+          if (s && s.src && s.src.pause) { s.src.pause(); s.src.src = '' }
+        }
+        if (codeCh) codeCh.postMessage({ type: 'hydra-code', code: 'solid(0,0,0,1).out(o0); render(o0)' })
+        setStatus('Stopped.', false)
+      })
 
       // Hydra editor-style shortcuts (from Hydra README)
       window.addEventListener('keydown', function (event) {
@@ -1355,6 +1456,7 @@
           outputStream.getTracks().forEach(function (t) { t.stop() })
           outputStream = null
         }
+        if (ddActive) ddDisconnect()
       })
 
       // ---- Autoplay ----
@@ -1596,6 +1698,487 @@
         if (autoplayActive) { stopAutoplay(); startAutoplay() }
       })
 
+      // ---- Daydream AI Integration ----
+      var ddBar = document.getElementById('daydreamBar')
+      var ddDot = document.getElementById('ddDot')
+      var ddToggle = document.getElementById('ddToggle')
+      var ddModeEl = document.getElementById('ddMode')
+      var ddModel = document.getElementById('ddModel')
+      var ddPromptEl = document.getElementById('ddPrompt')
+      var ddSend = document.getElementById('ddSend')
+      var ddInfo = document.getElementById('ddInfo')
+
+      var ddStreamId = null
+      var ddScopeSessionId = null
+      var ddScopePc = null
+      var ddScopeDataChannel = null
+      var ddWhipPc = null
+      var ddWhepPc = null
+      var ddActive = false
+      var ddVideo = null
+      var ddCanvasStream = null
+
+      var ddCloudModels = [
+        { value: 'stabilityai/sdxl-turbo', label: 'SDXL Turbo' },
+        { value: 'stabilityai/sd-turbo', label: 'SD Turbo' },
+        { value: 'Lykon/dreamshaper-8', label: 'Dreamshaper 8' },
+        { value: 'prompthero/openjourney-v4', label: 'Openjourney v4' }
+      ]
+      var ddScopeModels = []
+
+      function ddPopulateModels () {
+        var mode = ddModeEl.value
+        var models = mode === 'scope' ? ddScopeModels : ddCloudModels
+        ddModel.innerHTML = ''
+        models.forEach(function (m) {
+          var opt = document.createElement('option')
+          opt.value = m.value
+          opt.textContent = m.label
+          ddModel.appendChild(opt)
+        })
+      }
+
+      function ddFetchScopePipelines () {
+        fetch('/api/scope/api/v1/pipelines/schemas').then(function (r) { return r.json() }).then(function (data) {
+          var pipelines = data.pipelines || data
+          ddScopeModels = []
+          Object.keys(pipelines).forEach(function (pid) {
+            var p = pipelines[pid]
+            // Only show main pipelines (not preprocessors/postprocessors)
+            var usage = p.usage || []
+            if (usage.length === 0 || usage.includes('main')) {
+              ddScopeModels.push({ value: pid, label: p.name || pid })
+            }
+          })
+          if (ddModeEl.value === 'scope') ddPopulateModels()
+          console.log('Daydream: found', ddScopeModels.length, 'Scope pipelines')
+        }).catch(function () {})
+      }
+
+      ddModeEl.addEventListener('change', function () {
+        ddPopulateModels()
+      })
+
+      // Scope start/stop button
+      var ddStartBtn = document.getElementById('ddScopeStart')
+      var ddToggleBtn = document.getElementById('ddScopeToggle')
+      var ddScopeFrame = document.getElementById('scopeFrame')
+      var ddScopeDivider = document.getElementById('scopeDivider')
+
+      function ddShowScope () {
+        ddScopeFrame.src = 'http://localhost:8000'
+        ddScopeFrame.style.display = 'block'
+        ddScopeDivider.style.display = 'block'
+        ddToggleBtn.style.display = ''
+        ddStartBtn.textContent = 'Running'
+        ddStartBtn.className = 'btn main'
+        ddStartBtn.disabled = true
+        ddSetState('on', '')
+        // Auto-connect WebRTC to get AI video into s0
+        if (!ddActive) {
+          ddModeEl.value = 'scope'
+          setTimeout(function () { ddConnectScope() }, 1000)
+        }
+      }
+
+      function ddCheckAndShowScope () {
+        fetch('/api/scope/health').then(function (r) { return r.json() }).then(function (d) {
+          if (d.running) ddShowScope()
+        }).catch(function () {})
+      }
+
+      ddStartBtn.addEventListener('click', function () {
+        ddStartBtn.textContent = 'Starting...'
+        ddStartBtn.className = 'btn'
+        ddStartBtn.disabled = true
+        ddSetState('connecting', 'Starting Scope...')
+        fetch('/api/scope/start', { method: 'POST' }).then(function (r) { return r.json() }).then(function (d) {
+          if (d.error) {
+            ddSetState('err', d.error)
+            ddStartBtn.textContent = 'Start'
+            ddStartBtn.className = 'btn'
+            ddStartBtn.disabled = false
+          } else {
+            ddShowScope()
+          }
+        }).catch(function (err) {
+          ddSetState('err', err.message)
+          ddStartBtn.textContent = 'Start'
+          ddStartBtn.className = 'btn'
+          ddStartBtn.disabled = false
+        })
+      })
+
+      // On load: check if Scope is already running
+      ddCheckAndShowScope()
+
+      function ddSetState (state, msg) {
+        ddDot.className = 'dd-dot' + (state === 'on' ? ' on' : state === 'err' ? ' err' : state === 'connecting' ? ' connecting' : '')
+        ddInfo.textContent = msg || ''
+        if (state === 'on') {
+          ddToggle.textContent = 'Disconnect'
+          ddToggle.className = 'btn stop'
+          ddSend.style.display = ''
+        } else {
+          ddToggle.textContent = 'Connect'
+          ddToggle.className = 'btn'
+          ddSend.style.display = 'none'
+        }
+      }
+
+      function ddGetCanvasStream () {
+        if (!hydraCanvas || !hydraCanvas.captureStream) return null
+        if (!ddCanvasStream) ddCanvasStream = hydraCanvas.captureStream(30)
+        return ddCanvasStream
+      }
+
+      // Wait for ICE gathering to complete
+      function ddWaitGather (pc) {
+        return new Promise(function (resolve) {
+          if (pc.iceGatheringState === 'complete') return resolve()
+          pc.addEventListener('icegatheringstatechange', function fn () {
+            if (pc.iceGatheringState === 'complete') {
+              pc.removeEventListener('icegatheringstatechange', fn)
+              resolve()
+            }
+          })
+        })
+      }
+
+      // WHIP: send canvas to Daydream
+      var ddWhepUrlFromWhip = null
+      function ddStartWhip (whipUrl) {
+        var stream = ddGetCanvasStream()
+        if (!stream) { ddSetState('err', 'No canvas stream'); return Promise.reject() }
+        ddWhipPc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
+        stream.getTracks().forEach(function (t) { ddWhipPc.addTrack(t, stream) })
+        return ddWhipPc.createOffer().then(function (offer) {
+          return ddWhipPc.setLocalDescription(offer)
+        }).then(function () {
+          return ddWaitGather(ddWhipPc)
+        }).then(function () {
+          console.log('Daydream WHIP: posting to', whipUrl)
+          return fetch(whipUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/sdp' },
+            body: ddWhipPc.localDescription.sdp
+          })
+        }).then(function (r) {
+          // Capture playback URL from response headers
+          ddWhepUrlFromWhip = r.headers.get('livepeer-playback-url') || r.headers.get('location')
+          console.log('Daydream WHIP response:', r.status, 'playback header:', ddWhepUrlFromWhip)
+          // Log all headers for debugging
+          r.headers.forEach(function (v, k) { console.log('  WHIP header:', k, '=', v) })
+          if (!r.ok) throw new Error('WHIP ' + r.status)
+          return r.text()
+        }).then(function (sdp) {
+          console.log('Daydream WHIP: got SDP answer, length=', sdp.length)
+          return ddWhipPc.setRemoteDescription({ type: 'answer', sdp: sdp })
+        })
+      }
+
+      // WHEP: receive AI output from Daydream
+      function ddStartWhep (whepUrl) {
+        console.log('Daydream WHEP: connecting to', whepUrl)
+        ddWhepPc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
+        ddWhepPc.addTransceiver('video', { direction: 'recvonly' })
+        ddWhepPc.ontrack = function (e) {
+          console.log('Daydream WHEP: got track!', e.track.kind)
+          if (!ddVideo) {
+            ddVideo = document.createElement('video')
+            ddVideo.autoplay = true
+            ddVideo.playsInline = true
+            ddVideo.muted = true
+            ddVideo.style.display = 'none'
+            document.body.appendChild(ddVideo)
+          }
+          ddVideo.srcObject = e.streams[0] || new MediaStream([e.track])
+          ddVideo.play().catch(function (err) { console.warn('Daydream video play failed:', err) })
+          // Monitor video state
+          ddVideo.onloadedmetadata = function () { console.log('Daydream video: metadata loaded', ddVideo.videoWidth, 'x', ddVideo.videoHeight) }
+          ddVideo.onplaying = function () { console.log('Daydream video: playing') }
+          ddVideo.onstalled = function () { console.log('Daydream video: stalled') }
+          // Wire into hydra as s0 — wait for video dimensions then use init()
+          function ddWireS0 () {
+            if (typeof s0 === 'undefined' || !s0.init) {
+              ddSetState('on', 'Receiving (s0 not ready)')
+              return
+            }
+            if (ddVideo.videoWidth > 0) {
+              s0.init({ src: ddVideo, dynamic: true })
+              ddSetState('on', 'src(s0) = AI feed (' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight + ')')
+              console.log('Daydream: wired to s0', ddVideo.videoWidth, 'x', ddVideo.videoHeight)
+            } else {
+              // Video dimensions not ready yet, retry
+              console.log('Daydream: waiting for video dimensions...')
+              setTimeout(ddWireS0, 200)
+            }
+          }
+          ddWireS0()
+          // Debug: show video in corner so we can see if frames arrive
+          ddVideo.style.display = 'block'
+          ddVideo.style.position = 'fixed'
+          ddVideo.style.bottom = '10px'
+          ddVideo.style.left = '10px'
+          ddVideo.style.width = '384px'
+          ddVideo.style.height = '216px'
+          ddVideo.style.zIndex = '9999'
+          ddVideo.style.border = 'none'
+          ddVideo.style.borderRadius = '4px'
+          ddVideo.style.background = '#000'
+        }
+        ddWhepPc.onconnectionstatechange = function () {
+          console.log('Daydream WHEP connection state:', ddWhepPc.connectionState)
+        }
+        return ddWhepPc.createOffer().then(function (offer) {
+          return ddWhepPc.setLocalDescription(offer)
+        }).then(function () {
+          return ddWaitGather(ddWhepPc)
+        }).then(function () {
+          console.log('Daydream WHEP: posting SDP offer')
+          return fetch(whepUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/sdp' },
+            body: ddWhepPc.localDescription.sdp
+          })
+        }).then(function (r) {
+          console.log('Daydream WHEP response:', r.status)
+          r.headers.forEach(function (v, k) { console.log('  WHEP header:', k, '=', v) })
+          if (!r.ok) return r.text().then(function (t) { throw new Error('WHEP ' + r.status + ': ' + t.substring(0, 200)) })
+          return r.text()
+        }).then(function (sdp) {
+          console.log('Daydream WHEP: got SDP answer, length=', sdp.length)
+          return ddWhepPc.setRemoteDescription({ type: 'answer', sdp: sdp })
+        })
+      }
+
+      // ---- Scope WebRTC (bidirectional: send canvas + receive AI output) ----
+      function ddConnectScope () {
+        if (ddActive) return
+        ddSetState('connecting', 'Connecting to Scope...')
+        var prompt = ddPromptEl.value || 'abstract fluid art'
+        // Get ICE servers from Scope
+        fetch('/api/scope/api/v1/webrtc/ice-servers').then(function (r) { return r.json() }).then(function (iceData) {
+          var iceServers = iceData.iceServers || [{ urls: 'stun:stun.l.google.com:19302' }]
+          ddScopePc = new RTCPeerConnection({ iceServers: iceServers })
+          // Add canvas stream tracks (send to Scope)
+          var stream = ddGetCanvasStream()
+          if (stream) {
+            stream.getTracks().forEach(function (t) {
+              var sender = ddScopePc.addTrack(t, stream)
+              // Force VP8 codec (Scope requirement)
+              var transceiver = ddScopePc.getTransceivers().find(function (tr) { return tr.sender === sender })
+              if (transceiver) {
+                var codecs = RTCRtpReceiver.getCapabilities('video').codecs.filter(function (c) {
+                  return c.mimeType.toLowerCase() === 'video/vp8'
+                })
+                if (codecs.length) transceiver.setCodecPreferences(codecs)
+              }
+            })
+          }
+          // Add receive-only transceiver for AI output
+          var recvTransceiver = ddScopePc.addTransceiver('video', { direction: 'recvonly' })
+          var vp8Codecs = RTCRtpReceiver.getCapabilities('video').codecs.filter(function (c) {
+            return c.mimeType.toLowerCase() === 'video/vp8'
+          })
+          if (vp8Codecs.length) recvTransceiver.setCodecPreferences(vp8Codecs)
+
+          // Data channel for live parameter updates
+          ddScopeDataChannel = ddScopePc.createDataChannel('parameters', { ordered: true })
+          ddScopeDataChannel.onopen = function () {
+            console.log('Scope: data channel open')
+            // Send initial prompt
+            ddScopeDataChannel.send(JSON.stringify({
+              prompts: [{ text: prompt, weight: 1.0 }]
+            }))
+          }
+
+          // Handle incoming AI video track
+          ddScopePc.ontrack = function (e) {
+            console.log('Scope: got track!', e.track.kind)
+            if (e.track.kind !== 'video') return
+            if (!ddVideo) {
+              ddVideo = document.createElement('video')
+              ddVideo.autoplay = true
+              ddVideo.playsInline = true
+              ddVideo.muted = true
+              ddVideo.style.display = 'none'
+              document.body.appendChild(ddVideo)
+              document.body.appendChild(ddVideo)
+            }
+            ddVideo.srcObject = e.streams[0] || new MediaStream([e.track])
+            ddVideo.play().catch(function (err) { console.warn('Scope video play failed:', err) })
+            ddVideo.onloadedmetadata = function () { console.log('Scope video:', ddVideo.videoWidth, 'x', ddVideo.videoHeight) }
+            function ddWireS0Scope () {
+              if (typeof s0 !== 'undefined' && s0.init && ddVideo.videoWidth > 0) {
+                s0.init({ src: ddVideo, dynamic: true })
+                ddSetState('on', 'src(s0) = Scope (' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight + ')')
+              } else {
+                setTimeout(ddWireS0Scope, 200)
+              }
+            }
+            ddWireS0Scope()
+          }
+
+          ddScopePc.onconnectionstatechange = function () {
+            console.log('Scope connection:', ddScopePc.connectionState)
+            if (ddScopePc.connectionState === 'failed') {
+              ddSetState('err', 'Scope connection failed')
+            }
+          }
+
+          // Trickle ICE: send candidates as they arrive
+          var queuedCandidates = []
+          ddScopePc.onicecandidate = function (e) {
+            if (!e.candidate) return
+            if (ddScopeSessionId) {
+              fetch('/api/scope/api/v1/webrtc/offer/' + ddScopeSessionId, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ candidates: [{ candidate: e.candidate.candidate, sdpMid: e.candidate.sdpMid, sdpMLineIndex: e.candidate.sdpMLineIndex }] })
+              }).catch(function (err) { console.warn('Scope ICE send failed:', err) })
+            } else {
+              queuedCandidates.push(e.candidate)
+            }
+          }
+
+          // Create and send offer
+          ddSetState('connecting', 'Creating WebRTC offer...')
+          return ddScopePc.createOffer().then(function (offer) {
+            return ddScopePc.setLocalDescription(offer)
+          }).then(function () {
+            ddSetState('connecting', 'Sending offer to Scope...')
+            return fetch('/api/scope/api/v1/webrtc/offer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sdp: ddScopePc.localDescription.sdp,
+                type: ddScopePc.localDescription.type,
+                initialParameters: {
+                  input_mode: 'video',
+                  prompts: [{ text: prompt, weight: 1.0 }]
+                }
+              })
+            })
+          }).then(function (r) { return r.json() }).then(function (answer) {
+            console.log('Scope: got answer, sessionId:', answer.sessionId)
+            ddScopeSessionId = answer.sessionId
+            ddActive = true
+            return ddScopePc.setRemoteDescription({ type: answer.type, sdp: answer.sdp })
+          }).then(function () {
+            // Flush queued ICE candidates
+            if (queuedCandidates.length && ddScopeSessionId) {
+              return fetch('/api/scope/api/v1/webrtc/offer/' + ddScopeSessionId, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ candidates: queuedCandidates.map(function (c) {
+                  return { candidate: c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex }
+                }) })
+              })
+            }
+          }).then(function () {
+            ddSetState('on', 'Scope connected — waiting for video...')
+          })
+        }).catch(function (err) {
+          console.error('Scope:', err)
+          ddSetState('err', err.message || 'Scope connection failed')
+          ddDisconnect()
+        })
+      }
+
+      // ---- Cloud connect (WHIP/WHEP) ----
+      function ddConnectCloud () {
+        if (ddActive) return
+        ddSetState('connecting', 'Creating stream...')
+        var prompt = ddPromptEl.value || 'abstract fluid art'
+        var modelId = ddModel.value
+        fetch('/api/daydream/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt, model_id: modelId })
+        }).then(function (r) { return r.json() }).then(function (data) {
+          var whipUrl = data.whip_url || data.whipUrl
+          if (!whipUrl) throw new Error(data.error || 'No WHIP URL in response')
+          ddStreamId = data.id
+          var playbackId = data.output_playback_id
+          ddActive = true
+          ddSetState('connecting', 'Sending canvas via WHIP...')
+          return ddStartWhip(whipUrl).then(function () {
+            ddSetState('connecting', 'Waiting for AI pipeline...')
+            return new Promise(function (resolve) { setTimeout(resolve, 3000) })
+          }).then(function () {
+            ddSetState('connecting', 'Connecting playback...')
+            var whepUrl = ddWhepUrlFromWhip || ('https://livepeercdn.studio/webrtc/' + playbackId)
+            return ddStartWhep(whepUrl)
+          })
+        }).then(function () {
+          ddSetState('on', 'src(s0) = AI feed')
+        }).catch(function (err) {
+          console.error('Daydream:', err)
+          ddSetState('err', err.message || 'Connection failed')
+          ddDisconnect()
+        })
+      }
+
+      function ddConnect () {
+        var mode = ddModeEl.value
+        if (mode === 'scope') ddConnectScope()
+        else ddConnectCloud()
+      }
+
+      function ddDisconnect () {
+        ddActive = false
+        if (ddWhipPc) { try { ddWhipPc.close() } catch (e) {} ddWhipPc = null }
+        if (ddWhepPc) { try { ddWhepPc.close() } catch (e) {} ddWhepPc = null }
+        if (ddScopePc) { try { ddScopePc.close() } catch (e) {} ddScopePc = null }
+        if (ddScopeDataChannel) { try { ddScopeDataChannel.close() } catch (e) {} ddScopeDataChannel = null }
+        ddScopeSessionId = null
+        if (ddVideo) { ddVideo.pause(); ddVideo.srcObject = null }
+        if (ddStreamId) {
+          fetch('/api/daydream/stop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: ddStreamId })
+          }).catch(function () {})
+          ddStreamId = null
+        }
+        ddCanvasStream = null
+        ddSetState('off', '')
+      }
+
+      function ddUpdatePrompt () {
+        var prompt = ddPromptEl.value || 'abstract fluid art'
+        // Scope mode: send via data channel
+        if (ddModeEl.value === 'scope' && ddScopeDataChannel && ddScopeDataChannel.readyState === 'open') {
+          ddScopeDataChannel.send(JSON.stringify({
+            prompts: [{ text: prompt, weight: 1.0 }]
+          }))
+          ddInfo.textContent = 'Prompt sent'
+          return
+        }
+        // Cloud mode: PATCH API
+        if (!ddActive || !ddStreamId) return
+        ddInfo.textContent = 'Updating...'
+        fetch('/api/daydream/stream', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: ddStreamId, params: { prompt: prompt, model_id: ddModel.value } })
+        }).then(function (r) { return r.json() }).then(function () {
+          ddInfo.textContent = 'src(s0) = AI feed'
+        }).catch(function (err) {
+          ddInfo.textContent = 'Update failed'
+        })
+      }
+
+      ddToggle.addEventListener('click', function () {
+        if (ddActive) ddDisconnect()
+        else ddConnect()
+      })
+      ddSend.addEventListener('click', ddUpdatePrompt)
+      ddPromptEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); if (ddActive) ddUpdatePrompt(); else ddConnect() }
+      })
+
       // ---- Global visual filters (CSS on canvas) ----
       var hueCtrl = document.getElementById('hueCtrl')
       var satCtrl = document.getElementById('satCtrl')
@@ -1835,6 +2418,60 @@
           }
         }
       })
+
+      // Resizable splitters
+      ;(function () {
+        function makeDrag (splitterEl, onDrag, onStart, onEnd) {
+          var active = false, startX = 0, startY = 0
+          splitterEl.addEventListener('mousedown', function (e) {
+            active = true; startX = e.clientX; startY = e.clientY
+            if (onStart) onStart()
+            e.preventDefault()
+          })
+          document.addEventListener('mousemove', function (e) {
+            if (!active) return
+            onDrag(e.clientX - startX, e.clientY - startY, e)
+            startX = e.clientX; startY = e.clientY
+          })
+          document.addEventListener('mouseup', function () {
+            if (active) { active = false; if (onEnd) onEnd() }
+          })
+        }
+
+        // Vertical splitter: left col / code panel
+        var leftCol = document.getElementById('leftCol')
+        var scopeFrame = document.getElementById('scopeFrame')
+        makeDrag(document.getElementById('vSplitter'),
+          function (dx) {
+            var w = Math.max(360, leftCol.offsetWidth + dx)
+            leftCol.style.width = w + 'px'
+          },
+          function () { if (scopeFrame) scopeFrame.style.pointerEvents = 'none' },
+          function () { if (scopeFrame) scopeFrame.style.pointerEvents = '' }
+        )
+
+        // Horizontal splitter: stage / controls
+        var stage = document.getElementById('stage')
+        makeDrag(document.getElementById('hSplitter'),
+          function (dx, dy) {
+            var h = Math.max(120, stage.offsetHeight + dy)
+            stage.style.height = h + 'px'
+            stage.style.flex = 'none'
+          }
+        )
+
+        // Scope iframe resize
+        var divider = document.getElementById('scopeDivider')
+        var frame = document.getElementById('scopeFrame')
+        makeDrag(divider,
+          function (dx, dy) {
+            var h = Math.max(200, frame.offsetHeight + dy)
+            frame.style.height = h + 'px'
+          },
+          function () { frame.style.pointerEvents = 'none' },
+          function () { frame.style.pointerEvents = '' }
+        )
+      })()
 
       console.log('[hydra] Init complete. Calling loadPresets()...')
       loadPresets()
