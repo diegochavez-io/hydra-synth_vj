@@ -3437,6 +3437,9 @@ var _meyda = _interopRequireDefault(require("meyda"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+// Upper-edge frequencies for Meyda's 24 Bark bands (25 edges, 24 bands)
+const BARK_EDGES = [0, 100, 200, 300, 400, 510, 630, 770, 920, 1080, 1270, 1480, 1720, 2000, 2320, 2700, 3150, 3700, 4400, 5300, 6400, 7700, 9500, 12000, 15500];
+
 class Audio {
   constructor({
     numBins = 4,
@@ -3556,14 +3559,33 @@ class Audio {
 
         var rawLufs = this.vol > 0 ? 20 * Math.log10(this.vol / 24) - 14 : -60;
         this.lufs = this.lufs * 0.9 + rawLufs * 0.1;
-        this.detectBeat(this.vol); // reduce loudness array to number of bins
+        this.detectBeat(this.vol); // reduce loudness Bark bands to bins using frequency boundaries
 
-        const reducer = (accumulator, currentValue) => accumulator + currentValue;
+        var loudBands = features.loudness.specific;
+        var numBands = loudBands.length; // 24
 
-        let spacing = Math.floor(features.loudness.specific.length / this.bins.length);
+        var boundaries = this.binBoundaries || []; // build full boundary list: [20, ...boundaries, 15500]
+
+        var edges = [20].concat(boundaries).concat([15500]);
         this.prevBins = this.bins.slice(0);
-        this.bins = this.bins.map((bin, index) => {
-          return features.loudness.specific.slice(index * spacing, (index + 1) * spacing).reduce(reducer);
+        this.bins = this.bins.map((bin, bi) => {
+          var binLo = edges[bi];
+          var binHi = edges[bi + 1];
+          var sum = 0;
+
+          for (var band = 0; band < numBands; band++) {
+            var bandLo = BARK_EDGES[band];
+            var bandHi = BARK_EDGES[band + 1]; // compute overlap
+
+            var overlapLo = Math.max(binLo, bandLo);
+            var overlapHi = Math.min(binHi, bandHi);
+            if (overlapHi <= overlapLo) continue;
+            var bandWidth = bandHi - bandLo;
+            var fraction = bandWidth > 0 ? (overlapHi - overlapLo) / bandWidth : 0;
+            sum += loudBands[band] * fraction;
+          }
+
+          return sum;
         }).map((bin, index) => {
           return bin * (1.0 - this.settings[index].smooth) + this.prevBins[index] * this.settings[index].smooth;
         });
@@ -3597,11 +3619,39 @@ class Audio {
       cutoff: this.cutoff,
       scale: this.scale,
       smooth: this.smooth
-    })); // to do: what to do in non-global mode?
+    })); // generate default log-spaced bin boundaries
+
+    this._generateDefaultBoundaries(numBins); // to do: what to do in non-global mode?
+
 
     this.bins.forEach((bin, index) => {
       window['a' + index] = (scale = 1, offset = 0) => () => a.fft[index] * scale + offset;
-    }); //  console.log(this.settings)
+    });
+  }
+
+  _generateDefaultBoundaries(numBins) {
+    // log-spaced splits across 20–15500 Hz
+    var lo = Math.log10(20);
+    var hi = Math.log10(15500);
+    this.binBoundaries = [];
+
+    for (var i = 1; i < numBins; i++) {
+      this.binBoundaries.push(Math.round(Math.pow(10, lo + (hi - lo) * i / numBins)));
+    } // curated defaults for 4 bins
+
+
+    if (numBins === 4) this.binBoundaries = [150, 500, 2000];
+  }
+
+  setBinBoundaries(boundaries) {
+    if (!Array.isArray(boundaries)) return; // validate: must be sorted ascending, within 20–15500, length = numBins - 1
+
+    var sorted = boundaries.slice().sort((a, b) => a - b);
+    var valid = sorted.length === this.bins.length - 1 && sorted.every((f, i) => f >= 20 && f <= 15500 && (i === 0 || f > sorted[i - 1]));
+
+    if (valid) {
+      this.binBoundaries = sorted;
+    }
   }
 
   setScale(scale) {

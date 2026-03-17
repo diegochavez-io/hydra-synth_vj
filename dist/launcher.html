@@ -10,7 +10,7 @@
       --panel: #0a0a0e;
       --line: #1a1a22;
       --text: #fff;
-      --muted: #bbb;
+      --muted: #ddd;
       --accent: #42d08f;
       --danger: #c44;
     }
@@ -21,7 +21,8 @@
       height: 100%;
       background: var(--bg);
       color: var(--text);
-      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-family: "JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", "Menlo", monospace;
+      font-size: 12px;
     }
     #app {
       width: 100%;
@@ -32,21 +33,21 @@
       padding: 6px;
     }
     .v-splitter {
-      width: 6px;
+      width: 5px;
       cursor: col-resize;
-      background: linear-gradient(90deg, transparent, #333, transparent);
+      background: linear-gradient(90deg, transparent, #1a1a22, transparent);
       flex-shrink: 0;
-      border-radius: 3px;
-      margin: 0 2px;
+      transition: background 0.2s;
     }
+    .v-splitter:hover { background: linear-gradient(90deg, transparent, #333, transparent); }
     .h-splitter {
-      height: 6px;
+      height: 5px;
       cursor: row-resize;
-      background: linear-gradient(180deg, transparent, #333, transparent);
+      background: linear-gradient(180deg, transparent, #1a1a22, transparent);
       flex-shrink: 0;
-      border-radius: 3px;
-      margin: 2px 0;
+      transition: background 0.2s;
     }
+    .h-splitter:hover { background: linear-gradient(180deg, transparent, #333, transparent); }
     #leftCol {
       display: flex;
       flex-direction: column;
@@ -86,35 +87,66 @@
       overflow: hidden;
     }
     #toolbar {
-      padding: 10px;
+      padding: 8px 10px;
       border-bottom: 1px solid var(--line);
       display: flex;
+      align-items: center;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
+    }
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .toolbar-sep {
+      width: 1px;
+      height: 16px;
+      background: var(--line);
+      margin: 0 2px;
     }
     .btn {
-      border: 1px solid #222;
-      background: #111;
-      color: var(--muted);
+      border: 1px solid #1a1a22;
+      background: #111114;
+      color: #ccc;
       padding: 8px 10px;
       border-radius: 6px;
-      font-size: 12px;
       cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      font-family: inherit;
+      font-size: inherit;
     }
-    .btn:hover { border-color: #444; color: #ddd; }
-    .btn.main { background: #153028; border-color: var(--accent); color: var(--accent); font-weight: 700; }
-    .btn.stop { background: #2a0a0a; border-color: var(--danger); color: var(--danger); font-weight: 700; }
-    .btn.stop:hover { background: #3a1010; border-color: #e55; color: #e55; }
-    .btn.rec { background: #1a1a1a; border-color: #666; color: #999; }
-    .btn.rec:hover { border-color: #888; color: #ccc; }
-    .btn.rec.recording { background: #2a0a0a; border-color: #e33; color: #e33; animation: rec-pulse 1.2s ease-in-out infinite; }
+    .btn:hover { border-color: #333; color: #fff; }
+
+    /* -- Unified select styling -- */
+    select {
+      -webkit-appearance: none;
+      appearance: none;
+      padding: 4px 22px 4px 8px;
+      border: 1px solid #1a1a22;
+      border-radius: 5px;
+      background: #0e0e12 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23444'/%3E%3C/svg%3E") no-repeat right 7px center;
+      color: #bbb;
+      font-family: inherit;
+      font-size: inherit;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    select:hover { border-color: #333; color: #ddd; }
+    select:focus { border-color: #444; }
+    .btn.main { background: #0c1a14; border-color: #1a3a2a; color: var(--accent); font-weight: 600; }
+    .btn.main:hover { border-color: var(--accent); }
+    .btn.stop { background: #1a0808; border-color: #2a1515; color: var(--danger); font-weight: 600; }
+    .btn.stop:hover { background: #2a0a0a; border-color: #c44; }
+    .btn.rec { background: #111114; border-color: #1a1a22; color: #aaa; }
+    .btn.rec:hover { border-color: #333; color: #ddd; }
+    .btn.rec.recording { background: #1a0808; border-color: #c44; color: #c44; animation: rec-pulse 1.2s ease-in-out infinite; }
     @keyframes rec-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
     #status {
-      padding: 8px 10px;
+      padding: 4px 10px;
       border-bottom: 1px solid var(--line);
-      min-height: 34px;
-      color: var(--muted);
-      font-size: 12px;
+      color: #888;
     }
     #editorWrap {
       flex: 1;
@@ -132,8 +164,8 @@
       padding: 12px;
       background: #08080c;
       color: #888;
-      font-family: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
-      font-size: 14px;
+      font-family: inherit;
+      font-size: inherit;
       line-height: 1.48;
     }
     #globalControls {
@@ -141,14 +173,100 @@
       padding: 6px 10px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
-      font-size: 12px;
-      color: var(--muted);
+      color: #bbb;
     }
-    #globalControls label { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-    #globalControls input[type="range"] { flex: 1; min-width: 120px; height: 4px; accent-color: var(--accent); }
-    #globalControls span { width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
+    #globalControls label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      letter-spacing: 0.02em;
+    }
+    #globalControls label > span:first-child { min-width: 14px; }
+    #globalControls span.val {
+      width: 32px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: #999;
+    }
+
+    /* -- Custom range slider: Figma-style -- */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+      height: 16px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 3px;
+      border-radius: 1.5px;
+      background: #1e1e26;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #888;
+      border: none;
+      margin-top: -3.5px;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    input[type="range"]:hover::-webkit-slider-thumb {
+      background: #aaa;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
+    }
+    input[type="range"]:active::-webkit-slider-thumb {
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(66,208,143,0.15);
+    }
+    /* Firefox */
+    input[type="range"]::-moz-range-track {
+      height: 3px;
+      border-radius: 1.5px;
+      background: #1e1e26;
+      border: none;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #888;
+      border: none;
+    }
+    input[type="range"]:hover::-moz-range-thumb {
+      background: #aaa;
+    }
+    input[type="range"]:active::-moz-range-thumb {
+      background: var(--accent);
+    }
+
+    /* -- Contextual track gradients for color controls -- */
+    #globalControls input[type="range"] { flex: 1; min-width: 60px; }
+    #hueCtrl::-webkit-slider-runnable-track {
+      background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+      opacity: 0.5;
+    }
+    #hueCtrl::-moz-range-track {
+      background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+      opacity: 0.5;
+    }
+    #satCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, #1e1e26, #42d08f); }
+    #satCtrl::-moz-range-track { background: linear-gradient(to right, #1e1e26, #42d08f); }
+    #brightCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, #0a0a0e, #888); }
+    #brightCtrl::-moz-range-track { background: linear-gradient(to right, #0a0a0e, #888); }
+    #contrastCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, #333, #0a0a0e 50%, #888); }
+    #contrastCtrl::-moz-range-track { background: linear-gradient(to right, #333, #0a0a0e 50%, #888); }
+
+    /* Audio gain slider */
+    #audioGainSlider::-webkit-slider-runnable-track { background: linear-gradient(to right, #1e1e26, #0aa); }
+    #audioGainSlider::-moz-range-track { background: linear-gradient(to right, #1e1e26, #0aa); }
+    #audioGainSlider::-webkit-slider-thumb { width: 8px; height: 8px; margin-top: -2.5px; }
+    #audioGainSlider::-moz-range-thumb { width: 8px; height: 8px; }
     #presets {
       border-bottom: 1px solid var(--line);
       padding: 10px;
@@ -159,22 +277,22 @@
       overflow: auto;
     }
     .presetBtn {
-      border: 1px solid #222;
+      border: 1px solid #1a1a22;
       background: #0e0e12;
-      color: var(--muted);
+      color: #bbb;
       border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 12px;
+      padding: 5px 10px;
       cursor: pointer;
       max-width: 280px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      transition: border-color 0.15s, color 0.15s;
     }
-    .presetBtn:hover { border-color: #444; color: var(--accent); }
-    .presetBtn.active { border-color: var(--accent); background: #0c1a14; color: var(--accent); font-weight: 600; }
+    .presetBtn:hover { border-color: #333; color: #fff; }
+    .presetBtn.active { border-color: #1a3a2a; background: #0a1410; color: var(--accent); font-weight: 600; }
     .presetBtn.saved {
-      border-color: var(--accent); background: #0c1a14; color: var(--accent);
+      border-color: #1a3a2a; background: #0a1410; color: var(--accent);
       transition: all 0.15s ease-out;
     }
     @keyframes saveFlash {
@@ -188,20 +306,13 @@
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
-      font-size: 12px;
     }
     #autoplayBar label { color: var(--muted); white-space: nowrap; }
     #autoplayBar input[type="number"] {
       width: 56px; padding: 4px 6px;
-      border: 1px solid #222; border-radius: 6px;
-      background: #0a0a0e; color: var(--muted);
-      font-size: 12px; text-align: center;
-    }
-    #autoplayBar select {
-      padding: 4px 6px;
-      border: 1px solid #222; border-radius: 6px;
-      background: #0a0a0e; color: var(--muted);
-      font-size: 12px;
+      border: 1px solid #1a1a22; border-radius: 5px;
+      background: #0e0e12; color: #666;
+      font-family: inherit; font-size: inherit; text-align: center;
     }
     #autoplayBar .divider { width: 1px; height: 20px; background: var(--line); }
     #autoplayProgress {
@@ -227,7 +338,6 @@
     #daydreamBar {
       border-top: 1px solid var(--line);
       padding: 6px 10px;
-      font-size: 12px;
       color: var(--muted);
     }
     .dd-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -239,27 +349,23 @@
     @keyframes dd-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
     #ddPrompt {
       flex: 1; min-width: 150px; padding: 4px 8px;
-      border: 1px solid #222; border-radius: 6px;
-      background: #0a0a0e; color: var(--muted);
-      font-family: inherit; font-size: 12px; outline: none;
+      border: 1px solid #1a1a22; border-radius: 5px;
+      background: #0e0e12; color: #888;
+      font-family: inherit; font-size: inherit; outline: none;
+      transition: border-color 0.15s;
     }
-    #ddPrompt:focus { border-color: #444; }
-    #daydreamBar select {
-      padding: 4px 6px; border: 1px solid #222; border-radius: 6px;
-      background: #0a0a0e; color: var(--muted); font-size: 12px;
-    }
-    #ddInfo { font-size: 11px; color: #555; }
-    .dd-label { font-size: 11px; color: #555; white-space: nowrap; }
-    #ddDebugToggle { cursor: pointer; font-size: 11px; color: #555; text-decoration: underline; }
+    #ddPrompt:focus { border-color: #333; }
+    #daydreamBar select { font-size: inherit; }
+    #ddInfo { color: #555; }
+    .dd-label { color: #555; white-space: nowrap; }
+    #ddDebugToggle { cursor: pointer; color: #555; text-decoration: underline; }
     #ddDebugLog {
       display: none;
       border-top: 1px solid var(--line);
       background: #08080c;
-      max-height: 50vh;
+      max-height: 200px;
       overflow-y: auto;
       padding: 6px 10px;
-      font-family: 'SF Mono', 'Menlo', monospace;
-      font-size: 11px;
       line-height: 1.5;
       color: #888;
     }
@@ -306,106 +412,123 @@
       <div id="audioMeterPanel">
         <canvas id="audioMeterCanvas"></canvas>
         <div style="position:absolute;top:3px;left:4px;display:flex;align-items:center;gap:6px;z-index:1;">
-          <select id="audioInputSelect" style="max-width:180px;padding:2px 4px;border:1px solid #333;border-radius:3px;background:rgba(10,10,14,0.8);color:#888;font-size:9px;font-family:inherit;"></select>
-          <span style="font-size:9px;color:#555;">Gain</span>
-          <input type="range" id="audioGainSlider" min="0.1" max="10" step="0.1" value="1" style="width:80px;height:10px;accent-color:#0ff;">
-          <span id="audioGainVal" style="font-size:9px;color:#888;min-width:28px;">1.0x</span>
+          <select id="audioInputSelect" style="max-width:180px;padding:2px 18px 2px 4px;background-color:rgba(10,10,14,0.7);font-size:10px;"></select>
+          <span style="color:#444;font-size:10px;">Gain</span>
+          <input type="range" id="audioGainSlider" min="0.1" max="10" step="0.1" value="1" style="width:80px;">
+          <span id="audioGainVal" style="color:#555;min-width:28px;font-size:10px;">1.0x</span>
+          <div style="width:1px;height:10px;background:#222;margin:0 2px;"></div>
+          <label style="display:flex;align-items:center;gap:3px;white-space:nowrap;font-size:10px;color:#555;">BPM <span id="bpmVal" style="width:24px;text-align:right;font-variant-numeric:tabular-nums;">30</span></label>
+          <button id="tapTempoBtn" class="btn" style="padding:2px 6px;font-size:10px;border-color:#222;">Tap</button>
+          <button id="linkBtn" class="btn" style="padding:2px 6px;font-size:10px;border-color:#222;display:none;">Link</button>
+          <span id="linkPeers" style="display:none;font-size:10px;color:#555;"></span>
         </div>
       </div>
       <div class="h-splitter" id="hSplitter" title="Drag to resize preview"></div>
       <div id="controls">
         <div id="toolbar">
-          <button id="runAllBtn" class="btn main">Run (Cmd/Ctrl+Shift+Enter)</button>
-          <button id="openOutBtn" class="btn">Open Output</button>
-          <button id="startAudioBtn" class="btn">Start Audio</button>
-          <button id="saveBtn" class="btn">Save</button>
-          <button id="saveAsBtn" class="btn">Save As</button>
-          <button id="stopBtn" class="btn stop">Stop</button>
-          <button id="recordBtn" class="btn rec" title="Record canvas to MP4">● Rec</button>
-          <button id="batchRecordBtn" class="btn rec" title="Record all presets automatically">● Batch Rec</button>
+          <div class="toolbar-group">
+            <button id="runAllBtn" class="btn main" title="Cmd/Ctrl+Shift+Enter">Run</button>
+            <button id="stopBtn" class="btn stop">Stop</button>
+          </div>
+          <div class="toolbar-sep"></div>
+          <div class="toolbar-group">
+            <button id="openOutBtn" class="btn">Output</button>
+            <select id="resolutionCtrl">
+              <option value="auto">Auto</option>
+              <option value="1920x1200" selected>1920x1200</option>
+              <option value="1920x1080">1920x1080</option>
+              <option value="1280x720">1280x720</option>
+              <option value="3840x2160">3840x2160</option>
+              <option value="1080x1920">1080x1920</option>
+              <option value="1080x1350">1080x1350</option>
+              <option value="1080x1080">1080x1080</option>
+              <option value="custom">Custom</option>
+            </select>
+            <span id="resLabel"></span>
+          </div>
+          <div class="toolbar-sep"></div>
+          <div class="toolbar-group">
+            <button id="startAudioBtn" class="btn">Audio</button>
+            <span style="color:#888;">s0</span>
+            <select id="sourceSelect">
+              <option value="none">No Source</option>
+              <optgroup label="Camera">
+              </optgroup>
+              <option value="screen">Screen Capture</option>
+              <option value="scope">Daydream Scope</option>
+            </select>
+            <button id="sourceInitBtn" class="btn" style="padding:4px 8px;">Init</button>
+          </div>
+          <div class="toolbar-group" style="margin-left:auto;">
+            <button id="saveBtn" class="btn">Save</button>
+            <button id="saveAsBtn" class="btn">Save As</button>
+            <div class="toolbar-sep"></div>
+            <button id="recordBtn" class="btn rec" title="Record canvas to MP4">Rec</button>
+            <button id="batchRecordBtn" class="btn rec" title="Record all presets automatically">Batch</button>
+          </div>
           <button id="openNdiBtn" class="btn" style="display:none;">NDI Out: Off</button>
           <button id="fsOutBtn" class="btn" style="display:none;">Fullscreen Output</button>
           <button id="toggleCodeBtn" class="btn" style="display:none;">Audience Mode</button>
-          <span style="display:flex;align-items:center;gap:6px;margin-left:auto;">
-            <label style="display:flex;align-items:center;gap:4px;white-space:nowrap;font-size:12px;color:var(--muted);">Res
-              <select id="resolutionCtrl" style="padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:var(--muted);font-size:12px;">
-                <option value="auto">Auto (fit stage)</option>
-                <option value="1920x1200" selected>1920x1200 (16:10 Projector)</option>
-                <option value="1920x1080">1920x1080 (16:9 HD)</option>
-                <option value="1280x720">1280x720 (720p)</option>
-                <option value="3840x2160">3840x2160 (4K)</option>
-                <option value="1080x1920">1080x1920 (9:16 Vertical)</option>
-                <option value="1080x1350">1080x1350 (4:5 Portrait)</option>
-                <option value="1080x1080">1080x1080 (1:1 Square)</option>
-                <option value="custom">Custom...</option>
-              </select>
-            </label>
-            <span id="resLabel" style="color:var(--muted);font-size:12px;"></span>
-            <div class="divider" style="width:1px;height:16px;background:var(--line);"></div>
-            <button id="autoplayBtn" class="btn" style="padding:4px 8px;">Autoplay</button>
-            <select id="autoplayMode" style="padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:var(--muted);font-size:12px;">
-              <option value="time">Time</option>
-              <option value="bars" selected>Bars (BPM)</option>
-            </select>
-            <label id="autoplayTimeLabel" style="display:none;font-size:12px;color:var(--muted);">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999" style="width:50px;padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:var(--muted);font-size:12px;"></label>
-            <label id="autoplayBarsLabel" style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);">Bars:
-              <select id="autoplayBars" style="padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:#0a0a0e;color:var(--muted);font-size:12px;">
-                <option value="8" selected>8</option>
-                <option value="16">16</option>
-                <option value="32">32</option>
-                <option value="64">64</option>
-                <option value="128">128</option>
-              </select>
-            </label>
-            <span id="autoplayBpmDisplay" style="display:none;color:var(--muted);font-size:12px;"></span>
-            <input type="hidden" id="autoplayBpm" value="120">
-            <span id="autoplayCountdown" style="color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px;"></span>
-            <div class="divider" style="width:1px;height:16px;background:var(--line);"></div>
-            <label style="display:flex;align-items:center;gap:4px;white-space:nowrap;font-size:12px;color:var(--muted);">BPM <span id="bpmVal" style="width:32px;text-align:right;font-variant-numeric:tabular-nums;">30</span></label>
-            <button id="tapTempoBtn" class="btn" style="padding:4px 8px;">Tap</button>
-            <button id="linkBtn" class="btn" style="padding:4px 8px;display:none;">Link</button>
-            <span id="linkPeers" style="display:none;color:var(--muted);font-size:12px;"></span>
-          </span>
         </div>
         <div id="status">Ready</div>
+        <div id="presetsHeader" style="border-bottom:1px solid var(--line);padding:6px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span style="color:#888;white-space:nowrap;">Hydra Presets</span>
+          <button id="communityRandomBtn" class="btn" style="padding:4px 8px;" title="Load random community Hydra sketch">Shuffle</button>
+          <a href="https://hydra.ojack.xyz/api/" target="_blank" class="btn" style="padding:4px 8px;text-decoration:none;">Docs</a>
+          <div class="toolbar-sep"></div>
+          <button id="autoplayBtn" class="btn" style="padding:4px 8px;">Autoplay</button>
+          <select id="autoplayMode">
+            <option value="time">Time</option>
+            <option value="bars" selected>Bars (BPM)</option>
+          </select>
+          <label id="autoplayTimeLabel" style="display:none;">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999" style="width:50px;padding:4px 8px;border:1px solid #1a1a22;border-radius:5px;background:#0e0e12;color:#ccc;font-family:inherit;font-size:inherit;outline:none;"></label>
+          <label id="autoplayBarsLabel" style="display:flex;align-items:center;gap:4px;">Bars:
+            <select id="autoplayBars">
+              <option value="8" selected>8</option>
+              <option value="16">16</option>
+              <option value="32">32</option>
+              <option value="64">64</option>
+              <option value="128">128</option>
+            </select>
+          </label>
+          <span id="autoplayBpmDisplay" style="display:none;"></span>
+          <input type="hidden" id="autoplayBpm" value="120">
+          <span id="autoplayCountdown" style="font-variant-numeric:tabular-nums;"></span>
+        </div>
         <div id="presets"></div>
         <div id="globalControls">
-          <button id="resetFiltersBtn" class="btn" style="padding:4px 8px;font-size:11px;">Reset</button>
-          <label>Hue <input type="range" id="hueCtrl" min="0" max="360" value="0"><span id="hueVal">0</span>°</label>
-          <label>Sat <input type="range" id="satCtrl" min="0" max="300" value="100"><span id="satVal">100</span>%</label>
-          <label>Bright <input type="range" id="brightCtrl" min="0" max="300" value="100"><span id="brightVal">100</span>%</label>
-          <label>Contrast <input type="range" id="contrastCtrl" min="0" max="300" value="100"><span id="contrastVal">100</span>%</label>
-          <div class="divider" style="width:1px;height:16px;background:var(--line);"></div>
-          <label>Speed <input type="range" id="speedCtrl" min="0" max="4" step="0.1" value="1"><span id="speedVal">1.0</span>x</label>
+          <button id="resetFiltersBtn" class="btn" style="padding:4px 8px;border-color:#1a1a22;">Reset</button>
+          <label><span>Hue</span><input type="range" id="hueCtrl" min="0" max="360" value="0"><span class="val" id="hueVal">0°</span></label>
+          <label><span>Saturation</span><input type="range" id="satCtrl" min="0" max="300" value="100"><span class="val" id="satVal">100</span></label>
+          <label><span>Brightness</span><input type="range" id="brightCtrl" min="0" max="300" value="100"><span class="val" id="brightVal">100</span></label>
+          <label><span>Contrast</span><input type="range" id="contrastCtrl" min="0" max="300" value="100"><span class="val" id="contrastVal">100</span></label>
+          <div style="width:1px;height:12px;background:#1a1a22;margin:0 2px;"></div>
+          <label><span>Speed</span><input type="range" id="speedCtrl" min="0" max="4" step="0.1" value="1"><span class="val" id="speedVal">1.0</span></label>
         </div>
         <div id="autoplayBar" style="display:none;">
           <div id="beatGrid"></div>
           <div id="autoplayProgress" style="display:none;"><div id="autoplayProgressFill"></div></div>
         </div>
         <div id="daydreamBar">
+          <!-- Hidden elements kept for JS compatibility -->
           <select id="ddMode" style="display:none;"><option value="scope">Scope</option><option value="cloud">Cloud</option></select>
           <select id="ddModel" style="display:none;"></select>
           <select id="ddScopePreset" style="display:none;"></select>
           <button id="ddScopeLoadPreset" style="display:none;"></button>
-          <!-- Row 1: Connection + Pipeline + LoRA -->
+          <select id="ddPipeline" style="display:none;"></select>
+          <select id="ddLoraSelect" style="display:none;"></select>
+          <select id="ddPreprocessor" style="display:none;"></select>
+          <select id="ddPostprocessor" style="display:none;"></select>
+          <button id="ddLoadPipeline" style="display:none;"></button>
           <div class="dd-row">
             <div class="dd-dot" id="ddDot"></div>
             <span class="dd-label">Scope</span>
-            <button id="ddScopeStart" class="btn" style="padding:4px 8px;font-size:11px;">Start</button>
+            <button id="ddScopeStart" class="btn" style="padding:4px 8px;">Start</button>
             <button id="ddToggle" class="btn" style="padding:4px 8px;display:none;">Connect Video</button>
-            <div class="divider" style="width:1px;height:16px;background:var(--line);display:none;" id="ddDivider1"></div>
-            <span class="dd-label" id="ddPipelineLabel" style="display:none;">Pipeline</span>
-            <select id="ddPipeline" title="Pipeline" style="display:none;"></select>
-            <span class="dd-label" id="ddLoraLabel" style="display:none;">LoRA</span>
-            <select id="ddLoraSelect" title="LoRA" style="display:none;"></select>
-            <select id="ddPreprocessor" title="Preprocessor" style="display:none;"></select>
-            <select id="ddPostprocessor" title="Postprocessor" style="display:none;"></select>
-            <button id="ddLoadPipeline" class="btn" style="padding:4px 8px;font-size:11px;display:none;">Load</button>
             <span id="ddInfo"></span>
-            <a href="http://localhost:8000" target="_blank" class="btn" style="padding:4px 8px;font-size:11px;text-decoration:none;display:none;" id="ddScopeOpenTab">Scope UI</a>
-            <span id="ddDebugToggle">Log</span>
+            <a href="http://localhost:8000" target="_blank" class="btn" style="padding:4px 8px;text-decoration:none;display:none;font-size:inherit;" id="ddScopeOpenTab">Scope UI</a>
+            <span id="ddDebugToggle" style="margin-left:auto;">Log</span>
           </div>
-          <!-- Row 2: Prompt -->
           <div class="dd-row" id="ddPromptRow" style="display:none;">
             <input type="text" id="ddPrompt" placeholder="Prompt..." value="abstract fluid art, iridescent light" style="flex:1;min-width:180px;">
             <button id="ddSend" class="btn" style="padding:4px 8px;">Send</button>
@@ -428,8 +551,8 @@
     .CodeMirror {
       background: transparent !important;
       color: #eef !important;
-      font-family: "JetBrains Mono", "SFMono-Regular", Menlo, monospace !important;
-      font-size: 14px !important;
+      font-family: inherit !important;
+      font-size: 13px !important;
       line-height: 1.55 !important;
       height: 100% !important;
       padding: 8px 4px;
@@ -475,7 +598,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/closebrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/selection/active-line.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/comment/comment.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"></script>
+  <script src="hydra-synth.js"></script>
+  <script>if (typeof Hydra === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"><\/script>')</script>
   <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0.7/dist/obs-ws.global.js"></script>
   <script src="https://unpkg.com/prettier@3.3.3/standalone.js"></script>
   <script src="https://unpkg.com/prettier@3.3.3/plugins/babel.js"></script>
@@ -827,6 +951,7 @@
       // ---- Audio Meter Panel ----
       var meterAnimId = null
       var binColors = ['#ff4444', '#ff8833', '#aacc33', '#33ccaa', '#33aaee', '#cc44ff', '#ff44aa', '#ffcc33']
+      var meterBinBoundaries = [150, 500, 2000]
 
       function populateAudioInputs () {
         var sel = document.getElementById('audioInputSelect')
@@ -992,6 +1117,11 @@
         resizeCanvas()
         window.addEventListener('resize', resizeCanvas)
 
+        // LUFS history ring buffer
+        var lufsHistory = new Float32Array(120)
+        var lufsHistIdx = 0
+        var lufsFrameCount = 0
+
         function drawMeter () {
           meterAnimId = requestAnimationFrame(drawMeter)
           // use standalone meter audio
@@ -1001,6 +1131,7 @@
 
           var w = canvas.width / dpr
           var h = canvas.height / dpr
+          var spectrumW = w
           var spectrumH = h
           ctx.clearRect(0, 0, w, h)
 
@@ -1019,8 +1150,8 @@
               var freqHi = ((i + 1) / binCount) * nyquist
               if (freqHi < minFreq) continue
               freqLo = Math.max(freqLo, minFreq)
-              var xLo = ((Math.log10(freqLo) - logMin) / (logMax - logMin)) * w
-              var xHi = ((Math.log10(freqHi) - logMin) / (logMax - logMin)) * w
+              var xLo = ((Math.log10(freqLo) - logMin) / (logMax - logMin)) * spectrumW
+              var xHi = ((Math.log10(freqHi) - logMin) / (logMax - logMin)) * spectrumW
               var barW = Math.max(xHi - xLo, 1)
               var barH = (data[i] / 255) * spectrumH
               ctx.fillRect(xLo, spectrumH - barH, barW, barH)
@@ -1034,53 +1165,62 @@
             var labelText = ['100', '200', '500', '1k', '2k', '5k', '10k', '20k']
             for (var li = 0; li < labels.length; li++) {
               if (labels[li] > nyquist) continue
-              var lx = ((Math.log10(labels[li]) - logMin) / (logMax - logMin)) * w
+              var lx = ((Math.log10(labels[li]) - logMin) / (logMax - logMin)) * spectrumW
               ctx.fillText(labelText[li], lx, spectrumH - 2)
             }
 
-          // -- Hydra bins overlay --
+          // -- Hydra bins overlay (boundary-based) --
           var ha = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
-          if (ha && ha.fft && ha.fft.length > 0) {
-            var numBins = ha.fft.length
-            var ny = nyquist
-            var fftLen = binCount
-            var spacing = Math.floor(fftLen / numBins)
-            var lMin = Math.log10(20)
-            var lMax = Math.log10(ny)
+          var numBins = (ha && ha.fft) ? ha.fft.length : meterBinBoundaries.length + 1
+          var ny = nyquist
+          var lMin = Math.log10(20)
+          var lMax = Math.log10(ny)
+          var boundaries = meterBinBoundaries
+          var edges = [20].concat(boundaries).concat([15500])
 
-            for (var bi = 0; bi < numBins; bi++) {
-              var fLo = (bi * spacing / fftLen) * ny
-              var fHi = ((bi + 1) * spacing / fftLen) * ny
-              fLo = Math.max(fLo, 20)
-              var x1 = ((Math.log10(fLo) - lMin) / (lMax - lMin)) * w
-              var x2 = ((Math.log10(fHi) - lMin) / (lMax - lMin)) * w
-              var val = Math.min(ha.fft[bi], 1)
-              var bh = val * spectrumH
+          for (var bi = 0; bi < numBins; bi++) {
+            var fLo = Math.max(edges[bi], 20)
+            var fHi = Math.min(edges[bi + 1] || ny, ny)
+            var x1 = ((Math.log10(fLo) - lMin) / (lMax - lMin)) * spectrumW
+            var x2 = ((Math.log10(fHi) - lMin) / (lMax - lMin)) * spectrumW
+            var val = (ha && ha.fft && ha.fft[bi] != null) ? Math.min(ha.fft[bi], 1) : 0
+            var bh = val * spectrumH
 
-              var color = binColors[bi % binColors.length]
-              ctx.fillStyle = color.replace(')', ', 0.35)').replace('rgb', 'rgba').replace('#', '')
-              // convert hex to rgba
-              var r = parseInt(color.slice(1, 3), 16)
-              var g = parseInt(color.slice(3, 5), 16)
-              var b = parseInt(color.slice(5, 7), 16)
-              ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ', 0.35)'
-              ctx.fillRect(x1, spectrumH - bh, x2 - x1, bh)
+            var color = binColors[bi % binColors.length]
+            var r = parseInt(color.slice(1, 3), 16)
+            var g = parseInt(color.slice(3, 5), 16)
+            var b = parseInt(color.slice(5, 7), 16)
+            ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ', 0.25)'
+            ctx.fillRect(x1, spectrumH - bh, x2 - x1, bh)
 
-              // bin border
-              ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ', 0.6)'
-              ctx.lineWidth = 1
-              ctx.strokeRect(x1, 0, x2 - x1, spectrumH)
+            // bin border — left/right lines only, no top/bottom
+            ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ', 0.4)'
+            ctx.lineWidth = 1
+            ctx.beginPath()
+            ctx.moveTo(x1, 0); ctx.lineTo(x1, spectrumH)
+            ctx.moveTo(x2, 0); ctx.lineTo(x2, spectrumH)
+            ctx.stroke()
 
-              // bin label
-              ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ', 0.8)'
-              ctx.font = '8px monospace'
-              ctx.textAlign = 'center'
-              var binLabel = ['kick', 'bass', 'mid', 'high', 'air', 'amp'][bi] || ('a' + bi)
-              ctx.fillText(binLabel, (x1 + x2) / 2, 10)
-            }
+            // bin label — bottom
+            ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ', 0.7)'
+            ctx.font = '9px monospace'
+            ctx.textAlign = 'center'
+            var binLabel = ['kick', 'bass', 'mid', 'high', 'air', 'amp'][bi] || ('a' + bi)
+            ctx.fillText(binLabel, (x1 + x2) / 2, spectrumH - 14)
           }
 
-          // -- LUFS readout (bottom-right) --
+          // draw draggable divider lines at boundary positions
+          for (var di = 0; di < boundaries.length; di++) {
+            var dx = ((Math.log10(boundaries[di]) - lMin) / (lMax - lMin)) * spectrumW
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.moveTo(dx, 0)
+            ctx.lineTo(dx, spectrumH)
+            ctx.stroke()
+          }
+
+          // -- LUFS history in dead zone (15.5k → nyquist) --
           var lufsSum = 0
           for (var si = 0; si < data.length; si++) lufsSum += data[si]
           var lufsAvg = lufsSum / data.length
@@ -1088,21 +1228,147 @@
           ma.lufs = ma.lufs * 0.9 + rawLufs * 0.1
           var lufsVal = Math.max(-60, Math.min(0, ma.lufs))
 
-          var lufsColor = '#33cc66'
-          if (lufsVal > -20) lufsColor = '#cccc33'
-          if (lufsVal > -10) lufsColor = '#cc4433'
+          // push to history every 2nd frame (~30fps history)
+          lufsFrameCount++
+          if (lufsFrameCount % 2 === 0) {
+            lufsHistory[lufsHistIdx] = lufsVal
+            lufsHistIdx = (lufsHistIdx + 1) % lufsHistory.length
+          }
 
-          ctx.fillStyle = 'rgba(10, 10, 14, 0.85)'
-          ctx.fillRect(w - 100, h - 20, 98, 18)
-          ctx.strokeStyle = '#333'
-          ctx.lineWidth = 1
-          ctx.strokeRect(w - 100, h - 20, 98, 18)
-          ctx.fillStyle = lufsColor
-          ctx.font = '11px monospace'
-          ctx.textAlign = 'right'
-          ctx.fillText(lufsVal.toFixed(1) + ' LUFS', w - 6, h - 6)
+          // dead zone bounds
+          var dzFreq = 15500
+          var dzX = ((Math.log10(dzFreq) - logMin) / (logMax - logMin)) * w
+          var dzW = w - dzX
+
+          if (dzW > 30) {
+            // background
+            ctx.fillStyle = 'rgba(8, 8, 12, 0.6)'
+            ctx.fillRect(dzX, 0, dzW, h)
+
+            // draw history waveform (scrolling left)
+            var histLen = lufsHistory.length
+            var histW = dzW - 6
+            var histX0 = dzX + 3
+            var histH = h - 22
+            var histY0 = 4
+
+            ctx.beginPath()
+            ctx.moveTo(histX0, histY0 + histH)
+            for (var hi = 0; hi < histLen; hi++) {
+              var idx = (lufsHistIdx + hi) % histLen
+              var norm = Math.max(0, (lufsHistory[idx] + 60) / 60)
+              var hx = histX0 + (hi / (histLen - 1)) * histW
+              var hy = histY0 + histH - norm * histH
+              ctx.lineTo(hx, hy)
+            }
+            ctx.lineTo(histX0 + histW, histY0 + histH)
+            ctx.closePath()
+
+            // filled area
+            var hGrad = ctx.createLinearGradient(0, histY0, 0, histY0 + histH)
+            hGrad.addColorStop(0, 'rgba(51, 170, 238, 0.4)')
+            hGrad.addColorStop(1, 'rgba(51, 170, 238, 0.05)')
+            ctx.fillStyle = hGrad
+            ctx.fill()
+
+            // stroke line
+            ctx.strokeStyle = 'rgba(51, 170, 238, 0.6)'
+            ctx.lineWidth = 1
+            ctx.beginPath()
+            for (var hi2 = 0; hi2 < histLen; hi2++) {
+              var idx2 = (lufsHistIdx + hi2) % histLen
+              var norm2 = Math.max(0, (lufsHistory[idx2] + 60) / 60)
+              var hx2 = histX0 + (hi2 / (histLen - 1)) * histW
+              var hy2 = histY0 + histH - norm2 * histH
+              if (hi2 === 0) ctx.moveTo(hx2, hy2)
+              else ctx.lineTo(hx2, hy2)
+            }
+            ctx.stroke()
+
+            // dB readout
+            // LUFS label
+            ctx.fillStyle = '#445'
+            ctx.font = '8px monospace'
+            ctx.textAlign = 'left'
+            ctx.fillText('LUFS', dzX + 4, histY0 + 8)
+            // dB readout
+            ctx.fillStyle = '#99a'
+            ctx.font = '10px monospace'
+            ctx.textAlign = 'center'
+            ctx.fillText(lufsVal.toFixed(1) + ' dB', dzX + dzW / 2, h - 4)
+          }
         }
         drawMeter()
+
+        // -- Draggable bin dividers --
+        var draggingEdge = -1
+        var MIN_FREQ_GAP = 20
+
+        function freqToX (freq) {
+          var rect = canvas.getBoundingClientRect()
+          var lMin = Math.log10(20)
+          var sampleRate = meterAudio.context ? meterAudio.context.sampleRate : 44100
+          var lMax = Math.log10(sampleRate / 2)
+          return ((Math.log10(freq) - lMin) / (lMax - lMin)) * rect.width
+        }
+
+        function xToFreq (x) {
+          var rect = canvas.getBoundingClientRect()
+          var lMin = Math.log10(20)
+          var sampleRate = meterAudio.context ? meterAudio.context.sampleRate : 44100
+          var lMax = Math.log10(sampleRate / 2)
+          var logF = lMin + (x / rect.width) * (lMax - lMin)
+          return Math.pow(10, logF)
+        }
+
+        function hitTestDivider (mouseX) {
+          for (var i = 0; i < meterBinBoundaries.length; i++) {
+            var dx = freqToX(meterBinBoundaries[i])
+            if (Math.abs(mouseX - dx) <= 5) return i
+          }
+          return -1
+        }
+
+        canvas.addEventListener('mousedown', function (e) {
+          var rect = canvas.getBoundingClientRect()
+          var mx = e.clientX - rect.left
+          var idx = hitTestDivider(mx)
+          if (idx >= 0) {
+            draggingEdge = idx
+            canvas.style.cursor = 'col-resize'
+            e.preventDefault()
+          }
+        })
+
+        canvas.addEventListener('mousemove', function (e) {
+          var rect = canvas.getBoundingClientRect()
+          var mx = e.clientX - rect.left
+
+          if (draggingEdge >= 0) {
+            var freq = xToFreq(mx)
+            var lo = draggingEdge > 0 ? meterBinBoundaries[draggingEdge - 1] + MIN_FREQ_GAP : 20 + MIN_FREQ_GAP
+            var hi = draggingEdge < meterBinBoundaries.length - 1 ? meterBinBoundaries[draggingEdge + 1] - MIN_FREQ_GAP : 15500 - MIN_FREQ_GAP
+            freq = Math.max(lo, Math.min(hi, freq))
+            meterBinBoundaries[draggingEdge] = Math.round(freq)
+          } else {
+            // hover cursor
+            canvas.style.cursor = hitTestDivider(mx) >= 0 ? 'col-resize' : 'default'
+          }
+        })
+
+        canvas.addEventListener('mouseup', function () {
+          if (draggingEdge >= 0) {
+            draggingEdge = -1
+            canvas.style.cursor = 'default'
+          }
+        })
+
+        canvas.addEventListener('mouseleave', function () {
+          if (draggingEdge >= 0) {
+            draggingEdge = -1
+            canvas.style.cursor = 'default'
+          }
+        })
       }
 
       // ---- Resolution / aspect ratio ----
@@ -1598,10 +1864,242 @@
       }
 
       ensureAudioStub()
+
+      // Patch Hydra audio tick to use draggable bin boundaries
+      ;(function patchAudioBoundaries () {
+        var ha = (hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
+        if (!ha) return
+        // Bark band upper-edge frequencies (25 edges for 24 bands)
+        var BARK_EDGES = [0, 100, 200, 300, 400, 510, 630, 770, 920, 1080, 1270, 1480, 1720, 2000, 2320, 2700, 3150, 3700, 4400, 5300, 6400, 7700, 9500, 12000, 15500]
+        ha.binBoundaries = meterBinBoundaries
+        var origTick = ha.tick.bind(ha)
+        ha.tick = function () {
+          if (ha.analyser) {
+            ha.analyser.getByteFrequencyData(ha.frequencyData)
+          }
+          if (!ha.meyda) return
+          var features = ha.meyda.get()
+          if (!features || features === null) return
+          ha.vol = features.loudness.total
+          var rawLufs = ha.vol > 0 ? 20 * Math.log10(ha.vol / 24) - 14 : -60
+          ha.lufs = ha.lufs * 0.9 + rawLufs * 0.1
+          ha.detectBeat(ha.vol)
+          // frequency-weighted Bark band aggregation using boundaries
+          var loudBands = features.loudness.specific
+          var numBands = loudBands.length
+          var boundaries = ha.binBoundaries || meterBinBoundaries
+          var edges = [20].concat(boundaries).concat([15500])
+          ha.prevBins = ha.bins.slice(0)
+          ha.bins = ha.bins.map(function (bin, bi) {
+            var binLo = edges[bi]
+            var binHi = edges[bi + 1]
+            if (binHi == null) binHi = 15500
+            var sum = 0
+            for (var band = 0; band < numBands; band++) {
+              var bandLo = BARK_EDGES[band]
+              var bandHi = BARK_EDGES[band + 1]
+              var overlapLo = Math.max(binLo, bandLo)
+              var overlapHi = Math.min(binHi, bandHi)
+              if (overlapHi <= overlapLo) continue
+              var bandWidth = bandHi - bandLo
+              var fraction = bandWidth > 0 ? (overlapHi - overlapLo) / bandWidth : 0
+              sum += loudBands[band] * fraction
+            }
+            return sum
+          }).map(function (bin, index) {
+            return bin * (1.0 - ha.settings[index].smooth) + ha.prevBins[index] * ha.settings[index].smooth
+          })
+          ha.fft = ha.bins.map(function (bin, index) {
+            return Math.max(0, (bin - ha.settings[index].cutoff) / ha.settings[index].scale)
+          })
+          if (ha.isDrawing) ha.draw()
+        }
+      })()
+
       fitCanvas()
       if (hydra && typeof solid === 'function') {
         solid(0, 0, 0, 1).out()
       }
+
+      // ---- Source Input Selector ----
+      ;(function initSourceSelector () {
+        var sourceSelect = document.getElementById('sourceSelect')
+        var sourceInitBtn = document.getElementById('sourceInitBtn')
+        if (!sourceSelect || !sourceInitBtn) return
+
+        // Populate camera list
+        function populateCameras () {
+          if (!navigator.mediaDevices) return
+          navigator.mediaDevices.enumerateDevices().then(function (devices) {
+            var camGroup = sourceSelect.querySelector('optgroup[label="Camera"]')
+            if (!camGroup) return
+            camGroup.innerHTML = ''
+            var cams = devices.filter(function (d) { return d.kind === 'videoinput' })
+            cams.forEach(function (cam, i) {
+              var opt = document.createElement('option')
+              opt.value = 'cam:' + cam.deviceId
+              opt.textContent = cam.label || ('Camera ' + (i + 1))
+              camGroup.appendChild(opt)
+            })
+          })
+        }
+        populateCameras()
+        // re-populate after permission grant
+        navigator.mediaDevices && navigator.mediaDevices.addEventListener('devicechange', populateCameras)
+
+        sourceInitBtn.addEventListener('click', function () {
+          var val = sourceSelect.value
+          if (!hydra || !hydra.synth) { setStatus('Hydra not ready', true); return }
+          var s = hydra.synth.s
+
+          if (val === 'none') {
+            setStatus('Source cleared.', false)
+            return
+          }
+
+          if (val.startsWith('cam:')) {
+            var deviceId = val.replace('cam:', '')
+            // Use getUserMedia with specific device, then wire to s0
+            navigator.mediaDevices.getUserMedia({
+              video: { deviceId: { exact: deviceId } },
+              audio: false
+            }).then(function (stream) {
+              var vid = document.createElement('video')
+              vid.srcObject = stream
+              vid.autoplay = true
+              vid.muted = true
+              vid.playsInline = true
+              vid.addEventListener('loadeddata', function () {
+                s[0].init({ src: vid, dynamic: true })
+                setStatus('Camera → s0', false)
+              })
+              vid.play()
+            }).catch(function (err) {
+              // Fallback: try initCam with index
+              try {
+                s[0].initCam(0)
+                setStatus('Camera → s0 (default)', false)
+              } catch (e) {
+                setStatus('Camera error: ' + err.message, true)
+              }
+            })
+            return
+          }
+
+          if (val === 'screen') {
+            try {
+              s[0].initScreen()
+              setStatus('Screen capture → s0', false)
+            } catch (err) {
+              setStatus('Screen capture error: ' + err.message, true)
+            }
+            return
+          }
+
+          if (val === 'scope') {
+            // Grab NDI Virtual Camera — Scope's NDI output
+            // First get permission to see device labels, then find NDI
+            setStatus('Connecting to NDI...', false)
+            navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(function (tempStream) {
+              tempStream.getTracks().forEach(function (t) { t.stop() })
+              return navigator.mediaDevices.enumerateDevices()
+            }).then(function (devices) {
+              var cams = devices.filter(function (d) { return d.kind === 'videoinput' })
+              // Try NDI first, then OBS, then first non-FaceTime camera
+              var ndi = cams.find(function (d) { return /ndi/i.test(d.label) })
+                || cams.find(function (d) { return /obs/i.test(d.label) })
+                || cams.find(function (d) { return !/facetime/i.test(d.label) && d.label })
+              if (ndi) {
+                setStatus('Using: ' + ndi.label, false)
+                return navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: ndi.deviceId } }, audio: false })
+              }
+              // Fallback: just use whatever
+              setStatus('No NDI found, using default camera', false)
+              return navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            }).then(function (stream) {
+              var vid = document.createElement('video')
+              vid.srcObject = stream
+              vid.autoplay = true; vid.muted = true; vid.playsInline = true
+              vid.addEventListener('loadeddata', function () {
+                s[0].init({ src: vid, dynamic: true })
+                ddActive = true
+                ddSetState('on', 'src(s0) = ' + stream.getVideoTracks()[0].label + ' (' + vid.videoWidth + 'x' + vid.videoHeight + ')')
+                setStatus(stream.getVideoTracks()[0].label + ' → s0', false)
+              })
+              vid.play()
+            }).catch(function (err) {
+              setStatus('Camera error: ' + err.message, true)
+            })
+            return
+          }
+        })
+      })()
+
+      // ---- Community Random Sketches ----
+      ;(function initCommunityRandom () {
+        var communityBtn = document.getElementById('communityRandomBtn')
+        if (!communityBtn) return
+
+        var communityExamples = null
+        var examplesUrl = 'https://raw.githubusercontent.com/hydra-synth/hydra/main/src/stores/examples.json'
+
+        function fetchExamples () {
+          if (communityExamples) return Promise.resolve(communityExamples)
+          return fetch(examplesUrl)
+            .then(function (r) { return r.json() })
+            .then(function (data) {
+              communityExamples = data
+              return data
+            })
+        }
+
+        function decodeSketch (entry) {
+          try {
+            // code is base64-encoded URL-encoded string
+            var decoded = atob(entry.code)
+            return decodeURIComponent(decoded)
+          } catch (e) {
+            return null
+          }
+        }
+
+        communityBtn.addEventListener('click', function () {
+          fetchExamples().then(function (examples) {
+            if (!examples || examples.length === 0) {
+              setStatus('No community examples available.', true)
+              return
+            }
+            var entry = examples[Math.floor(Math.random() * examples.length)]
+            var code = decodeSketch(entry)
+            if (!code) {
+              setStatus('Failed to decode sketch.', true)
+              return
+            }
+
+            // Extract credit from comments at top
+            var lines = code.split('\n')
+            var credit = ''
+            for (var i = 0; i < Math.min(lines.length, 5); i++) {
+              if (lines[i].trim().startsWith('//')) {
+                credit += lines[i].trim().replace(/^\/\/\s*/, '') + ' '
+              } else break
+            }
+
+            // Load into editor
+            if (typeof cm !== 'undefined' && cm) {
+              cm.setValue(code)
+            } else {
+              editorEl.value = code
+            }
+
+            // Run it
+            runCode(code, 'community: ' + (credit.trim() || entry.sketch_id))
+            setStatus('Community: ' + (credit.trim() || entry.sketch_id), false)
+          }).catch(function (err) {
+            setStatus('Failed to load community examples: ' + err.message, true)
+          })
+        })
+      })()
 
       // Init CodeMirror
       var cm = null
@@ -2750,12 +3248,7 @@
         ddStartBtn.disabled = true
         document.getElementById('ddScopeOpenTab').style.display = ''
         ddToggle.style.display = ''
-        document.getElementById('ddDivider1').style.display = ''
-        document.getElementById('ddPipelineLabel').style.display = ''
-        document.getElementById('ddLoraLabel').style.display = ''
         document.getElementById('ddPromptRow').style.display = ''
-        ddFetchPipelinesAndLoras()
-        ddLoadScopePresets()
         // Auto-connect WebRTC to get AI video into s0
         if (!ddActive) {
           ddLog('Scope healthy — auto-connecting WebRTC', 'ok')
@@ -2959,62 +3452,95 @@
         if (ddActive) return
         ddLogStartTime = Date.now()
         ddLogEl.innerHTML = ''
-        ddLogEl.style.display = 'block'
-        ddLogToggleEl.textContent = 'Hide Log'
         ddLog('Starting Scope connection sequence...')
         ddSetState('connecting', 'Connecting to Scope...')
         var prompt = ddPromptEl.value || 'abstract fluid art'
         ddLog('Prompt: "' + prompt + '"')
 
-        // Step 0: Check cloud + pipeline status
-        ddLog('Step 0: Checking cloud and pipeline status...')
-        fetch('/api/scope/api/v1/cloud/status').then(function (r) { return r.json() }).then(function (cs) {
-          var isCloud = cs.connected === true
-          ddLog('Cloud: ' + (isCloud ? 'connected (session ' + (cs.connection_id || '?') + ')' : 'not connected (local mode)'), isCloud ? 'ok' : 'info')
-          if (isCloud) {
-            ddLog('  WebRTC to cloud: ' + (cs.webrtc_connected ? 'yes' : 'no'))
-            if (cs.last_close_reason) ddLog('  Last close: ' + cs.last_close_reason, 'warn')
-          }
-          return isCloud
-        }).catch(function () {
-          ddLog('Cloud status check failed — assuming local mode')
-          return false
-        }).then(function (isCloud) {
-          return fetch('/api/scope/api/v1/pipeline/status').then(function (r) { return r.json() }).then(function (ps) {
-            var status = ps.status || 'unknown'
-            ddLog('Pipeline: ' + status + (ps.pipeline_id ? ' (' + ps.pipeline_id + ')' : '') + (ps.loading_stage ? ' — ' + ps.loading_stage : ''), status === 'loaded' ? 'ok' : 'warn')
-            if (status === 'loaded') return Promise.resolve()
-            if (status === 'loading') {
-              ddLog('Pipeline is loading — waiting...', 'warn')
-              ddSetState('connecting', 'Waiting for pipeline to load...')
-              return ddPollPipelineStatus()
-            }
-            if (isCloud) {
-              ddLog('Cloud mode — sending load request (may take a while on cold start)...', 'warn')
-              ddSetState('connecting', 'Loading pipeline on cloud GPU...')
-              return ddLoadPipeline().catch(function (loadErr) {
-                ddLog('Load request failed: ' + loadErr.message + ' — cloud may still be loading, polling...', 'warn')
-                ddLog('TIP: load the pipeline from Scope UI (localhost:8000) if stuck', 'warn')
-                ddSetState('connecting', 'Waiting for cloud pipeline...')
-                return ddPollPipelineStatus()
-              })
-            }
-            ddLog('Local mode — loading pipeline...')
-            ddSetState('connecting', 'Loading pipeline...')
-            return ddLoadPipeline()
-          }).catch(function (statusErr) {
-            ddLog('Pipeline status unavailable: ' + statusErr.message, 'warn')
-            ddLog('Cloud GPU may be busy — polling until ready...', 'warn')
-            ddSetState('connecting', 'Waiting for cloud GPU...')
+        // Check pipeline status — wait if loading, prompt user if not loaded
+        ddLog('Checking pipeline status...')
+        fetch('/api/scope/api/v1/pipeline/status').then(function (r) { return r.json() }).then(function (ps) {
+          var status = ps.status || 'unknown'
+          ddLog('Pipeline: ' + status + (ps.pipeline_id ? ' (' + ps.pipeline_id + ')' : ''), status === 'loaded' ? 'ok' : 'warn')
+          if (status === 'loaded') return Promise.resolve()
+          if (status === 'loading') {
+            ddLog('Pipeline loading — waiting...', 'warn')
+            ddSetState('connecting', 'Waiting for pipeline...')
             return ddPollPipelineStatus()
-          })
+          }
+          // Not loaded — tell user to load from Scope UI
+          ddLog('No pipeline loaded — load one from Scope UI (localhost:8000)', 'warn')
+          ddSetState('connecting', 'Waiting for pipeline — load in Scope UI...')
+          return ddPollPipelineStatus()
+        }).catch(function () {
+          ddLog('Pipeline status unavailable — waiting...', 'warn')
+          ddSetState('connecting', 'Waiting for Scope...')
+          return ddPollPipelineStatus()
         }).then(function () {
-          ddLog('Pipeline ready — proceeding with WebRTC', 'ok')
-          return ddConnectScopeWebRTC(prompt)
+          ddLog('Pipeline ready — starting frame polling', 'ok')
+          ddStartFramePolling()
         }).catch(function (err) {
           ddLog('CONNECTION FAILED: ' + (err.message || err), 'err')
-          ddSetState('err', err.message || 'Scope connection failed')
+          ddSetState('err', err.message || 'Connection failed')
           ddDisconnect()
+        })
+      }
+
+      // ---- NDI/Camera capture: grab Scope's NDI output as a camera source ----
+      var ddFramePollTimer = null
+      var ddNdiStream = null
+
+      function ddStartFramePolling () {
+        ddLog('Looking for NDI Virtual Camera (Scope NDI output)...')
+        ddActive = true
+
+        navigator.mediaDevices.enumerateDevices().then(function (devices) {
+          var videoDevices = devices.filter(function (d) { return d.kind === 'videoinput' })
+          ddLog('Video devices found: ' + videoDevices.length)
+          videoDevices.forEach(function (d) { ddLog('  • ' + (d.label || d.deviceId)) })
+          var ndiDevice = videoDevices.find(function (d) { return d.label.toLowerCase().indexOf('ndi') !== -1 })
+          var constraints = {
+            video: ndiDevice
+              ? { deviceId: { exact: ndiDevice.deviceId }, width: { ideal: 576 }, height: { ideal: 320 } }
+              : { width: { ideal: 576 }, height: { ideal: 320 } }
+          }
+          if (ndiDevice) {
+            ddLog('Found: ' + ndiDevice.label, 'ok')
+          } else {
+            ddLog('No NDI device — using default camera', 'warn')
+          }
+          return navigator.mediaDevices.getUserMedia(constraints)
+        }).then(function (stream) {
+          ddNdiStream = stream
+          var track = stream.getVideoTracks()[0]
+          var settings = track.getSettings()
+          ddLog('Capturing: ' + (settings.width || '?') + 'x' + (settings.height || '?') + ' (' + track.label + ')', 'ok')
+
+          if (!ddVideo) {
+            ddVideo = document.createElement('video')
+            ddVideo.autoplay = true
+            ddVideo.playsInline = true
+            ddVideo.muted = true
+            document.body.appendChild(ddVideo)
+          }
+          ddVideo.srcObject = stream
+          ddVideo.play()
+
+          function wireS0 () {
+            if (typeof s0 !== 'undefined' && s0.init && ddVideo.videoWidth > 0) {
+              s0.init({ src: ddVideo, dynamic: true })
+              ddLog('Wired to s0 — ' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight, 'ok')
+              ddSetState('on', 'src(s0) = NDI (' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight + ')')
+            } else {
+              setTimeout(wireS0, 200)
+            }
+          }
+          wireS0()
+        }).catch(function (err) {
+          ddLog('Camera failed: ' + err.message, 'err')
+          ddLog('Make sure NDI Virtual Input app is running', 'warn')
+          ddSetState('err', 'NDI capture failed')
+          ddActive = false
         })
       }
 
@@ -3038,35 +3564,16 @@
             var tracks = stream.getTracks()
             ddLog('Canvas stream: ' + tracks.length + ' track(s) — ' + tracks.map(function (t) { return t.kind + ' ' + t.readyState }).join(', '), 'ok')
             tracks.forEach(function (t) {
-              var sender = ddScopePc.addTrack(t, stream)
-              var transceiver = ddScopePc.getTransceivers().find(function (tr) { return tr.sender === sender })
-              if (transceiver) {
-                var codecs = RTCRtpReceiver.getCapabilities('video').codecs.filter(function (c) {
-                  return c.mimeType.toLowerCase() === 'video/vp8'
-                })
-                if (codecs.length) {
-                  transceiver.setCodecPreferences(codecs)
-                  ddLog('Send transceiver: VP8 codec set')
-                } else {
-                  ddLog('WARNING: No VP8 codec available for send', 'err')
-                }
-              }
+              ddScopePc.addTrack(t, stream)
             })
+            ddLog('Send tracks added (browser-negotiated codec)')
           } else {
             ddLog('WARNING: No canvas stream — Scope will have no input video', 'warn')
           }
 
-          // Add receive-only transceiver for AI output
+          // Add receive-only transceiver for AI output (no codec restriction — let browser negotiate)
           var recvTransceiver = ddScopePc.addTransceiver('video', { direction: 'recvonly' })
-          var vp8Codecs = RTCRtpReceiver.getCapabilities('video').codecs.filter(function (c) {
-            return c.mimeType.toLowerCase() === 'video/vp8'
-          })
-          if (vp8Codecs.length) {
-            recvTransceiver.setCodecPreferences(vp8Codecs)
-            ddLog('Recv transceiver: VP8 codec set, direction=recvonly', 'ok')
-          } else {
-            ddLog('WARNING: No VP8 codec for receive', 'err')
-          }
+          ddLog('Recv transceiver added, direction=recvonly (any codec)', 'ok')
 
           // Data channel for live parameter updates
           ddScopeDataChannel = ddScopePc.createDataChannel('parameters', { ordered: true })
@@ -3117,7 +3624,19 @@
 
             // Track mute/unmute
             e.track.onmute = function () { ddLog('Video track MUTED (no frames arriving)', 'warn') }
-            e.track.onunmute = function () { ddLog('Video track UNMUTED (frames arriving)', 'ok') }
+            e.track.onunmute = function () {
+              ddLog('Video track UNMUTED (frames arriving)', 'ok')
+              // Log codec info
+              if (ddScopePc) {
+                ddScopePc.getReceivers().forEach(function (r) {
+                  if (r.track && r.track.kind === 'video') {
+                    var params = r.getParameters()
+                    var codecs = params.codecs || []
+                    ddLog('Recv codec: ' + codecs.map(function (c) { return c.mimeType + ' pt=' + c.payloadType }).join(', '))
+                  }
+                })
+              }
+            }
             e.track.onended = function () { ddLog('Video track ENDED', 'err') }
 
             // Wire into s0
@@ -3301,6 +3820,8 @@
       function ddDisconnect () {
         ddLog('Disconnecting...', 'warn')
         ddActive = false
+        if (ddFramePollTimer) { clearTimeout(ddFramePollTimer); ddFramePollTimer = null }
+        if (ddNdiStream) { ddNdiStream.getTracks().forEach(function (t) { t.stop() }); ddNdiStream = null }
         if (ddWhipPc) { try { ddWhipPc.close() } catch (e) {} ddWhipPc = null }
         if (ddWhepPc) { try { ddWhepPc.close() } catch (e) {} ddWhepPc = null }
         if (ddScopePc) { try { ddScopePc.close() } catch (e) {} ddScopePc = null }
@@ -3410,7 +3931,7 @@
         var s = satCtrl.value
         var b = brightCtrl.value
         var c = contrastCtrl.value
-        hueVal.textContent = h
+        hueVal.textContent = h + '°'
         satVal.textContent = s
         brightVal.textContent = b
         contrastVal.textContent = c
