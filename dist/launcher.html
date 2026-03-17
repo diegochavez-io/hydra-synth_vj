@@ -226,14 +226,12 @@
     #beatGrid .beat-group:nth-child(even) .beat-step.lit { background: var(--accent); }
     #daydreamBar {
       border-top: 1px solid var(--line);
-      padding: 8px 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
+      padding: 6px 10px;
       font-size: 12px;
       color: var(--muted);
     }
+    .dd-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .dd-row + .dd-row { margin-top: 6px; }
     .dd-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; flex-shrink: 0; }
     .dd-dot.on { background: var(--accent); animation: dd-pulse 2s ease infinite; }
     .dd-dot.err { background: var(--danger); }
@@ -251,6 +249,8 @@
       background: #0a0a0e; color: var(--muted); font-size: 12px;
     }
     #ddInfo { font-size: 11px; color: #555; }
+    .dd-label { font-size: 11px; color: #555; white-space: nowrap; }
+    #ddDebugToggle { cursor: pointer; font-size: 11px; color: #555; text-decoration: underline; }
     #ddDebugLog {
       display: none;
       border-top: 1px solid var(--line);
@@ -268,7 +268,6 @@
     #ddDebugLog .log-warn { color: #e8a320; }
     #ddDebugLog .log-info { color: #888; }
     #ddDebugLog .log-time { color: #555; margin-right: 6px; }
-    #ddDebugToggle { cursor: pointer; font-size: 11px; color: #555; text-decoration: underline; margin-left: auto; }
     #audioMeterPanel {
       display: none;
       border-top: 1px solid var(--line);
@@ -384,27 +383,33 @@
           <div id="autoplayProgress" style="display:none;"><div id="autoplayProgressFill"></div></div>
         </div>
         <div id="daydreamBar">
-          <div class="dd-dot" id="ddDot"></div>
-          <select id="ddMode" style="display:none;">
-            <option value="scope">Scope</option>
-            <option value="cloud">Cloud</option>
-          </select>
+          <select id="ddMode" style="display:none;"><option value="scope">Scope</option><option value="cloud">Cloud</option></select>
           <select id="ddModel" style="display:none;"></select>
-          <span style="font-size:12px;color:var(--muted);margin-right:6px;">Scope</span>
-          <button id="ddScopeStart" class="btn" style="padding:4px 8px;font-size:11px;">Start</button>
-          <select id="ddPipeline" title="Pipeline" style="padding:4px 6px;border:1px solid #222;border-radius:6px;background:#0a0a0e;color:var(--muted);font-size:11px;display:none;"></select>
-          <select id="ddLoraSelect" title="LoRA" style="padding:4px 6px;border:1px solid #222;border-radius:6px;background:#0a0a0e;color:var(--muted);font-size:11px;display:none;"></select>
-          <select id="ddPreprocessor" title="Preprocessor" style="padding:4px 6px;border:1px solid #222;border-radius:6px;background:#0a0a0e;color:var(--muted);font-size:11px;display:none;"></select>
-          <select id="ddPostprocessor" title="Postprocessor" style="padding:4px 6px;border:1px solid #222;border-radius:6px;background:#0a0a0e;color:var(--muted);font-size:11px;display:none;"></select>
-          <button id="ddLoadPipeline" class="btn" style="padding:4px 8px;font-size:11px;display:none;">Load</button>
           <select id="ddScopePreset" style="display:none;"></select>
           <button id="ddScopeLoadPreset" style="display:none;"></button>
-          <button id="ddToggle" class="btn" style="padding:4px 8px;display:none;">Connect Video</button>
-          <input type="text" id="ddPrompt" placeholder="Prompt..." value="abstract fluid art, iridescent light" style="display:none;flex:1;min-width:180px;">
-          <button id="ddSend" class="btn" style="padding:4px 8px;display:none;">Send</button>
-          <span id="ddInfo" style="font-size:12px;color:var(--muted);"></span>
-          <a href="http://localhost:8000" target="_blank" class="btn" style="padding:4px 8px;font-size:11px;text-decoration:none;display:none;" id="ddScopeOpenTab">Scope UI</a>
-          <span id="ddDebugToggle">Log</span>
+          <!-- Row 1: Connection + Pipeline + LoRA -->
+          <div class="dd-row">
+            <div class="dd-dot" id="ddDot"></div>
+            <span class="dd-label">Scope</span>
+            <button id="ddScopeStart" class="btn" style="padding:4px 8px;font-size:11px;">Start</button>
+            <button id="ddToggle" class="btn" style="padding:4px 8px;display:none;">Connect Video</button>
+            <div class="divider" style="width:1px;height:16px;background:var(--line);display:none;" id="ddDivider1"></div>
+            <span class="dd-label" id="ddPipelineLabel" style="display:none;">Pipeline</span>
+            <select id="ddPipeline" title="Pipeline" style="display:none;"></select>
+            <span class="dd-label" id="ddLoraLabel" style="display:none;">LoRA</span>
+            <select id="ddLoraSelect" title="LoRA" style="display:none;"></select>
+            <select id="ddPreprocessor" title="Preprocessor" style="display:none;"></select>
+            <select id="ddPostprocessor" title="Postprocessor" style="display:none;"></select>
+            <button id="ddLoadPipeline" class="btn" style="padding:4px 8px;font-size:11px;display:none;">Load</button>
+            <span id="ddInfo"></span>
+            <a href="http://localhost:8000" target="_blank" class="btn" style="padding:4px 8px;font-size:11px;text-decoration:none;display:none;" id="ddScopeOpenTab">Scope UI</a>
+            <span id="ddDebugToggle">Log</span>
+          </div>
+          <!-- Row 2: Prompt -->
+          <div class="dd-row" id="ddPromptRow" style="display:none;">
+            <input type="text" id="ddPrompt" placeholder="Prompt..." value="abstract fluid art, iridescent light" style="flex:1;min-width:180px;">
+            <button id="ddSend" class="btn" style="padding:4px 8px;">Send</button>
+          </div>
         </div>
         <div id="ddDebugLog"></div>
       </div>
@@ -861,18 +866,103 @@
           })
       }
 
+      // standalone meter audio state (independent of Hydra's audio)
+      var meterAudio = {
+        context: null,
+        analyser: null,
+        frequencyData: null,
+        gainNode: null,
+        sourceNode: null,
+        stream: null,
+        lufs: -60
+      }
+
+      function initMeterAudio (deviceId) {
+        var constraints = {
+          video: false,
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        }
+        if (deviceId) constraints.audio.deviceId = { exact: deviceId }
+
+        return navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+          // tear down old connections
+          if (meterAudio.sourceNode) meterAudio.sourceNode.disconnect()
+          if (meterAudio.stream) meterAudio.stream.getTracks().forEach(function (t) { t.stop() })
+
+          if (!meterAudio.context) {
+            meterAudio.context = new (window.AudioContext || window.webkitAudioContext)()
+          }
+
+          meterAudio.stream = stream
+          meterAudio.sourceNode = meterAudio.context.createMediaStreamSource(stream)
+
+          if (!meterAudio.gainNode) {
+            meterAudio.gainNode = meterAudio.context.createGain()
+            meterAudio.gainNode.gain.value = 1.0
+          }
+          meterAudio.sourceNode.connect(meterAudio.gainNode)
+
+          if (!meterAudio.analyser) {
+            meterAudio.analyser = meterAudio.context.createAnalyser()
+            meterAudio.analyser.fftSize = 2048
+            meterAudio.analyser.smoothingTimeConstant = 0.8
+            meterAudio.analyser.minDecibels = -90
+            meterAudio.analyser.maxDecibels = -10
+            meterAudio.gainNode.connect(meterAudio.analyser)
+          }
+
+          meterAudio.frequencyData = new Uint8Array(meterAudio.analyser.frequencyBinCount)
+
+          // also feed into Hydra's audio if available
+          var ha = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
+          if (ha) {
+            ha.context = meterAudio.context
+            ha.analyser = meterAudio.analyser
+            ha.frequencyData = meterAudio.frequencyData
+            ha.gainNode = meterAudio.gainNode
+            ha._sourceNode = meterAudio.sourceNode
+            ha.stream = stream
+            // recreate meyda on the shared gain node
+            if (typeof Meyda !== 'undefined') {
+              ha.meyda = Meyda.createMeydaAnalyzer({
+                audioContext: meterAudio.context,
+                source: meterAudio.gainNode,
+                featureExtractors: ['loudness']
+              })
+            }
+          }
+
+          return stream
+        })
+      }
+
       function startAudioMeter () {
         var panel = document.getElementById('audioMeterPanel')
         var canvas = document.getElementById('audioMeterCanvas')
         if (!panel || !canvas) return
         panel.style.display = 'block'
 
+        // init standalone audio capture
+        initMeterAudio().then(function () {
+          populateAudioInputs()
+          setStatus('Audio meter active.', false)
+        }).catch(function (err) {
+          setStatus('Mic access denied: ' + err.message, true)
+        })
+
         // populate input selector
-        populateAudioInputs()
         var inputSel = document.getElementById('audioInputSelect')
         if (inputSel) {
           inputSel.addEventListener('change', function () {
-            switchAudioInput(this.value)
+            initMeterAudio(this.value).then(function () {
+              setStatus('Audio input switched.', false)
+            }).catch(function (err) {
+              setStatus('Audio input error: ' + err.message, true)
+            })
           })
         }
 
@@ -882,8 +972,10 @@
         if (gainSlider) {
           gainSlider.addEventListener('input', function () {
             var val = parseFloat(this.value)
-            var a = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
-            if (a && a.setGain) a.setGain(val)
+            if (meterAudio.gainNode) meterAudio.gainNode.gain.value = val
+            // also update hydra's audio gain
+            var ha = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
+            if (ha && ha.setGain) ha.setGain(val)
             if (gainVal) gainVal.textContent = val.toFixed(1) + 'x'
           })
         }
@@ -902,22 +994,19 @@
 
         function drawMeter () {
           meterAnimId = requestAnimationFrame(drawMeter)
-          // prefer hydra's real Audio object (has analyser), fall back to window.a stub
-          var a = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : window.a
-          if (!a) return
+          // use standalone meter audio
+          var ma = meterAudio
+          if (!ma.analyser || !ma.frequencyData) return
+          ma.analyser.getByteFrequencyData(ma.frequencyData)
 
           var w = canvas.width / dpr
           var h = canvas.height / dpr
           var spectrumH = h
           ctx.clearRect(0, 0, w, h)
 
-          // -- Detailed FFT background (64 bins, log scale) --
-          // re-fetch frequency data each frame (analyser may init late due to async getUserMedia)
-          if (a.analyser && a.frequencyData) {
-            a.analyser.getByteFrequencyData(a.frequencyData)
-            var data = a.frequencyData
-            var binCount = data.length
-            var sampleRate = a.context ? a.context.sampleRate : 44100
+          var data = ma.frequencyData
+          var binCount = data.length
+          var sampleRate = ma.context ? ma.context.sampleRate : 44100
             var nyquist = sampleRate / 2
             var minFreq = 20
             var maxFreq = nyquist
@@ -948,14 +1037,13 @@
               var lx = ((Math.log10(labels[li]) - logMin) / (logMax - logMin)) * w
               ctx.fillText(labelText[li], lx, spectrumH - 2)
             }
-          }
 
           // -- Hydra bins overlay --
-          if (a.fft && a.fft.length > 0 && a.frequencyData && a.analyser) {
-            var numBins = a.fft.length
-            var sRate = a.context ? a.context.sampleRate : 44100
-            var ny = sRate / 2
-            var fftLen = a.frequencyData.length
+          var ha = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
+          if (ha && ha.fft && ha.fft.length > 0) {
+            var numBins = ha.fft.length
+            var ny = nyquist
+            var fftLen = binCount
             var spacing = Math.floor(fftLen / numBins)
             var lMin = Math.log10(20)
             var lMax = Math.log10(ny)
@@ -966,7 +1054,7 @@
               fLo = Math.max(fLo, 20)
               var x1 = ((Math.log10(fLo) - lMin) / (lMax - lMin)) * w
               var x2 = ((Math.log10(fHi) - lMin) / (lMax - lMin)) * w
-              var val = Math.min(a.fft[bi], 1)
+              var val = Math.min(ha.fft[bi], 1)
               var bh = val * spectrumH
 
               var color = binColors[bi % binColors.length]
@@ -992,25 +1080,13 @@
             }
           }
 
-          // -- LUFS readout (compact, bottom-right corner) --
-          // compute LUFS directly from analyser data as fallback
-          var lufsVal = -60
-          if (a.lufs !== undefined && a.lufs > -59) {
-            lufsVal = a.lufs
-          } else if (a.analyser && a.frequencyData) {
-            var sum = 0
-            for (var li = 0; li < a.frequencyData.length; li++) sum += a.frequencyData[li]
-            var avg = sum / a.frequencyData.length
-            if (avg > 0) {
-              lufsVal = 20 * Math.log10(avg / 255) * 1.5
-            }
-          }
-          lufsVal = Math.max(-60, Math.min(0, lufsVal))
-
-          // store for external access
-          if (!window._meterLufs) window._meterLufs = -60
-          window._meterLufs = window._meterLufs * 0.9 + lufsVal * 0.1
-          lufsVal = window._meterLufs
+          // -- LUFS readout (bottom-right) --
+          var lufsSum = 0
+          for (var si = 0; si < data.length; si++) lufsSum += data[si]
+          var lufsAvg = lufsSum / data.length
+          var rawLufs = lufsAvg > 0 ? 20 * Math.log10(lufsAvg / 255) * 1.5 : -60
+          ma.lufs = ma.lufs * 0.9 + rawLufs * 0.1
+          var lufsVal = Math.max(-60, Math.min(0, ma.lufs))
 
           var lufsColor = '#33cc66'
           if (lufsVal > -20) lufsColor = '#cccc33'
@@ -2612,9 +2688,22 @@
       }
 
       ddLoadPipelineBtn.addEventListener('click', function () {
+        ddLogStartTime = Date.now()
+        ddLogEl.innerHTML = ''
         ddLogEl.style.display = 'block'
         ddLogToggleEl.textContent = 'Hide Log'
-        ddLoadPipeline().catch(function () {})
+        // Full cycle: disconnect → reload pipeline+LoRA → reconnect
+        if (ddActive) {
+          ddLog('Disconnecting current session for reload...')
+          ddDisconnect()
+        }
+        ddLog('Reloading pipeline with current settings...')
+        ddLoadPipeline().then(function () {
+          ddLog('Pipeline loaded — reconnecting video...', 'ok')
+          ddConnectScope()
+        }).catch(function (err) {
+          ddLog('Reload failed: ' + err.message, 'err')
+        })
       })
 
       function ddLoadScopePresets () {
@@ -2661,9 +2750,10 @@
         ddStartBtn.disabled = true
         document.getElementById('ddScopeOpenTab').style.display = ''
         ddToggle.style.display = ''
-        // Show prompt input when Scope is running
-        ddPromptEl.style.display = ''
-        ddSend.style.display = ''
+        document.getElementById('ddDivider1').style.display = ''
+        document.getElementById('ddPipelineLabel').style.display = ''
+        document.getElementById('ddLoraLabel').style.display = ''
+        document.getElementById('ddPromptRow').style.display = ''
         ddFetchPipelinesAndLoras()
         ddLoadScopePresets()
         // Auto-connect WebRTC to get AI video into s0
@@ -2732,8 +2822,6 @@
         if (state === 'on') {
           ddToggle.textContent = 'Disconnect'
           ddToggle.className = 'btn stop'
-          ddPromptEl.style.display = ''
-          ddSend.style.display = ''
         } else {
           ddToggle.textContent = 'Connect Video'
           ddToggle.className = 'btn'
