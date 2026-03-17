@@ -457,9 +457,6 @@
             <span class="src-label">s2</span><select class="src-select" data-src="2"><option value="none">—</option></select>
             <span class="src-label">s3</span><select class="src-select" data-src="3"><option value="none">—</option></select>
           </div>
-          <!-- hidden for JS compat -->
-          <select id="sourceSelect" style="display:none;"></select>
-          <button id="sourceInitBtn" style="display:none;"></button>
           <div class="toolbar-group" style="margin-left:auto;">
             <button id="saveBtn" class="btn">Save</button>
             <button id="saveAsBtn" class="btn">Save As</button>
@@ -1478,42 +1475,7 @@
       // s3 = Scope NDI (AI feed)
       var persistentSources = {} // index → { stream, video, label }
 
-      function initPersistentSources () {
-        if (!hydra) { setTimeout(initPersistentSources, 500); return }
-
-        // s3: Scope NDI — auto-grab NDI Virtual Camera
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(function (tempStream) {
-          tempStream.getTracks().forEach(function (t) { t.stop() })
-          return navigator.mediaDevices.enumerateDevices()
-        }).then(function (devices) {
-          var cams = devices.filter(function (d) { return d.kind === 'videoinput' })
-          var ndi = cams.find(function (d) { return /ndi/i.test(d.label) })
-          if (!ndi) {
-            console.log('Scope NDI: no NDI camera found. Available:', cams.map(function (d) { return d.label }))
-            setStatus('No NDI camera — s3 empty. Open NDI Virtual Input.', false)
-            return
-          }
-          return navigator.mediaDevices.getUserMedia({
-            video: { deviceId: { exact: ndi.deviceId } }, audio: false
-          }).then(function (stream) {
-            var vid = document.createElement('video')
-            vid.srcObject = stream
-            vid.autoplay = true; vid.muted = true; vid.playsInline = true
-            document.body.appendChild(vid)
-            vid.style.display = 'none'
-            vid.addEventListener('loadeddata', function () {
-              if (typeof s3 !== 'undefined' && s3.init) s3.init({ src: vid, dynamic: true })
-              persistentSources[3] = { stream: stream, video: vid, label: ndi.label }
-              ddActive = true
-              ddSetState('on', 'src(s3) = NDI (' + vid.videoWidth + 'x' + vid.videoHeight + ')')
-              console.log('Scope NDI → s3:', vid.videoWidth + 'x' + vid.videoHeight)
-            })
-            vid.play()
-          })
-        }).catch(function (err) {
-          console.log('Scope NDI init failed:', err.message)
-        })
-      }
+      // initPersistentSources removed — source selector IIFE handles s3 NDI auto-detect
 
       function cleanupSources () {
         if (!hydra) return
@@ -1907,9 +1869,6 @@
       }
 
       ensureAudioStub()
-
-      // Auto-init persistent sources (s3 = NDI Scope)
-      initPersistentSources()
 
       // Patch Hydra audio tick to use draggable bin boundaries
       ;(function patchAudioBoundaries () {
