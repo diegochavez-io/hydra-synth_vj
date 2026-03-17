@@ -1502,7 +1502,7 @@
             document.body.appendChild(vid)
             vid.style.display = 'none'
             vid.addEventListener('loadeddata', function () {
-              hydra.synth.s[3].init({ src: vid, dynamic: true })
+              if (typeof s3 !== 'undefined' && s3.init) s3.init({ src: vid, dynamic: true })
               persistentSources[3] = { stream: stream, video: vid, label: ndi.label }
               ddActive = true
               ddSetState('on', 'src(s3) = NDI (' + vid.videoWidth + 'x' + vid.videoHeight + ')')
@@ -1518,9 +1518,10 @@
       function cleanupSources () {
         if (!hydra) return
         // Only clean s0 — persistent sources (s1-s3) survive preset changes
-        var s = hydra.synth.s[0]
-        if (s && s.src && s.src.pause && !persistentSources[0]) { s.src.pause(); s.src.src = '' }
-        if (s && !persistentSources[0]) { s.src = null; s.dynamic = false }
+        if (typeof s0 !== 'undefined' && s0 && !persistentSources[0]) {
+          if (s0.src && s0.src.pause) { s0.src.pause(); s0.src.src = '' }
+          s0.src = null; s0.dynamic = false
+        }
         // clear all buffers to black before new code runs
         hydra.eval('solid(0,0,0,1).out(o0); solid(0,0,0,1).out(o1); solid(0,0,0,1).out(o2); solid(0,0,0,1).out(o3)')
       }
@@ -2009,9 +2010,21 @@
           }).catch(function () {})
         }
 
+        // Get hydra source by index (globals s0-s3)
+        function getSrc (idx) {
+          var sources = [
+            typeof s0 !== 'undefined' ? s0 : null,
+            typeof s1 !== 'undefined' ? s1 : null,
+            typeof s2 !== 'undefined' ? s2 : null,
+            typeof s3 !== 'undefined' ? s3 : null
+          ]
+          return sources[idx]
+        }
+
         function initSource (idx, val) {
-          if (!hydra || !hydra.synth) return
-          var s = hydra.synth.s
+          if (!hydra) return
+          var src = getSrc(idx)
+          if (!src) { console.warn('s' + idx + ' not available'); return }
           var sel = document.querySelector('.src-select[data-src="' + idx + '"]')
 
           // Clean up previous stream for this index
@@ -2026,13 +2039,12 @@
           if (sel) sel.classList.remove('active')
 
           if (val === 'none') {
-            s[idx].src = null
-            s[idx].dynamic = false
+            try { src.src = null; src.dynamic = false } catch (e) {}
             return
           }
 
           if (val === 'screen') {
-            s[idx].initScreen()
+            try { src.initScreen() } catch (e) { setStatus('Screen error: ' + e.message, true); return }
             if (sel) sel.classList.add('active')
             persistentSources[idx] = { label: 'Screen' }
             return
@@ -2049,7 +2061,7 @@
               vid.style.display = 'none'
               document.body.appendChild(vid)
               vid.addEventListener('loadeddata', function () {
-                s[idx].init({ src: vid, dynamic: true })
+                src.init({ src: vid, dynamic: true })
                 persistentSources[idx] = { stream: stream, video: vid, label: stream.getVideoTracks()[0].label }
                 if (sel) sel.classList.add('active')
                 console.log('s' + idx + ' ← ' + stream.getVideoTracks()[0].label + ' (' + vid.videoWidth + 'x' + vid.videoHeight + ')')
