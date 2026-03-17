@@ -99,6 +99,9 @@
       align-items: center;
       gap: 4px;
     }
+    .src-label { font-size: 11px; color: #555; font-variant-numeric: tabular-nums; }
+    .src-select { padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: #0a0a0e; color: var(--muted); font-size: 11px; max-width: 130px; }
+    .src-select.active { border-color: var(--accent); color: var(--accent); }
     .toolbar-sep {
       width: 1px;
       height: 16px;
@@ -449,16 +452,14 @@
           <div class="toolbar-sep"></div>
           <div class="toolbar-group">
             <button id="startAudioBtn" class="btn">Audio</button>
-            <span style="color:#888;">s0</span>
-            <select id="sourceSelect">
-              <option value="none">No Source</option>
-              <optgroup label="Camera">
-              </optgroup>
-              <option value="screen">Screen Capture</option>
-              <option value="scope">Daydream Scope</option>
-            </select>
-            <button id="sourceInitBtn" class="btn" style="padding:4px 8px;">Init</button>
+            <span class="src-label">s0</span><select class="src-select" data-src="0"><option value="none">—</option></select>
+            <span class="src-label">s1</span><select class="src-select" data-src="1"><option value="none">—</option></select>
+            <span class="src-label">s2</span><select class="src-select" data-src="2"><option value="none">—</option></select>
+            <span class="src-label">s3</span><select class="src-select" data-src="3"><option value="none">—</option></select>
           </div>
+          <!-- hidden for JS compat -->
+          <select id="sourceSelect" style="display:none;"></select>
+          <button id="sourceInitBtn" style="display:none;"></button>
           <div class="toolbar-group" style="margin-left:auto;">
             <button id="saveBtn" class="btn">Save</button>
             <button id="saveAsBtn" class="btn">Save As</button>
@@ -1812,7 +1813,8 @@
             const btn = document.createElement('button')
             btn.className = 'presetBtn'
             btn.textContent = entry.name || entry.file
-            btn.title = entry.file
+            btn.title = entry.description || entry.file
+            btn.dataset.file = entry.file
             btn.addEventListener('click', async function () {
               try {
                 const p = await fetch(`/api/presets/${entry.file}`, { cache: 'no-store' })
@@ -1965,117 +1967,111 @@
       }
 
       // ---- Source Input Selector ----
-      ;(function initSourceSelector () {
-        var sourceSelect = document.getElementById('sourceSelect')
-        var sourceInitBtn = document.getElementById('sourceInitBtn')
-        if (!sourceSelect || !sourceInitBtn) return
+      // ---- Multi-source selector: s0–s3 dropdowns, auto-init on change ----
+      ;(function initSourceSelectors () {
+        var selects = document.querySelectorAll('.src-select')
+        if (!selects.length) return
+        var sourceStreams = {} // index → MediaStream (for cleanup)
 
-        // Populate camera list
-        function populateCameras () {
-          if (!navigator.mediaDevices) return
-          navigator.mediaDevices.enumerateDevices().then(function (devices) {
-            var camGroup = sourceSelect.querySelector('optgroup[label="Camera"]')
-            if (!camGroup) return
-            camGroup.innerHTML = ''
+        // Get camera permission then populate all dropdowns
+        function populateAll () {
+          navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(function (tmp) {
+            tmp.getTracks().forEach(function (t) { t.stop() })
+            return navigator.mediaDevices.enumerateDevices()
+          }).then(function (devices) {
             var cams = devices.filter(function (d) { return d.kind === 'videoinput' })
-            cams.forEach(function (cam, i) {
-              var opt = document.createElement('option')
-              opt.value = 'cam:' + cam.deviceId
-              opt.textContent = cam.label || ('Camera ' + (i + 1))
-              camGroup.appendChild(opt)
+            selects.forEach(function (sel) {
+              var idx = parseInt(sel.dataset.src)
+              var current = sel.value
+              sel.innerHTML = '<option value="none">—</option>'
+              // Screen capture option
+              sel.innerHTML += '<option value="screen">Screen</option>'
+              // Camera devices
+              cams.forEach(function (cam) {
+                var opt = document.createElement('option')
+                opt.value = 'cam:' + cam.deviceId
+                opt.textContent = cam.label || 'Camera'
+                sel.appendChild(opt)
+              })
+              // Restore selection
+              if (current && sel.querySelector('option[value="' + current + '"]')) {
+                sel.value = current
+              }
+              // Auto-select NDI for s3
+              if (idx === 3 && current === 'none') {
+                var ndiOpt = Array.from(sel.options).find(function (o) { return /ndi/i.test(o.textContent) })
+                if (ndiOpt) {
+                  sel.value = ndiOpt.value
+                  initSource(idx, ndiOpt.value)
+                }
+              }
             })
-          })
+          }).catch(function () {})
         }
-        populateCameras()
-        // re-populate after permission grant
-        navigator.mediaDevices && navigator.mediaDevices.addEventListener('devicechange', populateCameras)
 
-        sourceInitBtn.addEventListener('click', function () {
-          var val = sourceSelect.value
-          if (!hydra || !hydra.synth) { setStatus('Hydra not ready', true); return }
+        function initSource (idx, val) {
+          if (!hydra || !hydra.synth) return
           var s = hydra.synth.s
+          var sel = document.querySelector('.src-select[data-src="' + idx + '"]')
+
+          // Clean up previous stream for this index
+          if (sourceStreams[idx]) {
+            sourceStreams[idx].getTracks().forEach(function (t) { t.stop() })
+            delete sourceStreams[idx]
+          }
+          if (persistentSources[idx]) {
+            if (persistentSources[idx].stream) persistentSources[idx].stream.getTracks().forEach(function (t) { t.stop() })
+            delete persistentSources[idx]
+          }
+          if (sel) sel.classList.remove('active')
 
           if (val === 'none') {
-            setStatus('Source cleared.', false)
+            s[idx].src = null
+            s[idx].dynamic = false
+            return
+          }
+
+          if (val === 'screen') {
+            s[idx].initScreen()
+            if (sel) sel.classList.add('active')
+            persistentSources[idx] = { label: 'Screen' }
             return
           }
 
           if (val.startsWith('cam:')) {
             var deviceId = val.replace('cam:', '')
-            // Use getUserMedia with specific device, then wire to s0
             navigator.mediaDevices.getUserMedia({
-              video: { deviceId: { exact: deviceId } },
-              audio: false
+              video: { deviceId: { exact: deviceId } }, audio: false
             }).then(function (stream) {
+              sourceStreams[idx] = stream
               var vid = document.createElement('video')
-              vid.srcObject = stream
-              vid.autoplay = true
-              vid.muted = true
-              vid.playsInline = true
+              vid.srcObject = stream; vid.autoplay = true; vid.muted = true; vid.playsInline = true
+              vid.style.display = 'none'
+              document.body.appendChild(vid)
               vid.addEventListener('loadeddata', function () {
-                s[0].init({ src: vid, dynamic: true })
-                setStatus('Camera → s0', false)
+                s[idx].init({ src: vid, dynamic: true })
+                persistentSources[idx] = { stream: stream, video: vid, label: stream.getVideoTracks()[0].label }
+                if (sel) sel.classList.add('active')
+                console.log('s' + idx + ' ← ' + stream.getVideoTracks()[0].label + ' (' + vid.videoWidth + 'x' + vid.videoHeight + ')')
               })
               vid.play()
             }).catch(function (err) {
-              // Fallback: try initCam with index
-              try {
-                s[0].initCam(0)
-                setStatus('Camera → s0 (default)', false)
-              } catch (e) {
-                setStatus('Camera error: ' + err.message, true)
-              }
+              setStatus('s' + idx + ' error: ' + err.message, true)
             })
-            return
           }
+        }
 
-          if (val === 'screen') {
-            try {
-              s[0].initScreen()
-              setStatus('Screen capture → s0', false)
-            } catch (err) {
-              setStatus('Screen capture error: ' + err.message, true)
-            }
-            return
-          }
-
-          if (val === 'scope') {
-            // Grab NDI Virtual Camera — Scope's NDI output
-            // First get permission to see device labels, then find NDI
-            setStatus('Connecting to NDI...', false)
-            navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(function (tempStream) {
-              tempStream.getTracks().forEach(function (t) { t.stop() })
-              return navigator.mediaDevices.enumerateDevices()
-            }).then(function (devices) {
-              var cams = devices.filter(function (d) { return d.kind === 'videoinput' })
-              // Try NDI first, then OBS, then first non-FaceTime camera
-              var ndi = cams.find(function (d) { return /ndi/i.test(d.label) })
-                || cams.find(function (d) { return /obs/i.test(d.label) })
-                || cams.find(function (d) { return !/facetime/i.test(d.label) && d.label })
-              if (ndi) {
-                setStatus('Using: ' + ndi.label, false)
-                return navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: ndi.deviceId } }, audio: false })
-              }
-              // Fallback: just use whatever
-              setStatus('No NDI found, using default camera', false)
-              return navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-            }).then(function (stream) {
-              var vid = document.createElement('video')
-              vid.srcObject = stream
-              vid.autoplay = true; vid.muted = true; vid.playsInline = true
-              vid.addEventListener('loadeddata', function () {
-                s[0].init({ src: vid, dynamic: true })
-                ddActive = true
-                ddSetState('on', 'src(s0) = ' + stream.getVideoTracks()[0].label + ' (' + vid.videoWidth + 'x' + vid.videoHeight + ')')
-                setStatus(stream.getVideoTracks()[0].label + ' → s0', false)
-              })
-              vid.play()
-            }).catch(function (err) {
-              setStatus('Camera error: ' + err.message, true)
-            })
-            return
-          }
+        // Auto-init on dropdown change
+        selects.forEach(function (sel) {
+          sel.addEventListener('change', function () {
+            var idx = parseInt(sel.dataset.src)
+            initSource(idx, sel.value)
+          })
         })
+
+        // Populate on load + on device changes
+        populateAll()
+        if (navigator.mediaDevices) navigator.mediaDevices.addEventListener('devicechange', populateAll)
       })()
 
       // ---- Community Random Sketches ----
@@ -2882,7 +2878,7 @@
       function startAutoplay () {
         autoplayPresetList = []
         presetsEl.querySelectorAll('.presetBtn').forEach(function (btn, i) {
-          autoplayPresetList.push({ name: btn.textContent, file: btn.title })
+          autoplayPresetList.push({ name: btn.textContent, file: btn.dataset.file || btn.title })
         })
         if (!autoplayPresetList.length) {
           setStatus('No presets to autoplay.', true)

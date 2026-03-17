@@ -188,7 +188,7 @@ const server = http.createServer(function (req, res) {
       try {
         var entries = JSON.parse(data)
         var presets = entries.map(function (e) {
-          return { file: e.file, name: e.name || e.file.replace(/\.md$/, '').replace(/-/g, ' ') }
+          return { file: e.file, name: e.name || e.file.replace(/\.md$/, '').replace(/-/g, ' '), description: e.description || '' }
         })
         jsonResponse(res, 200, presets)
       } catch (e) {
@@ -230,7 +230,7 @@ const server = http.createServer(function (req, res) {
           var index = []
           try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')) } catch (e) {}
           if (!index.some(function (e) { return e.file === file })) {
-            index.push({ id: slug, name: data.name, file: file })
+            index.push({ id: slug, name: data.name, file: file, description: data.description || '' })
             fs.writeFileSync(indexPath, JSON.stringify(index, null, 2) + '\n')
           }
           jsonResponse(res, 200, { saved: file })
