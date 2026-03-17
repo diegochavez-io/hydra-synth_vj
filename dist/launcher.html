@@ -1470,16 +1470,56 @@
 
       var pendingFilters = null
 
+      // ---- Persistent source management ----
+      // s0 = free (per-preset video files)
+      // s1 = internal feedback (hydra output loopback)
+      // s2 = camera
+      // s3 = Scope NDI (AI feed)
+      var persistentSources = {} // index → { stream, video, label }
+
+      function initPersistentSources () {
+        if (!hydra) { setTimeout(initPersistentSources, 500); return }
+
+        // s3: Scope NDI — auto-grab NDI Virtual Camera
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(function (tempStream) {
+          tempStream.getTracks().forEach(function (t) { t.stop() })
+          return navigator.mediaDevices.enumerateDevices()
+        }).then(function (devices) {
+          var cams = devices.filter(function (d) { return d.kind === 'videoinput' })
+          var ndi = cams.find(function (d) { return /ndi/i.test(d.label) })
+          if (!ndi) {
+            console.log('Scope NDI: no NDI camera found. Available:', cams.map(function (d) { return d.label }))
+            setStatus('No NDI camera — s3 empty. Open NDI Virtual Input.', false)
+            return
+          }
+          return navigator.mediaDevices.getUserMedia({
+            video: { deviceId: { exact: ndi.deviceId } }, audio: false
+          }).then(function (stream) {
+            var vid = document.createElement('video')
+            vid.srcObject = stream
+            vid.autoplay = true; vid.muted = true; vid.playsInline = true
+            document.body.appendChild(vid)
+            vid.style.display = 'none'
+            vid.addEventListener('loadeddata', function () {
+              hydra.synth.s[3].init({ src: vid, dynamic: true })
+              persistentSources[3] = { stream: stream, video: vid, label: ndi.label }
+              ddActive = true
+              ddSetState('on', 'src(s3) = NDI (' + vid.videoWidth + 'x' + vid.videoHeight + ')')
+              console.log('Scope NDI → s3:', vid.videoWidth + 'x' + vid.videoHeight)
+            })
+            vid.play()
+          })
+        }).catch(function (err) {
+          console.log('Scope NDI init failed:', err.message)
+        })
+      }
+
       function cleanupSources () {
         if (!hydra) return
-        // stop and detach any video elements on s0-s3
-        // Skip s0 if Daydream is active — it owns that source
-        for (var i = 0; i < 4; i++) {
-          if (i === 0 && ddActive) continue
-          var s = hydra.synth['s' + i]
-          if (s && s.src && s.src.pause) { s.src.pause(); s.src.src = '' }
-          if (s) { s.src = null; s.dynamic = false }
-        }
+        // Only clean s0 — persistent sources (s1-s3) survive preset changes
+        var s = hydra.synth.s[0]
+        if (s && s.src && s.src.pause && !persistentSources[0]) { s.src.pause(); s.src.src = '' }
+        if (s && !persistentSources[0]) { s.src = null; s.dynamic = false }
         // clear all buffers to black before new code runs
         hydra.eval('solid(0,0,0,1).out(o0); solid(0,0,0,1).out(o1); solid(0,0,0,1).out(o2); solid(0,0,0,1).out(o3)')
       }
@@ -1864,6 +1904,9 @@
       }
 
       ensureAudioStub()
+
+      // Auto-init persistent sources (s3 = NDI Scope)
+      initPersistentSources()
 
       // Patch Hydra audio tick to use draggable bin boundaries
       ;(function patchAudioBoundaries () {
