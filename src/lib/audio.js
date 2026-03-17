@@ -38,31 +38,45 @@ class Audio {
     this.canvas.style.position = 'absolute'
     this.canvas.style.right = '0px'
     this.canvas.style.bottom = '0px'
+    this.canvas.style.display = 'none'
     parentEl.appendChild(this.canvas)
 
-    this.isDrawing = isDrawing
+    this.isDrawing = false
     this.ctx = this.canvas.getContext('2d')
     this.ctx.fillStyle="#DFFFFF"
     this.ctx.strokeStyle="#0ff"
     this.ctx.lineWidth=0.5
+    // detailed FFT for meter panel (64 bins via AnalyserNode)
+    this.analyser = null
+    this.frequencyData = null
+    this.lufs = -60
+    this.gainNode = null
+    this.inputGain = 1.0
+
     if(window.navigator.mediaDevices) {
     window.navigator.mediaDevices.getUserMedia({video: false, audio: true})
       .then((stream) => {
-      //  console.log('got mic stream', stream)
         this.stream = stream
         this.context = new AudioContext()
-        //  this.context = new AudioContext()
         let audio_stream = this.context.createMediaStreamSource(stream)
 
-      //  console.log(this.context)
+        // gain node for input boost
+        this.gainNode = this.context.createGain()
+        this.gainNode.gain.value = this.inputGain
+        audio_stream.connect(this.gainNode)
+
+        // AnalyserNode for detailed spectrum (separate from Meyda)
+        this.analyser = this.context.createAnalyser()
+        this.analyser.fftSize = 128
+        this.analyser.smoothingTimeConstant = 0.8
+        this.gainNode.connect(this.analyser)
+        this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount)
+
         this.meyda = Meyda.createMeydaAnalyzer({
           audioContext: this.context,
-          source: audio_stream,
+          source: this.gainNode,
           featureExtractors: [
             'loudness',
-            //  'perceptualSpread',
-            //  'perceptualSharpness',
-            //  'spectralCentroid'
           ]
         })
       })
@@ -87,10 +101,18 @@ class Audio {
   }
 
   tick() {
+   // update detailed FFT for meter panel
+   if (this.analyser) {
+     this.analyser.getByteFrequencyData(this.frequencyData)
+   }
+
    if(this.meyda){
      var features = this.meyda.get()
      if(features && features !== null){
        this.vol = features.loudness.total
+       // approximate LUFS from Meyda loudness (smoothed)
+       var rawLufs = this.vol > 0 ? 20 * Math.log10(this.vol / 24) - 14 : -60
+       this.lufs = this.lufs * 0.9 + rawLufs * 0.1
        this.detectBeat(this.vol)
        // reduce loudness array to number of bins
        const reducer = (accumulator, currentValue) => accumulator + currentValue;
@@ -164,6 +186,40 @@ class Audio {
     this.max = max
     console.log('set max is deprecated')
   }
+  setGain (value) {
+    this.inputGain = value
+    if (this.gainNode) {
+      this.gainNode.gain.value = value
+    }
+  }
+
+  switchInput (deviceId) {
+    if (!this.context) return Promise.reject(new Error('No audio context'))
+    return window.navigator.mediaDevices.getUserMedia({
+      video: false,
+      audio: { deviceId: { exact: deviceId } }
+    }).then((stream) => {
+      if (this.stream) {
+        this.stream.getTracks().forEach(t => t.stop())
+      }
+      this.stream = stream
+      let source = this.context.createMediaStreamSource(stream)
+
+      // reconnect through gain node
+      if (this.gainNode) {
+        source.connect(this.gainNode)
+      } else if (this.analyser) {
+        source.connect(this.analyser)
+      }
+
+      this.meyda = Meyda.createMeydaAnalyzer({
+        audioContext: this.context,
+        source: this.gainNode || source,
+        featureExtractors: ['loudness']
+      })
+    })
+  }
+
   hide() {
     this.isDrawing = false
     this.canvas.style.display = 'none'

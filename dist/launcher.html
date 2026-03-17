@@ -105,6 +105,10 @@
     .btn.main { background: #153028; border-color: var(--accent); color: var(--accent); font-weight: 700; }
     .btn.stop { background: #2a0a0a; border-color: var(--danger); color: var(--danger); font-weight: 700; }
     .btn.stop:hover { background: #3a1010; border-color: #e55; color: #e55; }
+    .btn.rec { background: #1a1a1a; border-color: #666; color: #999; }
+    .btn.rec:hover { border-color: #888; color: #ccc; }
+    .btn.rec.recording { background: #2a0a0a; border-color: #e33; color: #e33; animation: rec-pulse 1.2s ease-in-out infinite; }
+    @keyframes rec-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
     #status {
       padding: 8px 10px;
       border-bottom: 1px solid var(--line);
@@ -247,6 +251,36 @@
       background: #0a0a0e; color: var(--muted); font-size: 12px;
     }
     #ddInfo { font-size: 11px; color: #555; }
+    #ddDebugLog {
+      display: none;
+      border-top: 1px solid var(--line);
+      background: #08080c;
+      max-height: 50vh;
+      overflow-y: auto;
+      padding: 6px 10px;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #888;
+    }
+    #ddDebugLog .log-ok { color: var(--accent); }
+    #ddDebugLog .log-err { color: var(--danger); }
+    #ddDebugLog .log-warn { color: #e8a320; }
+    #ddDebugLog .log-info { color: #888; }
+    #ddDebugLog .log-time { color: #555; margin-right: 6px; }
+    #ddDebugToggle { cursor: pointer; font-size: 11px; color: #555; text-decoration: underline; margin-left: auto; }
+    #audioMeterPanel {
+      display: none;
+      border-top: 1px solid var(--line);
+      background: #0a0a0e;
+      height: 80px;
+      position: relative;
+    }
+    #audioMeterCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
     #app.audience #panel { display: none; }
     #app.audience {
       grid-template-columns: 1fr;
@@ -270,6 +304,15 @@
   <div id="app">
     <div id="leftCol">
       <div id="stage"></div>
+      <div id="audioMeterPanel">
+        <canvas id="audioMeterCanvas"></canvas>
+        <div style="position:absolute;top:3px;left:4px;display:flex;align-items:center;gap:6px;z-index:1;">
+          <select id="audioInputSelect" style="max-width:180px;padding:2px 4px;border:1px solid #333;border-radius:3px;background:rgba(10,10,14,0.8);color:#888;font-size:9px;font-family:inherit;"></select>
+          <span style="font-size:9px;color:#555;">Gain</span>
+          <input type="range" id="audioGainSlider" min="0.1" max="10" step="0.1" value="1" style="width:80px;height:10px;accent-color:#0ff;">
+          <span id="audioGainVal" style="font-size:9px;color:#888;min-width:28px;">1.0x</span>
+        </div>
+      </div>
       <div class="h-splitter" id="hSplitter" title="Drag to resize preview"></div>
       <div id="controls">
         <div id="toolbar">
@@ -279,6 +322,8 @@
           <button id="saveBtn" class="btn">Save</button>
           <button id="saveAsBtn" class="btn">Save As</button>
           <button id="stopBtn" class="btn stop">Stop</button>
+          <button id="recordBtn" class="btn rec" title="Record canvas to MP4">● Rec</button>
+          <button id="batchRecordBtn" class="btn rec" title="Record all presets automatically">● Batch Rec</button>
           <button id="openNdiBtn" class="btn" style="display:none;">NDI Out: Off</button>
           <button id="fsOutBtn" class="btn" style="display:none;">Fullscreen Output</button>
           <button id="toggleCodeBtn" class="btn" style="display:none;">Audience Mode</button>
@@ -345,16 +390,23 @@
             <option value="cloud">Cloud</option>
           </select>
           <select id="ddModel" style="display:none;"></select>
-          <span style="font-size:12px;color:var(--muted);margin-right:6px;">Daydream Scope</span>
+          <span style="font-size:12px;color:var(--muted);margin-right:6px;">Scope</span>
           <button id="ddScopeStart" class="btn" style="padding:4px 8px;font-size:11px;">Start</button>
-          <button id="ddToggle" class="btn" style="padding:4px 8px;display:none;">Connect</button>
-          <input type="text" id="ddPrompt" placeholder="Prompt..." value="abstract fluid art, iridescent light" style="display:none;">
+          <select id="ddPipeline" title="Pipeline" style="padding:4px 6px;border:1px solid #222;border-radius:6px;background:#0a0a0e;color:var(--muted);font-size:11px;display:none;"></select>
+          <select id="ddLoraSelect" title="LoRA" style="padding:4px 6px;border:1px solid #222;border-radius:6px;background:#0a0a0e;color:var(--muted);font-size:11px;display:none;"></select>
+          <select id="ddPreprocessor" title="Preprocessor" style="padding:4px 6px;border:1px solid #222;border-radius:6px;background:#0a0a0e;color:var(--muted);font-size:11px;display:none;"></select>
+          <select id="ddPostprocessor" title="Postprocessor" style="padding:4px 6px;border:1px solid #222;border-radius:6px;background:#0a0a0e;color:var(--muted);font-size:11px;display:none;"></select>
+          <button id="ddLoadPipeline" class="btn" style="padding:4px 8px;font-size:11px;display:none;">Load</button>
+          <select id="ddScopePreset" style="display:none;"></select>
+          <button id="ddScopeLoadPreset" style="display:none;"></button>
+          <button id="ddToggle" class="btn" style="padding:4px 8px;display:none;">Connect Video</button>
+          <input type="text" id="ddPrompt" placeholder="Prompt..." value="abstract fluid art, iridescent light" style="display:none;flex:1;min-width:180px;">
           <button id="ddSend" class="btn" style="padding:4px 8px;display:none;">Send</button>
           <span id="ddInfo" style="font-size:12px;color:var(--muted);"></span>
-          <button id="ddScopeToggle" class="btn" style="padding:4px 8px;font-size:11px;display:none;" onclick="var f=document.getElementById('scopeFrame'),d=document.getElementById('scopeDivider'),v=f.style.display==='none'?'block':'none';f.style.display=v;d.style.display=v;">Show / Hide</button>
+          <a href="http://localhost:8000" target="_blank" class="btn" style="padding:4px 8px;font-size:11px;text-decoration:none;display:none;" id="ddScopeOpenTab">Scope UI</a>
+          <span id="ddDebugToggle">Log</span>
         </div>
-        <div id="scopeDivider" style="display:none;height:6px;cursor:row-resize;background:linear-gradient(180deg,transparent,#333,transparent);margin:2px 0;border-radius:3px;" title="Drag to resize"></div>
-        <iframe id="scopeFrame" src="http://localhost:8000" style="display:none;width:100%;height:600px;border:1px solid #222;border-radius:6px;background:#0a0a0e;"></iframe>
+        <div id="ddDebugLog"></div>
       </div>
     </div>
     <div class="v-splitter" id="vSplitter" title="Drag to resize"></div>
@@ -751,14 +803,230 @@
         window.a.setBins(4)
       }
 
-      function startAudio () {
+      var audioMeterStarted = false
+      function startAudio (showMeter) {
         ensureAudioStub()
         if (!window.a) return
         if (window.a.context && window.a.context.state === 'suspended') {
           window.a.context.resume().catch(function () {})
         }
         if (typeof window.a.show === 'function') window.a.show()
+        // only show meter panel on explicit user click, not auto-init
+        if (showMeter && !audioMeterStarted) {
+          audioMeterStarted = true
+          startAudioMeter()
+        }
         setStatus('Audio started (or stub active).', false)
+      }
+
+      // ---- Audio Meter Panel ----
+      var meterAnimId = null
+      var binColors = ['#ff4444', '#ff8833', '#aacc33', '#33ccaa', '#33aaee', '#cc44ff', '#ff44aa', '#ffcc33']
+
+      function populateAudioInputs () {
+        var sel = document.getElementById('audioInputSelect')
+        if (!sel) return
+        navigator.mediaDevices.enumerateDevices().then(function (devices) {
+          sel.innerHTML = ''
+          var audioInputs = devices.filter(function (d) { return d.kind === 'audioinput' })
+          audioInputs.forEach(function (d, i) {
+            var opt = document.createElement('option')
+            opt.value = d.deviceId
+            opt.textContent = d.label || ('Input ' + (i + 1))
+            sel.appendChild(opt)
+          })
+          // select current device if possible
+          var a = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
+          if (a && a.stream) {
+            var tracks = a.stream.getAudioTracks()
+            if (tracks.length > 0) {
+              var currentId = tracks[0].getSettings().deviceId
+              if (currentId) sel.value = currentId
+            }
+          }
+        })
+      }
+
+      function switchAudioInput (deviceId) {
+        var a = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
+        if (!a || !a.switchInput) return
+
+        a.switchInput(deviceId)
+          .then(function () {
+            setStatus('Audio input switched.', false)
+            populateAudioInputs()
+          })
+          .catch(function (err) {
+            setStatus('Audio input error: ' + err.message, true)
+          })
+      }
+
+      function startAudioMeter () {
+        var panel = document.getElementById('audioMeterPanel')
+        var canvas = document.getElementById('audioMeterCanvas')
+        if (!panel || !canvas) return
+        panel.style.display = 'block'
+
+        // populate input selector
+        populateAudioInputs()
+        var inputSel = document.getElementById('audioInputSelect')
+        if (inputSel) {
+          inputSel.addEventListener('change', function () {
+            switchAudioInput(this.value)
+          })
+        }
+
+        // gain slider
+        var gainSlider = document.getElementById('audioGainSlider')
+        var gainVal = document.getElementById('audioGainVal')
+        if (gainSlider) {
+          gainSlider.addEventListener('input', function () {
+            var val = parseFloat(this.value)
+            var a = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
+            if (a && a.setGain) a.setGain(val)
+            if (gainVal) gainVal.textContent = val.toFixed(1) + 'x'
+          })
+        }
+
+        var ctx = canvas.getContext('2d')
+        var dpr = window.devicePixelRatio || 1
+
+        function resizeCanvas () {
+          var rect = panel.getBoundingClientRect()
+          canvas.width = rect.width * dpr
+          canvas.height = rect.height * dpr
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+        }
+        resizeCanvas()
+        window.addEventListener('resize', resizeCanvas)
+
+        function drawMeter () {
+          meterAnimId = requestAnimationFrame(drawMeter)
+          // prefer hydra's real Audio object (has analyser), fall back to window.a stub
+          var a = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : window.a
+          if (!a) return
+
+          var w = canvas.width / dpr
+          var h = canvas.height / dpr
+          var spectrumH = h
+          ctx.clearRect(0, 0, w, h)
+
+          // -- Detailed FFT background (64 bins, log scale) --
+          // re-fetch frequency data each frame (analyser may init late due to async getUserMedia)
+          if (a.analyser && a.frequencyData) {
+            a.analyser.getByteFrequencyData(a.frequencyData)
+            var data = a.frequencyData
+            var binCount = data.length
+            var sampleRate = a.context ? a.context.sampleRate : 44100
+            var nyquist = sampleRate / 2
+            var minFreq = 20
+            var maxFreq = nyquist
+            var logMin = Math.log10(minFreq)
+            var logMax = Math.log10(maxFreq)
+
+            ctx.fillStyle = 'rgba(10, 58, 58, 0.7)'
+            for (var i = 0; i < binCount; i++) {
+              var freqLo = (i / binCount) * nyquist
+              var freqHi = ((i + 1) / binCount) * nyquist
+              if (freqHi < minFreq) continue
+              freqLo = Math.max(freqLo, minFreq)
+              var xLo = ((Math.log10(freqLo) - logMin) / (logMax - logMin)) * w
+              var xHi = ((Math.log10(freqHi) - logMin) / (logMax - logMin)) * w
+              var barW = Math.max(xHi - xLo, 1)
+              var barH = (data[i] / 255) * spectrumH
+              ctx.fillRect(xLo, spectrumH - barH, barW, barH)
+            }
+
+            // frequency labels
+            ctx.fillStyle = '#555'
+            ctx.font = '9px monospace'
+            ctx.textAlign = 'center'
+            var labels = [100, 200, 500, 1000, 2000, 5000, 10000, 20000]
+            var labelText = ['100', '200', '500', '1k', '2k', '5k', '10k', '20k']
+            for (var li = 0; li < labels.length; li++) {
+              if (labels[li] > nyquist) continue
+              var lx = ((Math.log10(labels[li]) - logMin) / (logMax - logMin)) * w
+              ctx.fillText(labelText[li], lx, spectrumH - 2)
+            }
+          }
+
+          // -- Hydra bins overlay --
+          if (a.fft && a.fft.length > 0 && a.frequencyData && a.analyser) {
+            var numBins = a.fft.length
+            var sRate = a.context ? a.context.sampleRate : 44100
+            var ny = sRate / 2
+            var fftLen = a.frequencyData.length
+            var spacing = Math.floor(fftLen / numBins)
+            var lMin = Math.log10(20)
+            var lMax = Math.log10(ny)
+
+            for (var bi = 0; bi < numBins; bi++) {
+              var fLo = (bi * spacing / fftLen) * ny
+              var fHi = ((bi + 1) * spacing / fftLen) * ny
+              fLo = Math.max(fLo, 20)
+              var x1 = ((Math.log10(fLo) - lMin) / (lMax - lMin)) * w
+              var x2 = ((Math.log10(fHi) - lMin) / (lMax - lMin)) * w
+              var val = Math.min(a.fft[bi], 1)
+              var bh = val * spectrumH
+
+              var color = binColors[bi % binColors.length]
+              ctx.fillStyle = color.replace(')', ', 0.35)').replace('rgb', 'rgba').replace('#', '')
+              // convert hex to rgba
+              var r = parseInt(color.slice(1, 3), 16)
+              var g = parseInt(color.slice(3, 5), 16)
+              var b = parseInt(color.slice(5, 7), 16)
+              ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ', 0.35)'
+              ctx.fillRect(x1, spectrumH - bh, x2 - x1, bh)
+
+              // bin border
+              ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ', 0.6)'
+              ctx.lineWidth = 1
+              ctx.strokeRect(x1, 0, x2 - x1, spectrumH)
+
+              // bin label
+              ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ', 0.8)'
+              ctx.font = '8px monospace'
+              ctx.textAlign = 'center'
+              var binLabel = ['kick', 'bass', 'mid', 'high', 'air', 'amp'][bi] || ('a' + bi)
+              ctx.fillText(binLabel, (x1 + x2) / 2, 10)
+            }
+          }
+
+          // -- LUFS readout (compact, bottom-right corner) --
+          // compute LUFS directly from analyser data as fallback
+          var lufsVal = -60
+          if (a.lufs !== undefined && a.lufs > -59) {
+            lufsVal = a.lufs
+          } else if (a.analyser && a.frequencyData) {
+            var sum = 0
+            for (var li = 0; li < a.frequencyData.length; li++) sum += a.frequencyData[li]
+            var avg = sum / a.frequencyData.length
+            if (avg > 0) {
+              lufsVal = 20 * Math.log10(avg / 255) * 1.5
+            }
+          }
+          lufsVal = Math.max(-60, Math.min(0, lufsVal))
+
+          // store for external access
+          if (!window._meterLufs) window._meterLufs = -60
+          window._meterLufs = window._meterLufs * 0.9 + lufsVal * 0.1
+          lufsVal = window._meterLufs
+
+          var lufsColor = '#33cc66'
+          if (lufsVal > -20) lufsColor = '#cccc33'
+          if (lufsVal > -10) lufsColor = '#cc4433'
+
+          ctx.fillStyle = 'rgba(10, 10, 14, 0.85)'
+          ctx.fillRect(w - 100, h - 20, 98, 18)
+          ctx.strokeStyle = '#333'
+          ctx.lineWidth = 1
+          ctx.strokeRect(w - 100, h - 20, 98, 18)
+          ctx.fillStyle = lufsColor
+          ctx.font = '11px monospace'
+          ctx.textAlign = 'right'
+          ctx.fillText(lufsVal.toFixed(1) + ' LUFS', w - 6, h - 6)
+        }
+        drawMeter()
       }
 
       // ---- Resolution / aspect ratio ----
@@ -1371,7 +1639,7 @@
       runAllBtn.addEventListener('click', cmRunAll)
       saveBtn.addEventListener('click', savePreset)
       saveAsBtn.addEventListener('click', savePresetAs)
-      startAudioBtn.addEventListener('click', startAudio)
+      startAudioBtn.addEventListener('click', function () { startAudio(true) })
       openOutBtn.addEventListener('click', openOutput)
       openNdiBtn.title = 'Click to toggle OBS NDI output. Shift+Click to set output name.'
       openNdiBtn.addEventListener('click', function (event) {
@@ -1390,6 +1658,367 @@
         }
         if (codeCh) codeCh.postMessage({ type: 'hydra-code', code: 'solid(0,0,0,1).out(o0); render(o0)' })
         setStatus('Stopped.', false)
+      })
+
+      // ---- Recording (raw RGBA frames → server ffmpeg → ProRes LT) ----
+      var recSessionId = null
+      var recFrameInterval = null
+      var recCopyCanvas = null
+      var recCopyCtx = null
+      var recordStartTime = null
+      var recordTimerInterval = null
+      var recordBtn = document.getElementById('recordBtn')
+      var recIsActive = false  // hard lock — prevents anything from changing presets
+      var REC_FPS = 16
+
+      function updateRecordTimer () {
+        if (!recordStartTime) return
+        var elapsed = Math.floor((Date.now() - recordStartTime) / 1000)
+        var min = String(Math.floor(elapsed / 60)).padStart(2, '0')
+        var sec = String(elapsed % 60).padStart(2, '0')
+        recordBtn.textContent = '■ ' + min + ':' + sec
+      }
+
+      // Hidden video element — plays the canvas stream (always readable, unlike WebGL canvas)
+      var recVideo = document.createElement('video')
+      recVideo.muted = true
+      recVideo.playsInline = true
+      recVideo.style.display = 'none'
+      document.body.appendChild(recVideo)
+
+      function ensureRecVideoPlaying () {
+        var stream = getCanvasStream()
+        if (!stream) return false
+        if (recVideo.srcObject !== stream) {
+          recVideo.srcObject = stream
+          recVideo.play().catch(function () {})
+        }
+        return true
+      }
+
+      // ---- Manual color transform (CSS filters can't be captured via canvas APIs) ----
+      // Applies brightness, contrast, saturation, hue-rotate directly to RGBA pixel data.
+      // Uses a combined 3x3 color matrix for efficiency.
+      function buildColorMatrix (hueDeg, satPct, brightPct, contrastPct) {
+        var b = brightPct / 100
+        var c = contrastPct / 100
+        var s = satPct / 100
+        var hRad = hueDeg * Math.PI / 180
+
+        // Brightness: scale RGB
+        // Contrast: (val - 0.5) * c + 0.5
+        // Combined: val * b * c - 0.5 * c + 0.5
+        var bc = b * c
+        var cOff = -0.5 * c + 0.5  // contrast offset (applied after matrix)
+
+        // Saturation matrix (ITU-R BT.709 luma)
+        var lr = 0.2126, lg = 0.7152, lb = 0.0722
+        // sat matrix: (1-s)*luma + s*identity
+        var sr = (1 - s) * lr, sg = (1 - s) * lg, sb = (1 - s) * lb
+
+        // Hue rotation matrix (rotate in RGB space around gray axis)
+        var cosH = Math.cos(hRad), sinH = Math.sin(hRad)
+        // Standard hue rotation matrix
+        var h00 = cosH + (1 - cosH) / 3
+        var h01 = (1 - cosH) / 3 - Math.sqrt(1/3) * sinH
+        var h02 = (1 - cosH) / 3 + Math.sqrt(1/3) * sinH
+        var h10 = (1 - cosH) / 3 + Math.sqrt(1/3) * sinH
+        var h11 = cosH + (1 - cosH) / 3
+        var h12 = (1 - cosH) / 3 - Math.sqrt(1/3) * sinH
+        var h20 = (1 - cosH) / 3 - Math.sqrt(1/3) * sinH
+        var h21 = (1 - cosH) / 3 + Math.sqrt(1/3) * sinH
+        var h22 = cosH + (1 - cosH) / 3
+
+        // Combined: hue * saturation, then brightness*contrast scaling
+        // saturation matrix
+        var s00 = sr + s, s01 = sg,     s02 = sb
+        var s10 = sr,     s11 = sg + s,  s12 = sb
+        var s20 = sr,     s21 = sg,      s22 = sb + s
+
+        // multiply hue * sat
+        var m00 = (h00*s00 + h01*s10 + h02*s20) * bc
+        var m01 = (h00*s01 + h01*s11 + h02*s21) * bc
+        var m02 = (h00*s02 + h01*s12 + h02*s22) * bc
+        var m10 = (h10*s00 + h11*s10 + h12*s20) * bc
+        var m11 = (h10*s01 + h11*s11 + h12*s21) * bc
+        var m12 = (h10*s02 + h11*s12 + h12*s22) * bc
+        var m20 = (h20*s00 + h21*s10 + h22*s20) * bc
+        var m21 = (h20*s01 + h21*s11 + h22*s21) * bc
+        var m22 = (h20*s02 + h21*s12 + h22*s22) * bc
+
+        return { m00:m00, m01:m01, m02:m02, m10:m10, m11:m11, m12:m12, m20:m20, m21:m21, m22:m22, off: cOff * 255 }
+      }
+
+      function applyColorMatrix (pixels, mat) {
+        var d = pixels.data
+        var off = mat.off
+        for (var i = 0, len = d.length; i < len; i += 4) {
+          var r = d[i], g = d[i+1], b = d[i+2]
+          d[i]   = Math.max(0, Math.min(255, mat.m00*r + mat.m01*g + mat.m02*b + off))
+          d[i+1] = Math.max(0, Math.min(255, mat.m10*r + mat.m11*g + mat.m12*b + off))
+          d[i+2] = Math.max(0, Math.min(255, mat.m20*r + mat.m21*g + mat.m22*b + off))
+        }
+      }
+
+      // Check if filters are at default (no transform needed)
+      function filtersAreDefault () {
+        return parseInt(hueCtrl.value, 10) === 0 &&
+               parseInt(satCtrl.value, 10) === 100 &&
+               parseInt(brightCtrl.value, 10) === 100 &&
+               parseInt(contrastCtrl.value, 10) === 100
+      }
+
+      function captureRawFrame () {
+        if (!hydraCanvas || !ensureRecVideoPlaying()) return null
+        var w = hydraCanvas.width
+        var h = hydraCanvas.height
+        if (!recCopyCanvas) {
+          recCopyCanvas = document.createElement('canvas')
+          recCopyCtx = recCopyCanvas.getContext('2d', { willReadFrequently: true })
+        }
+        if (recCopyCanvas.width !== w) recCopyCanvas.width = w
+        if (recCopyCanvas.height !== h) recCopyCanvas.height = h
+        recCopyCtx.drawImage(recVideo, 0, 0, w, h)
+
+        var imageData = recCopyCtx.getImageData(0, 0, w, h)
+
+        // Apply CSS filter effects as pixel math (CSS filters can't be captured via canvas APIs)
+        if (!filtersAreDefault()) {
+          var mat = buildColorMatrix(
+            parseInt(hueCtrl.value, 10),
+            parseInt(satCtrl.value, 10),
+            parseInt(brightCtrl.value, 10),
+            parseInt(contrastCtrl.value, 10)
+          )
+          applyColorMatrix(imageData, mat)
+        }
+
+        return imageData.data.buffer
+      }
+
+      var recWs = null
+
+      function startRecording (folder) {
+        if (!hydraCanvas) { setStatus('No canvas to record', true); return Promise.reject(new Error('No canvas')) }
+        // Clear stale state
+        clearInterval(recFrameInterval)
+        clearInterval(recordTimerInterval)
+        recFrameInterval = null
+        recordTimerInterval = null
+        recordStartTime = null
+        if (recWs) { try { recWs.close() } catch (e) {} recWs = null }
+        recSessionId = null
+
+        var body = { fps: REC_FPS, width: hydraCanvas.width, height: hydraCanvas.height }
+        if (folder) body.folder = folder
+        return fetch('/api/recordings/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).then(function (r) { return r.json() })
+          .then(function (data) {
+            if (data.error) { setStatus('Record start failed: ' + data.error, true); return Promise.reject(new Error(data.error)) }
+            recSessionId = data.sessionId
+            recIsActive = true
+
+            var wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:'
+            recWs = new WebSocket(wsProto + '//' + location.host + '/ws/recording/' + recSessionId)
+            recWs.binaryType = 'arraybuffer'
+
+            recordStartTime = Date.now()
+            recordBtn.classList.add('recording')
+            updateRecordTimer()
+            recordTimerInterval = setInterval(updateRecordTimer, 1000)
+            setStatus('Recording ProRes LT (' + hydraCanvas.width + 'x' + hydraCanvas.height + ' @ ' + REC_FPS + 'fps)...', false)
+
+            var frameMs = 1000 / REC_FPS
+            recFrameInterval = setInterval(function () {
+              if (!recSessionId || !recWs || recWs.readyState !== 1) return
+              var buf = captureRawFrame()
+              if (buf) recWs.send(buf)
+            }, frameMs)
+
+            return data
+          })
+      }
+
+      function stopRecording () {
+        recIsActive = false
+        clearInterval(recFrameInterval)
+        clearInterval(recordTimerInterval)
+        recFrameInterval = null
+        recordBtn.textContent = '● Rec'
+        recordBtn.classList.remove('recording')
+        recordStartTime = null
+        if (recWs) { try { recWs.close() } catch (e) {} recWs = null }
+
+        if (!recSessionId) return Promise.resolve({})
+        var sid = recSessionId
+        recSessionId = null
+        setStatus('Finalizing ProRes LT...', false)
+        return fetch('/api/recordings/stop/' + sid, { method: 'POST' })
+          .then(function (r) { return r.json() })
+          .then(function (data) {
+            if (data.error) {
+              setStatus('Finalize failed: ' + data.error, true)
+            } else {
+              var sizeMB = (data.size / (1024 * 1024)).toFixed(1)
+              setStatus('Saved: ' + data.saved + ' (' + sizeMB + ' MB ProRes LT)', false)
+            }
+            return data
+          })
+      }
+
+      recordBtn.addEventListener('click', function () {
+        if (recSessionId) {
+          stopRecording()
+        } else {
+          startRecording()
+        }
+      })
+
+      // ---- Batch Record All Presets ----
+      var batchRecordBtn = document.getElementById('batchRecordBtn')
+      var batchRecording = false
+      var batchAbort = false
+
+      // Returns a promise that resolves when recording + ffmpeg finalize completes
+      function recordClipToServer (durationMs, folder) {
+        return startRecording(folder).then(function () {
+          return new Promise(function (resolve) { setTimeout(resolve, durationMs) })
+        }).then(function () {
+          return stopRecording()
+        })
+      }
+
+      // Helper: load, run, and wait for a single preset by index
+      function loadAndRunPreset (entry) {
+        return fetch('/api/presets/' + entry.file, { cache: 'no-store' })
+          .then(function (r) { return r.json() })
+          .then(function (data) {
+            var code = parsePresetMarkdown(data.content)
+            var filters = parsePresetFilters(data.content)
+
+            // Update tracking
+            currentPresetFile = entry.file
+            currentPresetName = entry.name || entry.file.replace(/\.md$/, '')
+            localStorage.setItem(STORAGE_PRESET_FILE, currentPresetFile)
+            localStorage.setItem(STORAGE_PRESET_NAME, currentPresetName)
+            highlightActivePreset()
+
+            // Run it
+            cleanupSources()
+            if (audioBootstrapCode) hydra.eval(audioBootstrapCode)
+            hydra.eval(code)
+            if (filters) applyFilterState(filters)
+          })
+      }
+
+      // Helper: wait ms
+      function wait (ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms) })
+      }
+
+      async function batchRecordAllPresets () {
+        // If already running, abort
+        if (batchRecording) {
+          batchAbort = true
+          setStatus('Batch record: stopping after current clip...', false)
+          return
+        }
+
+        // Stop autoplay if it's running — it will fight us for preset control
+        if (autoplayActive) stopAutoplay()
+
+        // Fetch preset list once upfront
+        var presetRes = await fetch('/api/presets', { cache: 'no-store' })
+        var presets = await presetRes.json()
+        if (!presets.length) { setStatus('No presets found', true); return }
+
+        // Find start index from currently active preset
+        var startIdx = 0
+        if (currentPresetFile) {
+          for (var si = 0; si < presets.length; si++) {
+            if (presets[si].file === currentPresetFile) { startIdx = si; break }
+          }
+        }
+
+        var total = presets.length - startIdx
+        var startName = presets[startIdx].name || presets[startIdx].file
+        if (!confirm('Batch record ' + total + ' presets starting from "' + startName + '"?')) return
+
+        // Lock state
+        batchRecording = true
+        batchAbort = false
+        batchRecordBtn.textContent = '■ Stop Batch'
+        batchRecordBtn.classList.add('recording')
+
+        // Create batch folder
+        var bd = new Date()
+        var batchFolder = 'batch-' + bd.getFullYear() +
+          String(bd.getMonth() + 1).padStart(2, '0') +
+          String(bd.getDate()).padStart(2, '0') + '_' +
+          String(bd.getHours()).padStart(2, '0') +
+          String(bd.getMinutes()).padStart(2, '0') +
+          String(bd.getSeconds()).padStart(2, '0')
+
+        var SETTLE_TIME = 3000
+        var CLIP_LENGTH = 5200
+        var completed = 0
+
+        for (var i = startIdx; i < presets.length; i++) {
+          if (batchAbort) break
+          var entry = presets[i]
+          var label = entry.name || entry.file
+          var clipNum = i - startIdx + 1
+
+          // Step 1: Load and run preset
+          setStatus('Batch [' + clipNum + '/' + total + '] Loading: ' + label, false)
+          try {
+            await loadAndRunPreset(entry)
+          } catch (err) {
+            setStatus('Batch [' + clipNum + '/' + total + '] Load error: ' + err.message, true)
+            await wait(1000)
+            continue
+          }
+
+          // Step 2: Wait for preset to settle
+          if (batchAbort) break
+          setStatus('Batch [' + clipNum + '/' + total + '] Settling: ' + label, false)
+          await wait(SETTLE_TIME)
+
+          // Step 3: Record
+          if (batchAbort) break
+          setStatus('Batch [' + clipNum + '/' + total + '] Recording: ' + label, false)
+          try {
+            var result = await recordClipToServer(CLIP_LENGTH, batchFolder)
+            if (result && result.saved) {
+              completed++
+              setStatus('Batch [' + clipNum + '/' + total + '] Saved: ' + result.saved, false)
+            }
+          } catch (err) {
+            setStatus('Batch [' + clipNum + '/' + total + '] Record error: ' + err.message, true)
+          }
+
+          // Step 4: Brief pause before next
+          await wait(500)
+        }
+
+        // Done
+        batchRecording = false
+        batchAbort = false
+        batchRecordBtn.textContent = '● Batch Rec'
+        batchRecordBtn.classList.remove('recording')
+
+        if (completed > 0) {
+          setStatus('Batch done — ' + completed + ' clips in recordings/' + batchFolder, false)
+        } else {
+          setStatus('Batch done — no clips saved', true)
+        }
+      }
+
+      batchRecordBtn.addEventListener('click', function () {
+        batchRecordAllPresets()
       })
 
       // Hydra editor-style shortcuts (from Hydra README)
@@ -1534,6 +2163,7 @@
 
       function autoplayLoadPreset (index) {
         if (!autoplayPresetList.length) return
+        if (recIsActive || batchRecording) return // never change presets during recording
         autoplayIndex = index % autoplayPresetList.length
         var entry = autoplayPresetList[autoplayIndex]
         presetsEl.querySelectorAll('.presetBtn').forEach(function (b, i) {
@@ -1554,6 +2184,7 @@
       function autoplayOnLinkBeat (beat) {
         linkBeat = beat
         if (!autoplayActive || autoplayModeEl.value !== 'bars') return
+        if (batchRecording) return // don't change presets during batch recording
         var totalBars = getAutoplayBars()
         var totalBeats = totalBars * 4
         var elapsed = beat - linkStartBeat
@@ -1582,6 +2213,7 @@
         autoplayStartTime = Date.now()
         if (autoplayTimer) clearTimeout(autoplayTimer)
         autoplayTimer = setTimeout(function () {
+          if (!autoplayActive) return
           autoplayLoadPreset(autoplayIndex + 1)
           if (autoplayActive) autoplayScheduleTime()
         }, duration)
@@ -1607,6 +2239,7 @@
         updateAutoplayBpmDisplay()
         if (autoplayTimer) clearTimeout(autoplayTimer)
         autoplayTimer = setTimeout(function () {
+          if (!autoplayActive) return
           autoplayLoadPreset(autoplayIndex + 1)
           if (autoplayActive) autoplayScheduleBars()
         }, duration)
@@ -1718,6 +2351,25 @@
       var ddVideo = null
       var ddCanvasStream = null
 
+      // ---- Debug log panel ----
+      var ddLogEl = document.getElementById('ddDebugLog')
+      var ddLogToggleEl = document.getElementById('ddDebugToggle')
+      var ddLogStartTime = Date.now()
+      function ddLog (msg, level) {
+        level = level || 'info'
+        var elapsed = ((Date.now() - ddLogStartTime) / 1000).toFixed(1)
+        var line = document.createElement('div')
+        line.innerHTML = '<span class="log-time">+' + elapsed + 's</span><span class="log-' + level + '">' + msg + '</span>'
+        ddLogEl.appendChild(line)
+        ddLogEl.scrollTop = ddLogEl.scrollHeight
+        console.log('[Scope ' + level + ' +' + elapsed + 's] ' + msg)
+      }
+      ddLogToggleEl.addEventListener('click', function () {
+        var visible = ddLogEl.style.display !== 'none'
+        ddLogEl.style.display = visible ? 'none' : 'block'
+        ddLogToggleEl.textContent = visible ? 'Log' : 'Hide Log'
+      })
+
       var ddCloudModels = [
         { value: 'stabilityai/sdxl-turbo', label: 'SDXL Turbo' },
         { value: 'stabilityai/sd-turbo', label: 'SD Turbo' },
@@ -1761,30 +2413,292 @@
 
       // Scope start/stop button
       var ddStartBtn = document.getElementById('ddScopeStart')
-      var ddToggleBtn = document.getElementById('ddScopeToggle')
-      var ddScopeFrame = document.getElementById('scopeFrame')
-      var ddScopeDivider = document.getElementById('scopeDivider')
+      var ddToggleBtn = null // iframe removed — Scope UI opens in separate tab
+      var ddScopeFrame = null
+      var ddScopeDivider = null
+
+      var ddPresetSelect = document.getElementById('ddScopePreset')
+      var ddLoadPresetBtn = document.getElementById('ddScopeLoadPreset')
+      var ddScopePresets = []
+
+      // ---- Pipeline + LoRA dropdowns ----
+      var ddPipelineSelect = document.getElementById('ddPipeline')
+      var ddLoraSelect = document.getElementById('ddLoraSelect')
+      var ddPreprocessorSelect = document.getElementById('ddPreprocessor')
+      var ddPostprocessorSelect = document.getElementById('ddPostprocessor')
+      var ddLoadPipelineBtn = document.getElementById('ddLoadPipeline')
+
+      function ddFetchPipelinesAndLoras () {
+        // Known Scope pipelines — the API only returns locally-installed ones,
+        // but Scope UI shows all built-in pipelines. Hardcode the registry.
+        var knownMain = [
+          { id: 'krea-realtime-video', name: 'Krea Realtime Video' },
+          { id: 'streamdiffusionv2', name: 'StreamDiffusionV2' },
+          { id: 'longlive', name: 'LongLive' },
+          { id: 'reward-forcing', name: 'RewardForcing' },
+          { id: 'memflow', name: 'MemFlow' },
+          { id: 'passthrough', name: 'Passthrough' }
+        ]
+        var knownPre = [
+          { id: 'scribble', name: 'Scribble' },
+          { id: 'gray', name: 'Grayscale' },
+          { id: 'optical-flow', name: 'Optical Flow' },
+          { id: 'video-depth-anything', name: 'Video Depth Anything' }
+        ]
+        var knownPost = [
+          { id: 'rife', name: 'RIFE' }
+        ]
+
+        ddPipelineSelect.innerHTML = ''
+        knownMain.forEach(function (p) {
+          var opt = document.createElement('option')
+          opt.value = p.id
+          opt.textContent = p.name
+          if (p.id === 'krea-realtime-video') opt.selected = true
+          ddPipelineSelect.appendChild(opt)
+        })
+
+        ddPreprocessorSelect.innerHTML = '<option value="">No Preprocessor</option>'
+        knownPre.forEach(function (p) {
+          var opt = document.createElement('option')
+          opt.value = p.id
+          opt.textContent = p.name
+          ddPreprocessorSelect.appendChild(opt)
+        })
+
+        ddPostprocessorSelect.innerHTML = '<option value="">No Postprocessor</option>'
+        knownPost.forEach(function (p) {
+          var opt = document.createElement('option')
+          opt.value = p.id
+          opt.textContent = p.name
+          ddPostprocessorSelect.appendChild(opt)
+        })
+
+        // Also fetch from API to add any custom/new pipelines not in our list
+        fetch('/api/scope/api/v1/pipelines/schemas').then(function (r) { return r.json() }).then(function (data) {
+          var pipelines = data.pipelines || data
+          var knownIds = knownMain.concat(knownPre).concat(knownPost).map(function (p) { return p.id })
+          Object.keys(pipelines).forEach(function (pid) {
+            if (knownIds.indexOf(pid) !== -1) return // already listed
+            var p = pipelines[pid]
+            var usage = p.usage || []
+            var opt = document.createElement('option')
+            opt.value = pid
+            opt.textContent = p.name || pid
+            if (usage.includes('preprocessor')) ddPreprocessorSelect.appendChild(opt)
+            else if (usage.includes('postprocessor')) ddPostprocessorSelect.appendChild(opt)
+            else ddPipelineSelect.appendChild(opt)
+          })
+        }).catch(function () {})
+
+        ddPipelineSelect.style.display = ''
+        ddPreprocessorSelect.style.display = ''
+        ddPostprocessorSelect.style.display = ''
+
+        // Fetch installed LoRAs
+        fetch('/api/scope/api/v1/loras').then(function (r) { return r.json() }).then(function (data) {
+          var loras = data.lora_files || []
+          ddLoraSelect.innerHTML = '<option value="">No LoRA</option>'
+          loras.forEach(function (l) {
+            var opt = document.createElement('option')
+            opt.value = l.path || l.name || l
+            opt.textContent = l.name || l.path || l
+            ddLoraSelect.appendChild(opt)
+          })
+          ddLoraSelect.style.display = ''
+        }).catch(function () {})
+
+        ddLoadPipelineBtn.style.display = ''
+      }
+
+      // Build pipeline load payload from current dropdown selections
+      function ddBuildPipelinePayload () {
+        var pipelineId = ddPipelineSelect.value
+        var loraPath = ddLoraSelect.value
+        var preProc = ddPreprocessorSelect.value
+        var postProc = ddPostprocessorSelect.value
+        var pipelineIds = []
+        if (preProc) pipelineIds.push(preProc)
+        pipelineIds.push(pipelineId)
+        if (postProc) pipelineIds.push(postProc)
+        var loadParams = { width: 576, height: 320, vace_enabled: true, vace_context_scale: 1 }
+        if (loraPath) {
+          loadParams.loras = [{ path: loraPath, scale: 1.0 }]
+        } else {
+          loadParams.loras = []
+        }
+        var label = pipelineId
+        if (preProc) label = preProc + ' → ' + label
+        if (postProc) label += ' → ' + postProc
+        if (loraPath) label += ' + LoRA'
+        return { pipeline_ids: pipelineIds, load_params: loadParams, label: label }
+      }
+
+      // Load pipeline and return a promise that resolves when status is "loaded"
+      function ddLoadPipeline () {
+        var payload = ddBuildPipelinePayload()
+        ddLog('Loading pipeline: ' + payload.label)
+        ddLog('  pipeline_ids: ' + JSON.stringify(payload.pipeline_ids))
+        ddLog('  load_params: ' + JSON.stringify(payload.load_params))
+        ddLoadPipelineBtn.textContent = 'Loading...'
+        ddLoadPipelineBtn.disabled = true
+        ddInfo.textContent = 'Loading ' + payload.label + '...'
+        return fetch('/api/scope/api/v1/pipeline/load', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pipeline_ids: payload.pipeline_ids, load_params: payload.load_params })
+        }).then(function (r) {
+          ddLog('Pipeline load response: HTTP ' + r.status)
+          return r.json()
+        }).then(function (d) {
+          ddLog('Pipeline load accepted: ' + JSON.stringify(d), 'ok')
+          // Poll pipeline status until loaded (or error/timeout)
+          return ddPollPipelineStatus()
+        }).then(function () {
+          ddLoadPipelineBtn.textContent = 'Load'
+          ddLoadPipelineBtn.disabled = false
+        }).catch(function (err) {
+          ddLog('Pipeline load FAILED: ' + err.message, 'err')
+          ddLoadPipelineBtn.textContent = 'Load'
+          ddLoadPipelineBtn.disabled = false
+          ddInfo.textContent = 'Load error: ' + err.message
+          throw err
+        })
+      }
+
+      // Poll /api/v1/pipeline/status until loaded, error, or timeout
+      function ddPollPipelineStatus () {
+        var maxPolls = 300 // 5 minutes max — model loading on remote GPU can be slow
+        var pollCount = 0
+        var lastStage = ''
+        return new Promise(function (resolve, reject) {
+          function poll () {
+            pollCount++
+            fetch('/api/scope/api/v1/pipeline/status').then(function (r) { return r.json() }).then(function (ps) {
+              var status = ps.status || 'unknown'
+              var stage = ps.loading_stage || ''
+              // Log when stage changes, or every 10s
+              if (stage !== lastStage) {
+                ddLog('Pipeline: ' + status + (stage ? ' — ' + stage : ''), 'warn')
+                ddSetState('connecting', stage || ('Loading pipeline... (' + pollCount + 's)'))
+                lastStage = stage
+              } else if (pollCount % 10 === 0) {
+                ddLog('Pipeline: still ' + status + (stage ? ' — ' + stage : '') + ' (' + pollCount + 's)')
+                ddSetState('connecting', (stage || 'Loading pipeline') + '... (' + pollCount + 's)')
+              }
+              if (status === 'loaded') {
+                ddLog('Pipeline LOADED' + (ps.pipeline_id ? ' (' + ps.pipeline_id + ')' : ''), 'ok')
+                ddInfo.textContent = 'Pipeline loaded'
+                resolve()
+              } else if (status === 'error') {
+                ddLog('Pipeline ERROR: ' + (ps.error || JSON.stringify(ps)), 'err')
+                reject(new Error('Pipeline load error: ' + (ps.error || 'unknown')))
+              } else if (pollCount >= maxPolls) {
+                ddLog('Pipeline load TIMEOUT after ' + Math.round(maxPolls / 60) + ' min', 'err')
+                reject(new Error('Pipeline load timeout'))
+              } else {
+                setTimeout(poll, 1000)
+              }
+            }).catch(function (err) {
+              // Cloud proxy timeouts are normal during model loading — keep polling
+              if (pollCount % 5 === 0) {
+                ddLog('Pipeline status poll error: ' + err.message + ' (cloud may be busy, retrying...)', 'warn')
+              }
+              setTimeout(poll, 2000) // slower retry on errors
+            })
+          }
+          poll()
+        })
+      }
+
+      ddLoadPipelineBtn.addEventListener('click', function () {
+        ddLogEl.style.display = 'block'
+        ddLogToggleEl.textContent = 'Hide Log'
+        ddLoadPipeline().catch(function () {})
+      })
+
+      function ddLoadScopePresets () {
+        // Old scope-presets.json system — replaced by pipeline + LoRA dropdowns
+        fetch('/api/scope/presets').then(function (r) { return r.json() }).then(function (presets) {
+          ddScopePresets = presets
+          // Keep data loaded but don't show the old dropdown
+          if (false && presets.length) {
+            ddPresetSelect.style.display = ''
+            ddLoadPresetBtn.style.display = ''
+          }
+        }).catch(function () {})
+      }
+
+      ddLoadPresetBtn.addEventListener('click', function () {
+        var idx = parseInt(ddPresetSelect.value, 10)
+        var preset = ddScopePresets[idx]
+        if (!preset) return
+        ddLoadPresetBtn.textContent = 'Loading...'
+        ddLoadPresetBtn.disabled = true
+        ddInfo.textContent = 'Loading pipeline: ' + preset.name
+        fetch('/api/scope/preset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(preset)
+        }).then(function (r) { return r.json() }).then(function (d) {
+          ddLoadPresetBtn.textContent = 'Load Pipeline'
+          ddLoadPresetBtn.disabled = false
+          if (d.error) {
+            ddInfo.textContent = 'Error: ' + d.error
+          } else {
+            ddInfo.textContent = 'Pipeline loading — check Scope UI'
+          }
+        }).catch(function (err) {
+          ddLoadPresetBtn.textContent = 'Load Pipeline'
+          ddLoadPresetBtn.disabled = false
+          ddInfo.textContent = 'Error: ' + err.message
+        })
+      })
 
       function ddShowScope () {
-        ddScopeFrame.src = 'http://localhost:8000'
-        ddScopeFrame.style.display = 'block'
-        ddScopeDivider.style.display = 'block'
-        ddToggleBtn.style.display = ''
         ddStartBtn.textContent = 'Running'
         ddStartBtn.className = 'btn main'
         ddStartBtn.disabled = true
-        ddSetState('on', '')
+        document.getElementById('ddScopeOpenTab').style.display = ''
+        ddToggle.style.display = ''
+        // Show prompt input when Scope is running
+        ddPromptEl.style.display = ''
+        ddSend.style.display = ''
+        ddFetchPipelinesAndLoras()
+        ddLoadScopePresets()
         // Auto-connect WebRTC to get AI video into s0
         if (!ddActive) {
+          ddLog('Scope healthy — auto-connecting WebRTC', 'ok')
           ddModeEl.value = 'scope'
-          setTimeout(function () { ddConnectScope() }, 1000)
+          ddSetState('connecting', 'Connecting video feed...')
+          ddConnectScope()
         }
       }
 
+      var ddHealthRetries = 0
       function ddCheckAndShowScope () {
+        ddLog('Checking Scope health...')
         fetch('/api/scope/health').then(function (r) { return r.json() }).then(function (d) {
-          if (d.running) ddShowScope()
-        }).catch(function () {})
+          if (d.running) {
+            ddLog('Scope is running', 'ok')
+            ddHealthRetries = 0
+            ddShowScope()
+          } else {
+            ddLog('Scope not ready: ' + JSON.stringify(d), 'warn')
+            ddHealthRetries++
+            if (ddHealthRetries < 30) {
+              ddLog('Retrying in 5s... (' + ddHealthRetries + '/30)')
+              setTimeout(ddCheckAndShowScope, 5000)
+            }
+          }
+        }).catch(function (err) {
+          ddLog('Scope unreachable: ' + (err.message || 'timeout') + ' (may be loading a model)', 'warn')
+          ddHealthRetries++
+          if (ddHealthRetries < 30) {
+            ddLog('Retrying in 5s... (' + ddHealthRetries + '/30)')
+            setTimeout(ddCheckAndShowScope, 5000)
+          }
+        })
       }
 
       ddStartBtn.addEventListener('click', function () {
@@ -1818,11 +2732,11 @@
         if (state === 'on') {
           ddToggle.textContent = 'Disconnect'
           ddToggle.className = 'btn stop'
+          ddPromptEl.style.display = ''
           ddSend.style.display = ''
         } else {
-          ddToggle.textContent = 'Connect'
+          ddToggle.textContent = 'Connect Video'
           ddToggle.className = 'btn'
-          ddSend.style.display = 'none'
         }
       }
 
@@ -1955,48 +2869,139 @@
       // ---- Scope WebRTC (bidirectional: send canvas + receive AI output) ----
       function ddConnectScope () {
         if (ddActive) return
+        ddLogStartTime = Date.now()
+        ddLogEl.innerHTML = ''
+        ddLogEl.style.display = 'block'
+        ddLogToggleEl.textContent = 'Hide Log'
+        ddLog('Starting Scope connection sequence...')
         ddSetState('connecting', 'Connecting to Scope...')
         var prompt = ddPromptEl.value || 'abstract fluid art'
-        // Get ICE servers from Scope
-        fetch('/api/scope/api/v1/webrtc/ice-servers').then(function (r) { return r.json() }).then(function (iceData) {
+        ddLog('Prompt: "' + prompt + '"')
+
+        // Step 0: Check cloud + pipeline status
+        ddLog('Step 0: Checking cloud and pipeline status...')
+        fetch('/api/scope/api/v1/cloud/status').then(function (r) { return r.json() }).then(function (cs) {
+          var isCloud = cs.connected === true
+          ddLog('Cloud: ' + (isCloud ? 'connected (session ' + (cs.connection_id || '?') + ')' : 'not connected (local mode)'), isCloud ? 'ok' : 'info')
+          if (isCloud) {
+            ddLog('  WebRTC to cloud: ' + (cs.webrtc_connected ? 'yes' : 'no'))
+            if (cs.last_close_reason) ddLog('  Last close: ' + cs.last_close_reason, 'warn')
+          }
+          return isCloud
+        }).catch(function () {
+          ddLog('Cloud status check failed — assuming local mode')
+          return false
+        }).then(function (isCloud) {
+          return fetch('/api/scope/api/v1/pipeline/status').then(function (r) { return r.json() }).then(function (ps) {
+            var status = ps.status || 'unknown'
+            ddLog('Pipeline: ' + status + (ps.pipeline_id ? ' (' + ps.pipeline_id + ')' : '') + (ps.loading_stage ? ' — ' + ps.loading_stage : ''), status === 'loaded' ? 'ok' : 'warn')
+            if (status === 'loaded') return Promise.resolve()
+            if (status === 'loading') {
+              ddLog('Pipeline is loading — waiting...', 'warn')
+              ddSetState('connecting', 'Waiting for pipeline to load...')
+              return ddPollPipelineStatus()
+            }
+            if (isCloud) {
+              ddLog('Cloud mode — sending load request (may take a while on cold start)...', 'warn')
+              ddSetState('connecting', 'Loading pipeline on cloud GPU...')
+              return ddLoadPipeline().catch(function (loadErr) {
+                ddLog('Load request failed: ' + loadErr.message + ' — cloud may still be loading, polling...', 'warn')
+                ddLog('TIP: load the pipeline from Scope UI (localhost:8000) if stuck', 'warn')
+                ddSetState('connecting', 'Waiting for cloud pipeline...')
+                return ddPollPipelineStatus()
+              })
+            }
+            ddLog('Local mode — loading pipeline...')
+            ddSetState('connecting', 'Loading pipeline...')
+            return ddLoadPipeline()
+          }).catch(function (statusErr) {
+            ddLog('Pipeline status unavailable: ' + statusErr.message, 'warn')
+            ddLog('Cloud GPU may be busy — polling until ready...', 'warn')
+            ddSetState('connecting', 'Waiting for cloud GPU...')
+            return ddPollPipelineStatus()
+          })
+        }).then(function () {
+          ddLog('Pipeline ready — proceeding with WebRTC', 'ok')
+          return ddConnectScopeWebRTC(prompt)
+        }).catch(function (err) {
+          ddLog('CONNECTION FAILED: ' + (err.message || err), 'err')
+          ddSetState('err', err.message || 'Scope connection failed')
+          ddDisconnect()
+        })
+      }
+
+      function ddConnectScopeWebRTC (prompt) {
+        // Step 1: Get ICE servers
+        ddLog('Step 1: Fetching ICE servers from /api/scope/api/v1/webrtc/ice-servers')
+        return fetch('/api/scope/api/v1/webrtc/ice-servers').then(function (r) {
+          ddLog('ICE servers response: HTTP ' + r.status)
+          return r.json()
+        }).then(function (iceData) {
           var iceServers = iceData.iceServers || [{ urls: 'stun:stun.l.google.com:19302' }]
+          ddLog('ICE servers: ' + JSON.stringify(iceServers), 'ok')
+
+          // Step 2: Create RTCPeerConnection
+          ddLog('Step 2: Creating RTCPeerConnection')
           ddScopePc = new RTCPeerConnection({ iceServers: iceServers })
+
           // Add canvas stream tracks (send to Scope)
           var stream = ddGetCanvasStream()
           if (stream) {
-            stream.getTracks().forEach(function (t) {
+            var tracks = stream.getTracks()
+            ddLog('Canvas stream: ' + tracks.length + ' track(s) — ' + tracks.map(function (t) { return t.kind + ' ' + t.readyState }).join(', '), 'ok')
+            tracks.forEach(function (t) {
               var sender = ddScopePc.addTrack(t, stream)
-              // Force VP8 codec (Scope requirement)
               var transceiver = ddScopePc.getTransceivers().find(function (tr) { return tr.sender === sender })
               if (transceiver) {
                 var codecs = RTCRtpReceiver.getCapabilities('video').codecs.filter(function (c) {
                   return c.mimeType.toLowerCase() === 'video/vp8'
                 })
-                if (codecs.length) transceiver.setCodecPreferences(codecs)
+                if (codecs.length) {
+                  transceiver.setCodecPreferences(codecs)
+                  ddLog('Send transceiver: VP8 codec set')
+                } else {
+                  ddLog('WARNING: No VP8 codec available for send', 'err')
+                }
               }
             })
+          } else {
+            ddLog('WARNING: No canvas stream — Scope will have no input video', 'warn')
           }
+
           // Add receive-only transceiver for AI output
           var recvTransceiver = ddScopePc.addTransceiver('video', { direction: 'recvonly' })
           var vp8Codecs = RTCRtpReceiver.getCapabilities('video').codecs.filter(function (c) {
             return c.mimeType.toLowerCase() === 'video/vp8'
           })
-          if (vp8Codecs.length) recvTransceiver.setCodecPreferences(vp8Codecs)
+          if (vp8Codecs.length) {
+            recvTransceiver.setCodecPreferences(vp8Codecs)
+            ddLog('Recv transceiver: VP8 codec set, direction=recvonly', 'ok')
+          } else {
+            ddLog('WARNING: No VP8 codec for receive', 'err')
+          }
 
           // Data channel for live parameter updates
           ddScopeDataChannel = ddScopePc.createDataChannel('parameters', { ordered: true })
           ddScopeDataChannel.onopen = function () {
-            console.log('Scope: data channel open')
-            // Send initial prompt
+            ddLog('Data channel OPEN — sending initial prompt', 'ok')
             ddScopeDataChannel.send(JSON.stringify({
               prompts: [{ text: prompt, weight: 1.0 }]
             }))
           }
+          ddScopeDataChannel.onerror = function (e) {
+            ddLog('Data channel ERROR: ' + (e.error ? e.error.message : 'unknown'), 'err')
+          }
+          ddScopeDataChannel.onclose = function () {
+            ddLog('Data channel closed', 'warn')
+          }
 
           // Handle incoming AI video track
           ddScopePc.ontrack = function (e) {
-            console.log('Scope: got track!', e.track.kind)
-            if (e.track.kind !== 'video') return
+            ddLog('Step 6: Track received — kind=' + e.track.kind + ' readyState=' + e.track.readyState, 'ok')
+            if (e.track.kind !== 'video') {
+              ddLog('Ignoring non-video track', 'warn')
+              return
+            }
             if (!ddVideo) {
               ddVideo = document.createElement('video')
               ddVideo.autoplay = true
@@ -2004,16 +3009,47 @@
               ddVideo.muted = true
               ddVideo.style.display = 'none'
               document.body.appendChild(ddVideo)
-              document.body.appendChild(ddVideo)
+              ddLog('Created <video> element')
             }
             ddVideo.srcObject = e.streams[0] || new MediaStream([e.track])
-            ddVideo.play().catch(function (err) { console.warn('Scope video play failed:', err) })
-            ddVideo.onloadedmetadata = function () { console.log('Scope video:', ddVideo.videoWidth, 'x', ddVideo.videoHeight) }
+            ddLog('Set video srcObject (streams=' + e.streams.length + ')')
+            ddVideo.play().then(function () {
+              ddLog('Video play() succeeded', 'ok')
+            }).catch(function (err) {
+              ddLog('Video play() FAILED: ' + err.message, 'err')
+            })
+
+            // Monitor video events
+            ddVideo.onloadedmetadata = function () {
+              ddLog('Video metadata loaded: ' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight, 'ok')
+            }
+            ddVideo.onstalled = function () { ddLog('Video STALLED', 'warn') }
+            ddVideo.onwaiting = function () { ddLog('Video waiting for data...', 'warn') }
+            ddVideo.onerror = function () { ddLog('Video element ERROR: ' + (ddVideo.error ? ddVideo.error.message : 'unknown'), 'err') }
+
+            // Track mute/unmute
+            e.track.onmute = function () { ddLog('Video track MUTED (no frames arriving)', 'warn') }
+            e.track.onunmute = function () { ddLog('Video track UNMUTED (frames arriving)', 'ok') }
+            e.track.onended = function () { ddLog('Video track ENDED', 'err') }
+
+            // Wire into s0
+            var wireAttempts = 0
             function ddWireS0Scope () {
+              wireAttempts++
               if (typeof s0 !== 'undefined' && s0.init && ddVideo.videoWidth > 0) {
                 s0.init({ src: ddVideo, dynamic: true })
+                ddLog('Step 7: Wired to s0 — ' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight + ' (attempt ' + wireAttempts + ')', 'ok')
                 ddSetState('on', 'src(s0) = Scope (' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight + ')')
               } else {
+                var reason = typeof s0 === 'undefined' ? 's0 undefined' : !s0.init ? 's0.init missing' : 'videoWidth=0'
+                if (wireAttempts <= 3 || wireAttempts % 10 === 0) {
+                  ddLog('Waiting to wire s0... (' + reason + ', attempt ' + wireAttempts + ')', 'warn')
+                }
+                if (wireAttempts > 50) {
+                  ddLog('GAVE UP wiring s0 after 50 attempts (~10s). ' + reason, 'err')
+                  ddSetState('err', 'Video received but s0 wire failed: ' + reason)
+                  return
+                }
                 setTimeout(ddWireS0Scope, 200)
               }
             }
@@ -2021,32 +3057,57 @@
           }
 
           ddScopePc.onconnectionstatechange = function () {
-            console.log('Scope connection:', ddScopePc.connectionState)
-            if (ddScopePc.connectionState === 'failed') {
-              ddSetState('err', 'Scope connection failed')
+            var state = ddScopePc.connectionState
+            var level = state === 'connected' ? 'ok' : state === 'failed' || state === 'disconnected' ? 'err' : 'info'
+            ddLog('WebRTC connection: ' + state, level)
+            if (state === 'failed') {
+              ddSetState('err', 'Scope WebRTC connection failed')
             }
+          }
+
+          ddScopePc.oniceconnectionstatechange = function () {
+            ddLog('ICE connection: ' + ddScopePc.iceConnectionState)
+          }
+
+          ddScopePc.onicegatheringstatechange = function () {
+            ddLog('ICE gathering: ' + ddScopePc.iceGatheringState)
+          }
+
+          ddScopePc.onsignalingstatechange = function () {
+            ddLog('Signaling: ' + ddScopePc.signalingState)
           }
 
           // Trickle ICE: send candidates as they arrive
           var queuedCandidates = []
+          var iceCandidateCount = 0
           ddScopePc.onicecandidate = function (e) {
-            if (!e.candidate) return
+            if (!e.candidate) {
+              ddLog('ICE gathering complete (' + iceCandidateCount + ' candidates)')
+              return
+            }
+            iceCandidateCount++
+            if (iceCandidateCount <= 3) {
+              ddLog('ICE candidate #' + iceCandidateCount + ': ' + e.candidate.candidate.substring(0, 60) + '...')
+            }
             if (ddScopeSessionId) {
               fetch('/api/scope/api/v1/webrtc/offer/' + ddScopeSessionId, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ candidates: [{ candidate: e.candidate.candidate, sdpMid: e.candidate.sdpMid, sdpMLineIndex: e.candidate.sdpMLineIndex }] })
-              }).catch(function (err) { console.warn('Scope ICE send failed:', err) })
+              }).catch(function (err) { ddLog('ICE candidate send FAILED: ' + err.message, 'err') })
             } else {
               queuedCandidates.push(e.candidate)
             }
           }
 
-          // Create and send offer
+          // Step 3: Create and send offer
+          ddLog('Step 3: Creating WebRTC offer...')
           ddSetState('connecting', 'Creating WebRTC offer...')
           return ddScopePc.createOffer().then(function (offer) {
+            ddLog('Offer created (SDP ' + offer.sdp.length + ' bytes)')
             return ddScopePc.setLocalDescription(offer)
           }).then(function () {
+            ddLog('Step 4: Sending offer to Scope server...')
             ddSetState('connecting', 'Sending offer to Scope...')
             return fetch('/api/scope/api/v1/webrtc/offer', {
               method: 'POST',
@@ -2060,14 +3121,25 @@
                 }
               })
             })
-          }).then(function (r) { return r.json() }).then(function (answer) {
-            console.log('Scope: got answer, sessionId:', answer.sessionId)
+          }).then(function (r) {
+            ddLog('Offer response: HTTP ' + r.status)
+            if (!r.ok) {
+              return r.text().then(function (t) {
+                throw new Error('Offer rejected: HTTP ' + r.status + ' — ' + t.substring(0, 200))
+              })
+            }
+            return r.json()
+          }).then(function (answer) {
+            ddLog('Step 5: Got answer — sessionId=' + answer.sessionId + ', type=' + answer.type, 'ok')
+            if (!answer.sdp) ddLog('WARNING: answer has no SDP!', 'err')
             ddScopeSessionId = answer.sessionId
             ddActive = true
             return ddScopePc.setRemoteDescription({ type: answer.type, sdp: answer.sdp })
           }).then(function () {
+            ddLog('Remote description set', 'ok')
             // Flush queued ICE candidates
             if (queuedCandidates.length && ddScopeSessionId) {
+              ddLog('Flushing ' + queuedCandidates.length + ' queued ICE candidates')
               return fetch('/api/scope/api/v1/webrtc/offer/' + ddScopeSessionId, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -2077,12 +3149,24 @@
               })
             }
           }).then(function () {
+            ddLog('Scope connected — waiting for video track...', 'ok')
             ddSetState('on', 'Scope connected — waiting for video...')
+            // Start a watchdog: if no track in 10s, warn
+            setTimeout(function () {
+              if (!ddVideo || ddVideo.videoWidth === 0) {
+                ddLog('WATCHDOG: No video received after 10s', 'err')
+                ddLog('  PC connection: ' + (ddScopePc ? ddScopePc.connectionState : 'null'))
+                ddLog('  ICE connection: ' + (ddScopePc ? ddScopePc.iceConnectionState : 'null'))
+                ddLog('  Data channel: ' + (ddScopeDataChannel ? ddScopeDataChannel.readyState : 'null'))
+                ddLog('  Video element: ' + (ddVideo ? 'exists, ' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight + ' readyState=' + ddVideo.readyState : 'null'))
+                // Check pipeline status
+                ddLog('Checking pipeline status...')
+                fetch('/api/scope/api/v1/pipeline/status').then(function (r) { return r.json() }).then(function (ps) {
+                  ddLog('Pipeline status: ' + JSON.stringify(ps), ps.status === 'loaded' ? 'ok' : 'warn')
+                }).catch(function (err) { ddLog('Pipeline status check failed: ' + err.message, 'err') })
+              }
+            }, 10000)
           })
-        }).catch(function (err) {
-          console.error('Scope:', err)
-          ddSetState('err', err.message || 'Scope connection failed')
-          ddDisconnect()
         })
       }
 
@@ -2127,6 +3211,7 @@
       }
 
       function ddDisconnect () {
+        ddLog('Disconnecting...', 'warn')
         ddActive = false
         if (ddWhipPc) { try { ddWhipPc.close() } catch (e) {} ddWhipPc = null }
         if (ddWhepPc) { try { ddWhepPc.close() } catch (e) {} ddWhepPc = null }
@@ -2171,8 +3256,12 @@
       }
 
       ddToggle.addEventListener('click', function () {
-        if (ddActive) ddDisconnect()
-        else ddConnect()
+        if (ddActive) {
+          ddDisconnect()
+        } else {
+          ddModeEl.value = 'scope'
+          ddConnectScope()
+        }
       })
       ddSend.addEventListener('click', ddUpdatePrompt)
       ddPromptEl.addEventListener('keydown', function (e) {
@@ -2438,16 +3527,33 @@
           })
         }
 
+        var LAYOUT_KEY = 'hydra-layout'
+        function saveLayout () {
+          try {
+            localStorage.setItem(LAYOUT_KEY, JSON.stringify({
+              leftW: leftCol.offsetWidth,
+              stageH: stage.offsetHeight
+            }))
+          } catch (e) {}
+        }
+        function restoreLayout () {
+          try {
+            var saved = JSON.parse(localStorage.getItem(LAYOUT_KEY))
+            if (!saved) return
+            if (saved.leftW) { leftCol.style.width = saved.leftW + 'px' }
+            if (saved.stageH) { stage.style.height = saved.stageH + 'px'; stage.style.flex = 'none' }
+          } catch (e) {}
+        }
+
         // Vertical splitter: left col / code panel
         var leftCol = document.getElementById('leftCol')
-        var scopeFrame = document.getElementById('scopeFrame')
         makeDrag(document.getElementById('vSplitter'),
           function (dx) {
             var w = Math.max(360, leftCol.offsetWidth + dx)
             leftCol.style.width = w + 'px'
           },
-          function () { if (scopeFrame) scopeFrame.style.pointerEvents = 'none' },
-          function () { if (scopeFrame) scopeFrame.style.pointerEvents = '' }
+          null,
+          function () { saveLayout() }
         )
 
         // Horizontal splitter: stage / controls
@@ -2457,20 +3563,14 @@
             var h = Math.max(120, stage.offsetHeight + dy)
             stage.style.height = h + 'px'
             stage.style.flex = 'none'
-          }
+          },
+          null,
+          function () { saveLayout() }
         )
 
-        // Scope iframe resize
-        var divider = document.getElementById('scopeDivider')
-        var frame = document.getElementById('scopeFrame')
-        makeDrag(divider,
-          function (dx, dy) {
-            var h = Math.max(200, frame.offsetHeight + dy)
-            frame.style.height = h + 'px'
-          },
-          function () { frame.style.pointerEvents = 'none' },
-          function () { frame.style.pointerEvents = '' }
-        )
+        // (Scope iframe removed — UI opens in separate tab)
+
+        restoreLayout()
       })()
 
       console.log('[hydra] Init complete. Calling loadPresets()...')

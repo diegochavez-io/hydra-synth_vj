@@ -72,3 +72,11 @@ dist/media/
 # Temp/swap files
 .*.swp
 .tmp-*
+
+# Recordings (large video files)
+recordings/**/*.mp4
+recordings/**/*.webm
+recordings/**/*.mov
+
+# Daydream API key
+daydream.config.json

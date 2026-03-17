@@ -9,7 +9,11 @@ const http = require('http')
 const https = require('https')
 const fs = require('fs')
 const path = require('path')
+const { spawn } = require('child_process')
 const WsServer = require('ws').Server
+
+// Active ProRes recording sessions: sessionId → { ffmpeg, filePath, folder, frameCount }
+var recSessions = {}
 
 // Ableton Link (optional — native addon, install with: npm install abletonlink)
 var AbletonLink = null
@@ -27,6 +31,7 @@ try {
 const PORT = parseInt(process.argv[2], 10) || 8080
 const ROOT = __dirname
 const PRESETS_DIR = path.join(ROOT, 'presets')
+const RECORDINGS_DIR = path.join(ROOT, 'recordings')
 
 // Daydream API config
 function getDaydreamConfig () {
@@ -51,16 +56,21 @@ var SCOPE_DIR = path.join(ROOT, '..', 'scope')
 var SCOPE_PORT = 8000
 
 function isScopeRunning (cb) {
-  http.get('http://localhost:' + SCOPE_PORT + '/health', function (res) {
+  var done = false
+  var req = http.get('http://localhost:' + SCOPE_PORT + '/health', function (res) {
     var chunks = []
     res.on('data', function (c) { chunks.push(c) })
     res.on('end', function () {
+      if (done) return
+      done = true
       try {
         var data = JSON.parse(Buffer.concat(chunks).toString())
         cb(data.status === 'healthy')
       } catch (e) { cb(false) }
     })
-  }).on('error', function () { cb(false) })
+  })
+  req.on('error', function () { if (!done) { done = true; cb(false) } })
+  req.setTimeout(3000, function () { req.destroy(); if (!done) { done = true; cb(false) } })
 }
 
 function startScope (cb) {
@@ -271,7 +281,18 @@ const server = http.createServer(function (req, res) {
     return
   }
 
-  // ---- API: Scope apply preset (configure pipeline, LoRA, outputs, prompt) ----
+  // ---- API: List Scope presets ----
+  if (req.method === 'GET' && urlPath === '/api/scope/presets') {
+    var presetsPath = path.join(ROOT, 'scope-presets.json')
+    fs.readFile(presetsPath, 'utf8', function (err, data) {
+      if (err) return jsonResponse(res, 200, [])
+      try { jsonResponse(res, 200, JSON.parse(data)) }
+      catch (e) { jsonResponse(res, 200, []) }
+    })
+    return
+  }
+
+  // ---- API: Apply Scope preset ----
   if (req.method === 'POST' && urlPath === '/api/scope/preset') {
     readBody(req, function (body) {
       try {
@@ -281,80 +302,42 @@ const server = http.createServer(function (req, res) {
         var scopeIsHttps = scopeBase.startsWith('https')
         var scopeLib = scopeIsHttps ? https : http
 
-        function scopePost (apiPath, data, cb) {
-          var postData = JSON.stringify(data)
-          var urlObj = new URL(scopeBase + apiPath)
-          var opts = {
-            hostname: urlObj.hostname, port: urlObj.port || (scopeIsHttps ? 443 : 80),
-            path: urlObj.pathname, method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
-          }
-          var req2 = scopeLib.request(opts, function (r) {
-            var chunks = []
-            r.on('data', function (c) { chunks.push(c) })
-            r.on('end', function () { cb(null, r.statusCode, Buffer.concat(chunks).toString()) })
-          })
-          req2.on('error', function (e) { cb(e) })
-          req2.write(postData)
-          req2.end()
-        }
-
-        // Step 1: Load pipeline (if specified and different from current)
+        // Load pipeline with full config
         var loadParams = {}
-        if (preset.pipeline) loadParams.pipeline_ids = [preset.pipeline]
         if (preset.width) loadParams.width = preset.width
         if (preset.height) loadParams.height = preset.height
         if (preset.loras) loadParams.loras = preset.loras
         if (preset.vace_enabled !== undefined) loadParams.vace_enabled = preset.vace_enabled
         if (preset.vace_context_scale !== undefined) loadParams.vace_context_scale = preset.vace_context_scale
 
-        var steps = []
-
-        // Load pipeline
-        if (preset.pipeline) {
-          steps.push(function (next) {
-            scopePost('/api/v1/pipeline/load', { pipeline_ids: [preset.pipeline], load_params: loadParams }, function (err, status, body2) {
-              console.log('  Scope preset: pipeline load →', status)
-              next()
+        var postData = JSON.stringify({
+          pipeline_ids: [preset.pipeline || 'krea-realtime-video'],
+          load_params: loadParams
+        })
+        var urlObj = new URL(scopeBase + '/api/v1/pipeline/load')
+        var opts = {
+          hostname: urlObj.hostname, port: urlObj.port || (scopeIsHttps ? 443 : 80),
+          path: urlObj.pathname, method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
+        }
+        var req2 = scopeLib.request(opts, function (r) {
+          var chunks = []
+          r.on('data', function (c) { chunks.push(c) })
+          r.on('end', function () {
+            console.log('  Scope preset: pipeline load →', r.statusCode, '(' + (preset.name || preset.pipeline) + ')')
+            // Pipeline loading is async — the prompt and output_sinks
+            // will be applied by the user via the Scope UI once loaded
+            jsonResponse(res, 200, {
+              applied: true,
+              pipeline: preset.pipeline,
+              name: preset.name,
+              note: 'Pipeline loading — apply prompt and outputs after it finishes loading'
             })
           })
-        }
-
-        // Apply output sinks + prompt via parameters (once pipeline is running)
-        steps.push(function (next) {
-          // Wait for pipeline to be loaded
-          var attempts = 0
-          var poll = setInterval(function () {
-            attempts++
-            var urlObj2 = new URL(scopeBase + '/api/v1/pipeline/status')
-            scopeLib.get({ hostname: urlObj2.hostname, port: urlObj2.port || (scopeIsHttps ? 443 : 80), path: urlObj2.pathname }, function (r) {
-              var chunks = []
-              r.on('data', function (c) { chunks.push(c) })
-              r.on('end', function () {
-                try {
-                  var st = JSON.parse(Buffer.concat(chunks).toString())
-                  if (st.status === 'loaded' || attempts > 120) {
-                    clearInterval(poll)
-                    next()
-                  }
-                } catch (e) { if (attempts > 120) { clearInterval(poll); next() } }
-              })
-            }).on('error', function () { if (attempts > 120) { clearInterval(poll); next() } })
-          }, 1000)
         })
-
-        function runSteps (i) {
-          if (i >= steps.length) {
-            // All done — send prompt and output_sinks via OSC or summary
-            var summary = { applied: true, pipeline: preset.pipeline, prompt: preset.prompt }
-            console.log('  Scope preset: applied', JSON.stringify(summary))
-            jsonResponse(res, 200, summary)
-            return
-          }
-          steps[i](function () { runSteps(i + 1) })
-        }
-        runSteps(0)
-
+        req2.on('error', function (e) { jsonResponse(res, 500, { error: e.message }) })
+        req2.write(postData)
+        req2.end()
       } catch (e) {
         jsonResponse(res, 400, { error: 'Invalid JSON: ' + e.message })
       }
@@ -373,7 +356,11 @@ const server = http.createServer(function (req, res) {
   // ---- API: Scope proxy (forward requests to Scope — local or remote) ----
   if (urlPath.startsWith('/api/scope/')) {
     var scopeBase = getScopeUrl()
-    if (!scopeBase) return jsonResponse(res, 400, { error: 'No Scope URL configured' })
+    if (!scopeBase) {
+      console.log('  Scope proxy: no URL configured')
+      return jsonResponse(res, 400, { error: 'No Scope URL configured' })
+    }
+    console.log('  Scope proxy: ' + req.method + ' ' + urlPath + ' → ' + scopeBase)
     var scopePath = urlPath.replace('/api/scope', '')
     var scopeUrlObj = new URL(scopeBase + scopePath)
     var scopeIsHttps = scopeUrlObj.protocol === 'https:'
@@ -391,26 +378,37 @@ const server = http.createServer(function (req, res) {
         var chunks = []
         scopeRes.on('data', function (c) { chunks.push(c) })
         scopeRes.on('end', function () {
+          var responseBody = Buffer.concat(chunks).toString()
+          console.log('  Scope proxy: ← ' + scopeRes.statusCode + ' (' + responseBody.length + ' bytes)')
           res.writeHead(scopeRes.statusCode, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' })
-          res.end(Buffer.concat(chunks).toString())
+          res.end(responseBody)
         })
       })
-      scopeReq.on('error', function (err) { jsonResponse(res, 502, { error: err.message }) })
+      scopeReq.on('error', function (err) {
+        console.log('  Scope proxy: ERROR ' + err.message)
+        jsonResponse(res, 502, { error: err.message })
+      })
       scopeReq.end()
     } else {
       readBody(req, function (body) {
         if (body) {
           scopeOpts.headers['Content-Length'] = Buffer.byteLength(body)
+          console.log('  Scope proxy: → body ' + body.length + ' bytes')
         }
         var scopeReq = scopeLib.request(scopeOpts, function (scopeRes) {
           var chunks = []
           scopeRes.on('data', function (c) { chunks.push(c) })
           scopeRes.on('end', function () {
+            var responseBody = Buffer.concat(chunks).toString()
+            console.log('  Scope proxy: ← ' + scopeRes.statusCode + ' (' + responseBody.length + ' bytes)')
             res.writeHead(scopeRes.statusCode, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' })
-            res.end(Buffer.concat(chunks).toString())
+            res.end(responseBody)
           })
         })
-        scopeReq.on('error', function (err) { jsonResponse(res, 502, { error: err.message }) })
+        scopeReq.on('error', function (err) {
+          console.log('  Scope proxy: ERROR ' + err.message)
+          jsonResponse(res, 502, { error: err.message })
+        })
         if (body) scopeReq.write(body)
         scopeReq.end()
       })
@@ -538,6 +536,170 @@ const server = http.createServer(function (req, res) {
     return
   }
 
+  // ---- API: ProRes recording — start session ----
+  if (req.method === 'POST' && urlPath === '/api/recordings/start') {
+    readBody(req, function (body) {
+      try {
+        var data = JSON.parse(body)
+        var fps = data.fps || 16
+        var w = data.width || 1920
+        var h = data.height || 1080
+        var folderName = (data.folder || '').replace(/[^a-zA-Z0-9_-]/g, '')
+        var saveDir = folderName ? path.join(RECORDINGS_DIR, folderName) : RECORDINGS_DIR
+        try { fs.mkdirSync(saveDir, { recursive: true }) } catch (e) {}
+
+        var d = new Date()
+        var ts = d.getFullYear() + '-' +
+          String(d.getMonth() + 1).padStart(2, '0') + '-' +
+          String(d.getDate()).padStart(2, '0') + '_' +
+          String(d.getHours()).padStart(2, '0') + '.' +
+          String(d.getMinutes()).padStart(2, '0') + '.' +
+          String(d.getSeconds()).padStart(2, '0')
+        var filename = 'hydra-' + ts + '.mov'
+        var filePath = path.join(saveDir, filename)
+        var sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+
+        // Spawn ffmpeg: read raw RGBA frames from stdin, encode ProRes LT
+        var ffArgs = [
+          '-y',
+          '-f', 'rawvideo',
+          '-pix_fmt', 'rgba',
+          '-s', w + 'x' + h,
+          '-r', String(fps),
+          '-i', '-',
+          '-c:v', 'prores_ks',
+          '-profile:v', '1',  // 0=Proxy, 1=LT, 2=Standard, 3=HQ
+          '-pix_fmt', 'yuv422p10le',
+          '-an',
+          filePath
+        ]
+        var ffmpeg = spawn('ffmpeg', ffArgs, { stdio: ['pipe', 'pipe', 'pipe'] })
+        ffmpeg.stderr.on('data', function (d) {
+          // Suppress normal ffmpeg output, log errors
+          var line = d.toString().trim()
+          if (line.includes('Error') || line.includes('error')) console.log('  ffmpeg: ' + line)
+        })
+        ffmpeg.on('error', function (err) {
+          console.log('  ffmpeg spawn error: ' + err.message)
+        })
+
+        recSessions[sessionId] = {
+          ffmpeg: ffmpeg,
+          filePath: filePath,
+          filename: filename,
+          folder: folderName,
+          frameCount: 0
+        }
+        console.log('  Recording started: ' + (folderName ? folderName + '/' : '') + filename + ' (' + w + 'x' + h + ' @ ' + fps + 'fps ProRes LT)')
+        jsonResponse(res, 200, { sessionId: sessionId, filename: filename })
+      } catch (e) {
+        jsonResponse(res, 400, { error: e.message })
+      }
+    })
+    return
+  }
+
+  // ---- API: ProRes recording — receive frame ----
+  if (req.method === 'POST' && urlPath.startsWith('/api/recordings/frame/')) {
+    var frameSid = path.basename(urlPath)
+    var session = recSessions[frameSid]
+    if (!session) return jsonResponse(res, 404, { error: 'No active session' })
+    var frameChunks = []
+    req.on('data', function (c) { frameChunks.push(c) })
+    req.on('end', function () {
+      var frameBuf = Buffer.concat(frameChunks)
+      if (session.ffmpeg && session.ffmpeg.stdin.writable) {
+        session.ffmpeg.stdin.write(frameBuf)
+        session.frameCount++
+      }
+      jsonResponse(res, 200, { ok: true, frame: session.frameCount })
+    })
+    return
+  }
+
+  // ---- API: ProRes recording — stop session ----
+  if (req.method === 'POST' && urlPath.startsWith('/api/recordings/stop/')) {
+    var stopSid = path.basename(urlPath)
+    var stopSession = recSessions[stopSid]
+    if (!stopSession) return jsonResponse(res, 404, { error: 'No active session' })
+    delete recSessions[stopSid]
+
+    // Close stdin to signal ffmpeg to finalize
+    stopSession.ffmpeg.stdin.end()
+    stopSession.ffmpeg.on('close', function (code) {
+      if (code !== 0) {
+        console.log('  ffmpeg exited with code ' + code)
+        return jsonResponse(res, 500, { error: 'ffmpeg exited with code ' + code })
+      }
+      try {
+        var stat = fs.statSync(stopSession.filePath)
+        var sizeMB = (stat.size / (1024 * 1024)).toFixed(1)
+        var relPath = stopSession.folder ? stopSession.folder + '/' + stopSession.filename : stopSession.filename
+        console.log('  Recording saved: ' + relPath + ' (' + sizeMB + ' MB, ' + stopSession.frameCount + ' frames)')
+        jsonResponse(res, 200, { saved: stopSession.filename, folder: stopSession.folder || null, size: stat.size, frames: stopSession.frameCount, path: 'recordings/' + relPath })
+      } catch (e) {
+        jsonResponse(res, 500, { error: 'File stat failed: ' + e.message })
+      }
+    })
+    return
+  }
+
+  // ---- API: save recording (legacy H.264 upload) ----
+  if (req.method === 'POST' && urlPath === '/api/recordings') {
+    // Optional ?folder=batch-xxx subfolder for batch recordings
+    var qp = req.url.split('?')[1] || ''
+    var folderParam = ''
+    qp.split('&').forEach(function (p) {
+      var kv = p.split('=')
+      if (kv[0] === 'folder') folderParam = decodeURIComponent(kv[1] || '')
+    })
+    // Sanitize folder name — alphanumeric, dashes, underscores only
+    folderParam = folderParam.replace(/[^a-zA-Z0-9_-]/g, '')
+    var saveDir = folderParam ? path.join(RECORDINGS_DIR, folderParam) : RECORDINGS_DIR
+    try { fs.mkdirSync(saveDir, { recursive: true }) } catch (e) {}
+    var chunks = []
+    req.on('data', function (c) { chunks.push(c) })
+    req.on('end', function () {
+      var blob = Buffer.concat(chunks)
+      var contentType = req.headers['content-type'] || ''
+      var ext = contentType.includes('mp4') ? '.mp4' : '.webm'
+      var d = new Date()
+      var ts = d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0') + '_' +
+        String(d.getHours()).padStart(2, '0') + '.' +
+        String(d.getMinutes()).padStart(2, '0') + '.' +
+        String(d.getSeconds()).padStart(2, '0')
+      var filename = 'hydra-' + ts + ext
+      var filePath = path.join(saveDir, filename)
+      var relPath = folderParam ? folderParam + '/' + filename : filename
+      fs.writeFile(filePath, blob, function (err) {
+        if (err) return jsonResponse(res, 500, { error: 'Write failed: ' + err.message })
+        var sizeMB = (blob.length / (1024 * 1024)).toFixed(1)
+        console.log('  Recording saved: ' + relPath + ' (' + sizeMB + ' MB)')
+        jsonResponse(res, 200, { saved: filename, folder: folderParam || null, size: blob.length, path: 'recordings/' + relPath })
+      })
+    })
+    return
+  }
+
+  // ---- API: list recordings ----
+  if (req.method === 'GET' && urlPath === '/api/recordings') {
+    fs.readdir(RECORDINGS_DIR, function (err, files) {
+      if (err) return jsonResponse(res, 200, [])
+      var recordings = files
+        .filter(function (f) { return /\.(mp4|webm)$/i.test(f) })
+        .sort()
+        .reverse()
+        .map(function (f) {
+          var stat = fs.statSync(path.join(RECORDINGS_DIR, f))
+          return { file: f, size: stat.size, date: stat.mtime }
+        })
+      jsonResponse(res, 200, recordings)
+    })
+    return
+  }
+
   // ---- Static files ----
   if (urlPath === '/') urlPath = '/dist/launcher.html'
   var staticPath = path.join(ROOT, urlPath)
@@ -597,7 +759,39 @@ const server = http.createServer(function (req, res) {
 })
 
 // WebSocket relay — launcher sends code, all other clients receive it
-var wss = new WsServer({ server: server })
+var wss = new WsServer({ noServer: true })
+
+// Recording frame WebSocket — receives raw RGBA pixel data
+var recWss = new WsServer({ noServer: true })
+recWss.on('connection', function (ws, req) {
+  var urlParts = req.url.split('/')
+  var sessionId = urlParts[urlParts.length - 1]
+  var session = recSessions[sessionId]
+  if (!session) { ws.close(); return }
+  console.log('  Recording WS connected: ' + sessionId)
+  ws.on('message', function (data) {
+    if (session.ffmpeg && session.ffmpeg.stdin.writable) {
+      session.ffmpeg.stdin.write(Buffer.from(data))
+      session.frameCount++
+    }
+  })
+  ws.on('close', function () {
+    console.log('  Recording WS closed: ' + sessionId + ' (' + session.frameCount + ' frames)')
+  })
+})
+
+// Route WebSocket upgrades
+server.on('upgrade', function (req, socket, head) {
+  if (req.url && req.url.startsWith('/ws/recording/')) {
+    recWss.handleUpgrade(req, socket, head, function (ws) {
+      recWss.emit('connection', ws, req)
+    })
+  } else {
+    wss.handleUpgrade(req, socket, head, function (ws) {
+      wss.emit('connection', ws, req)
+    })
+  }
+})
 var lastCode = null
 var linkEnabled = false
 var linkBroadcastTimer = null
@@ -693,6 +887,8 @@ server.listen(PORT, function () {
   console.log('    GET    /api/presets/:file     — load a preset')
   console.log('    POST   /api/presets           — save {name, code}')
   console.log('    DELETE /api/presets/:file     — archive a preset')
+  console.log('    GET    /api/recordings       — list recordings')
+  console.log('    POST   /api/recordings       — save recording (binary body)')
   console.log('')
   var ddKey = getDaydreamKey()
   if (ddKey) {

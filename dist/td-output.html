@@ -10,9 +10,12 @@
   </style>
 </head>
 <body>
-  <script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"></script>
+  <script src="/dist/hydra-synth.js"></script>
   <script>
-    // Audio stub — matches all methods from hydra-synth/src/lib/audio.js
+    // TD Output — independent Hydra instance that mirrors the launcher
+    // Use in TouchDesigner Web Render TOP: http://localhost:8080/dist/td-output.html
+
+    // Audio stub
     window.a = {
       fft: [0, 0, 0, 0],
       vol: 0,
@@ -21,7 +24,6 @@
         var size = Math.max(1, Number(n) || 4)
         this.fft = new Array(size).fill(0)
         this.bins = new Array(size).fill(0)
-        // Create per-bin shortcut functions: a0, a1, a2...
         for (var i = 0; i < size; i++) {
           (function (idx) {
             window['a' + idx] = function (scale, offset) {
@@ -40,13 +42,55 @@
       hide: function () {},
       onBeat: function () {}
     }
-    // Init default bin shortcuts
     window.a.setBins(4)
 
     // Init Hydra
     var hydra = new Hydra({ detectAudio: false, makeGlobal: true })
     solid(0, 0, 0, 1).out()
 
+    // Load audio bootstrap inline so it's ready before any code arrives
+    var audioBootstrapCode = ''
+    var bootstrapReady = false
+    fetch('/dist/audio-bootstrap.js', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('not found'); return r.text() })
+      .then(function (t) {
+        audioBootstrapCode = t
+        try { hydra.eval(t) } catch (e) { console.warn('[td-output] bootstrap eval error:', e) }
+        bootstrapReady = true
+        console.log('[td-output] Audio bootstrap ready.')
+        // If code arrived before bootstrap, replay it
+        if (pendingCode) {
+          runCode(pendingCode)
+          pendingCode = null
+        }
+      })
+      .catch(function () {
+        bootstrapReady = true
+        console.warn('[td-output] audio-bootstrap.js not found, skipping.')
+      })
+
+    var pendingCode = null
+
+    function cleanupSources () {
+      for (var i = 0; i < 4; i++) {
+        var s = hydra.synth['s' + i]
+        if (s && s.src && s.src.pause) { s.src.pause(); s.src.src = '' }
+        if (s) { s.src = null; s.dynamic = false }
+      }
+      hydra.eval('solid(0,0,0,1).out(o0); solid(0,0,0,1).out(o1); solid(0,0,0,1).out(o2); solid(0,0,0,1).out(o3)')
+    }
+
+    function runCode (code) {
+      try {
+        cleanupSources()
+        if (audioBootstrapCode) hydra.eval(audioBootstrapCode)
+        hydra.eval(code)
+      } catch (err) {
+        console.error('[td-output] eval error:', err)
+      }
+    }
+
+    // Fit canvas to window
     function fit () {
       if (!hydra || !hydra.canvas) return
       hydra.canvas.width = window.innerWidth
@@ -56,7 +100,14 @@
     fit()
     window.addEventListener('resize', fit)
 
-    // Receive code from launcher via WebSocket relay
+    // Fullscreen on F key
+    window.addEventListener('keydown', function (e) {
+      if (e.key.toLowerCase() === 'f') {
+        document.documentElement.requestFullscreen().catch(function () {})
+      }
+    })
+
+    // Receive code + filters from launcher via WebSocket relay
     var ws = null
     var retryMs = 500
     function connect () {
@@ -65,7 +116,18 @@
       ws.onmessage = function (event) {
         try {
           var data = JSON.parse(event.data)
-          if (data && data.code) hydra.eval(data.code)
+          // Code relay from launcher
+          if (data && data.code) {
+            if (bootstrapReady) {
+              runCode(data.code)
+            } else {
+              pendingCode = data.code
+            }
+          }
+          // Filter updates
+          if (data.type === 'filters' && hydra && hydra.canvas) {
+            hydra.canvas.style.filter = data.filter
+          }
         } catch (err) {
           console.error('[td-output]', err)
         }
