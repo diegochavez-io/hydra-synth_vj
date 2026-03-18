@@ -464,7 +464,8 @@ const server = http.createServer(function (req, res) {
         var oscKey = oscData.key
         var oscValue = oscData.value
         var oscType = oscData.type || 'float'
-        var oscAddress = '/scope/' + oscKey
+        // If key starts with '/', use as-is; otherwise prefix with /scope/
+        var oscAddress = oscKey.charAt(0) === '/' ? oscKey : '/scope/' + oscKey
         // Encode OSC string (null-terminated, padded to 4 bytes)
         function encodeOscStr (s) {
           var b = Buffer.from(s + '\0', 'utf8')
@@ -482,6 +483,11 @@ const server = http.createServer(function (req, res) {
         } else if (oscType === 'string') {
           tagBuf = encodeOscStr(',s')
           valBuf = encodeOscStr(String(oscValue))
+        } else if (oscType === 'int_list') {
+          var intArr = Array.isArray(oscValue) ? oscValue : JSON.parse(oscValue)
+          tagBuf = encodeOscStr(',' + intArr.map(function () { return 'i' }).join(''))
+          var bufs = intArr.map(function (n) { var b = Buffer.alloc(4); b.writeInt32BE(parseInt(n), 0); return b })
+          valBuf = Buffer.concat(bufs)
         } else {
           return jsonResponse(res, 400, { error: 'Unknown type: ' + oscType })
         }
@@ -518,7 +524,7 @@ const server = http.createServer(function (req, res) {
       port: scopeUrlObj.port || (scopeIsHttps ? 443 : 80),
       path: scopeUrlObj.pathname + (scopeUrlObj.search || ''),
       method: req.method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Connection': 'close' },
       rejectUnauthorized: false
     }
     if (req.method === 'GET') {
@@ -942,6 +948,7 @@ server.on('upgrade', function (req, socket, head) {
 })
 var lastCode = null
 var lastWarp = null
+var lastMapMode = null
 var linkEnabled = false
 var linkBroadcastTimer = null
 
@@ -972,6 +979,7 @@ function stopLinkBroadcast () {
 wss.on('connection', function (ws) {
   if (lastCode) ws.send(lastCode)
   if (lastWarp) ws.send(lastWarp)
+  if (lastMapMode) ws.send(lastMapMode)
 
   // Send current link status on connect
   if (link) {
@@ -1019,6 +1027,8 @@ wss.on('connection', function (ws) {
       var parsed = JSON.parse(str)
       if (parsed.type === 'warp-update') {
         lastWarp = str
+      } else if (parsed.type === 'map-mode') {
+        lastMapMode = str
       } else {
         lastCode = str
       }

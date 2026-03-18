@@ -526,7 +526,7 @@
               <button id="mapPreviewToggle" class="btn" style="display:none;">Preview</button>
               <span id="gridDensityControls" style="display:none;">
                 <button id="gridMinus" class="btn">-</button>
-                <span id="gridSizeLabel" style="color:var(--dim);">2x2</span>
+                <span id="gridSizeLabel" style="color:var(--dim);">3x3</span>
                 <button id="gridPlus" class="btn">+</button>
               </span>
             </div>
@@ -795,11 +795,18 @@
       let ndiActive = false
       let ndiOutputName = ''
       // Warp mapping state
-      var mapModeActive = false
-      var currentWarp = {
-        gridSize: [2, 2],
-        points: [[0, 0], [1, 0], [0, 1], [1, 1]]
+      var MAP_DEFAULT_SIZE = 3
+      function identityWarp (n) {
+        var pts = []
+        for (var r = 0; r < n; r++) {
+          for (var c = 0; c < n; c++) {
+            pts.push([c / (n - 1), r / (n - 1)])
+          }
+        }
+        return { gridSize: [n, n], points: pts }
       }
+      var mapModeActive = false
+      var currentWarp = identityWarp(MAP_DEFAULT_SIZE)
       var warpThrottleTimer = null
       var WARP_THROTTLE_MS = 33 // ~30Hz
       var warpPending = null
@@ -872,7 +879,7 @@
           relayWs.onmessage = function (event) {
             try {
               var data = JSON.parse(event.data)
-              if (data.type === 'warp-update') return // ignore echoed warp messages
+              if (data.type === 'warp-update' || data.type === 'map-mode') return // ignore echoed messages
               handleSignaling(data)
             } catch (err) {}
           }
@@ -924,11 +931,8 @@
 
       function loadMapPreset (name) {
         if (!name) {
-          currentWarp = {
-            gridSize: [2, 2],
-            points: [[0, 0], [1, 0], [0, 1], [1, 1]]
-          }
-          document.getElementById('gridSizeLabel').textContent = '2x2'
+          currentWarp = identityWarp(MAP_DEFAULT_SIZE)
+          document.getElementById('gridSizeLabel').textContent = MAP_DEFAULT_SIZE + 'x' + MAP_DEFAULT_SIZE
           broadcastWarp()
           if (typeof updateMapOverlay === 'function') updateMapOverlay()
           return
@@ -954,7 +958,7 @@
         loadMapPreset(val)
       })
 
-      var mapShowPreview = false // false = checkerboard, true = live preview
+      var mapShowChecker = true // true = output shows checkerboard, false = output shows live
 
       function drawCheckerboard () {
         var cb = document.getElementById('mapCheckerboard')
@@ -992,44 +996,48 @@
         ctx.strokeRect(1, 1, outW - 2, outH - 2)
       }
 
+      function broadcastMapMode (active) {
+        if (relayWs && relayWs.readyState === 1) {
+          relayWs.send(JSON.stringify({ type: 'map-mode', active: active }))
+        }
+      }
+
       function updateMapModeDisplay () {
         var stageCanvas = document.getElementById('stage').querySelector('canvas')
         var cb = document.getElementById('mapCheckerboard')
-        if (mapModeActive && !mapShowPreview) {
-          // Checkerboard mode
-          drawCheckerboard()
-          cb.style.display = ''
-          if (stageCanvas) stageCanvas.style.opacity = '0'
-        } else if (mapModeActive && mapShowPreview) {
-          // Live preview mode (dimmed)
-          cb.style.display = 'none'
-          if (stageCanvas) stageCanvas.style.opacity = '0.5'
-        } else {
-          // Map mode off
+        if (!mapModeActive) {
+          // Map mode off — launcher normal, output live
           cb.style.display = 'none'
           if (stageCanvas) stageCanvas.style.opacity = ''
+          broadcastMapMode(false)
+        } else {
+          // Map mode on — launcher always shows live preview (dimmed)
+          cb.style.display = 'none'
+          if (stageCanvas) stageCanvas.style.opacity = '0.5'
+          // Output shows checkerboard or live based on toggle
+          broadcastMapMode(mapShowChecker)
         }
       }
 
       document.getElementById('mapBtn').addEventListener('click', function () {
         mapModeActive = !mapModeActive
-        mapShowPreview = false // always start in checkerboard
+        mapShowChecker = true // output starts in checkerboard
         this.classList.toggle('active', mapModeActive)
         document.getElementById('mapOpenBtn').style.display = mapModeActive ? '' : 'none'
         document.getElementById('mapSaveBtn').style.display = mapModeActive ? '' : 'none'
         document.getElementById('mapResetBtn').style.display = mapModeActive ? '' : 'none'
         document.getElementById('mapPreviewToggle').style.display = mapModeActive ? '' : 'none'
         var pvBtn = document.getElementById('mapPreviewToggle')
-        pvBtn.textContent = 'Preview'
+        pvBtn.textContent = 'Live'
         pvBtn.classList.remove('active')
         updateMapModeDisplay()
         if (typeof updateMapOverlay === 'function') updateMapOverlay()
       })
 
       document.getElementById('mapPreviewToggle').addEventListener('click', function () {
-        mapShowPreview = !mapShowPreview
-        this.classList.toggle('active', mapShowPreview)
-        this.textContent = mapShowPreview ? 'Grid' : 'Preview'
+        mapShowChecker = !mapShowChecker
+        this.classList.toggle('active', !mapShowChecker)
+        this.textContent = mapShowChecker ? 'Live' : 'Grid'
         updateMapModeDisplay()
       })
 
@@ -1057,11 +1065,8 @@
       })
 
       document.getElementById('mapResetBtn').addEventListener('click', function () {
-        currentWarp = {
-          gridSize: [2, 2],
-          points: [[0, 0], [1, 0], [0, 1], [1, 1]]
-        }
-        document.getElementById('gridSizeLabel').textContent = '2x2'
+        currentWarp = identityWarp(MAP_DEFAULT_SIZE)
+        document.getElementById('gridSizeLabel').textContent = MAP_DEFAULT_SIZE + 'x' + MAP_DEFAULT_SIZE
         document.getElementById('mapPresetSelect').value = ''
         localStorage.setItem('hydra-map-preset', '')
         broadcastWarp()
@@ -5279,13 +5284,13 @@
 
         // Each param: bars = period / 4 beats
         var PARAMS = [
-          { id: 'noise', label: 'noise_scale',             key: 'noise_scale',             bars: 16, min: 0.10, max: 0.20 },
-          { id: 'vace',  label: 'vace_context_scale',      key: 'vace_context_scale',      bars: 24, min: 0.88, max: 1.12 },
-          { id: 'kv',    label: 'kv_cache_attention_bias', key: 'kv_cache_attention_bias',  bars: 20, min: 0.52, max: 0.68 }
+          { id: 'noise', label: 'noise_scale',             key: 'noise_scale',             bars: 1, min: 0.10, max: 0.20 },
+          { id: 'vace',  label: 'vace_context_scale',      key: 'vace_context_scale',      bars: 2, min: 0.88, max: 1.12 },
+          { id: 'kv',    label: 'kv_cache_attention_bias', key: 'kv_cache_attention_bias',  bars: 4, min: 0.52, max: 0.68 }
         ]
         var STEP_VALUES = [[1000,750,500,250],[1000,750,500],[1000,500],[1000,250],[1000]]
         var STEP_LABELS = ['4s','3s','2s·b','2s·f','1s']
-        var stepBars    = 32
+        var stepBars    = 4
 
         // State — populated after UI build
         var state = {}
@@ -5328,20 +5333,33 @@
           }
         }
 
+        var sendCount = 0
+        var sendCountEl = null
+
         function throttledSend (beat) {
           var slot = Math.floor(beat / SEND_EVERY)
           if (slot === lastSentBeat) return
           lastSentBeat = slot
           doSend(beat)
+          sendCount++
+          if (sendCountEl) sendCountEl.textContent = sendCount
         }
 
-        // Link hook
-        window.__breathOnBeat = function (beat) { throttledSend(beat) }
+        // Link hook — stamp wall-clock time so fallback knows beats are live
+        var lastBeatMs = 0
+        window.__breathOnBeat = function (beat) {
+          lastBeatMs = Date.now()
+          throttledSend(beat)
+        }
 
-        // Fallback when Link not active
+        // Fallback: run unless Link is active AND has delivered a beat within
+        // the last 2 s.  Guards against linkActive=true with no beats arriving
+        // (e.g. page reload while server still has linkEnabled=true in memory).
         setInterval(function () {
-          if (typeof linkActive !== 'undefined' && linkActive) return
-          throttledSend((Date.now() / 500))  // 2 fake beats/sec = 120 BPM equiv
+          var beatsLive = (typeof linkActive !== 'undefined') && linkActive &&
+                          (Date.now() - lastBeatMs < 2000)
+          if (beatsLive) return
+          throttledSend((Date.now() / 500))
         }, 500)
 
         // ---- UI ----
@@ -5364,7 +5382,14 @@
 
           var hdr = document.createElement('div')
           hdr.className = 'sa-head'
-          hdr.textContent = 'SCOPE AUTO'
+          hdr.style.cssText = 'display:flex;justify-content:space-between;'
+          var hdrLabel = document.createElement('span')
+          hdrLabel.textContent = 'SCOPE AUTO'
+          var counter = document.createElement('span')
+          counter.style.cssText = 'color:#1a4a1a;'
+          counter.textContent = '0'
+          sendCountEl = counter
+          hdr.appendChild(hdrLabel); hdr.appendChild(counter)
           wrap.appendChild(hdr)
 
           PARAMS.forEach(function (p) {

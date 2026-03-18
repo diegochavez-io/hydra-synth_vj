@@ -12,6 +12,7 @@
 </head>
 <body>
   <video id="v" autoplay muted playsinline></video>
+  <canvas id="checkerSrc" style="display:none;"></canvas>
   <canvas id="warpCanvas"></canvas>
   <script>
     // WebGL warp renderer — renders video through a deformable mesh
@@ -72,10 +73,14 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
-    // Warp mesh state — default identity (2x2 grid, no distortion)
+    // Warp mesh state — default identity (3x3 grid, no distortion)
     var warpState = {
-      gridSize: [2, 2],
-      points: [[0, 0], [1, 0], [0, 1], [1, 1]]
+      gridSize: [3, 3],
+      points: [
+        [0, 0], [0.5, 0], [1, 0],
+        [0, 0.5], [0.5, 0.5], [1, 0.5],
+        [0, 1], [0.5, 1], [1, 1]
+      ]
     }
 
     function buildMesh(state) {
@@ -116,6 +121,36 @@
 
     var indexCount = buildMesh(warpState)
 
+    // Checkerboard alignment pattern
+    var mapModeOn = false
+    var checkerCanvas = document.getElementById('checkerSrc')
+
+    function drawChecker (w, h) {
+      checkerCanvas.width = w
+      checkerCanvas.height = h
+      var ctx = checkerCanvas.getContext('2d')
+      var tileSize = Math.round(Math.max(w, h) / 16)
+      var cols = Math.ceil(w / tileSize)
+      var rows = Math.ceil(h / tileSize)
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          ctx.fillStyle = (r + c) % 2 === 0 ? '#000' : '#fff'
+          ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize)
+        }
+      }
+      ctx.strokeStyle = '#f00'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(w / 2, 0)
+      ctx.lineTo(w / 2, h)
+      ctx.moveTo(0, h / 2)
+      ctx.lineTo(w, h / 2)
+      ctx.stroke()
+      ctx.strokeStyle = '#f00'
+      ctx.lineWidth = 3
+      ctx.strokeRect(1, 1, w - 2, h - 2)
+    }
+
     // Render loop
     var video = document.getElementById('v')
 
@@ -129,9 +164,19 @@
 
     function render() {
       requestAnimationFrame(render)
-      if (video.readyState < 2) return
+
+      // Pick texture source: checkerboard or video
+      var src = null
+      if (mapModeOn) {
+        if (checkerCanvas.width < 2) drawChecker(canvas.width, canvas.height)
+        src = checkerCanvas
+      } else {
+        if (video.readyState < 2) return
+        src = video
+      }
+
       gl.bindTexture(gl.TEXTURE_2D, videoTex)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src)
       gl.clear(gl.COLOR_BUFFER_BIT)
       gl.useProgram(program)
       gl.activeTexture(gl.TEXTURE0)
@@ -168,6 +213,10 @@
             if (data.type === 'warp-update' && data.data) {
               warpState = data.data
               indexCount = buildMesh(warpState)
+            }
+            if (data.type === 'map-mode') {
+              mapModeOn = !!data.active
+              if (mapModeOn) drawChecker(canvas.width, canvas.height)
             }
             if (data.type === 'filters') {
               canvas.style.filter = data.filter
