@@ -109,6 +109,9 @@ class HydraSource {
   tick (time) {
     //  console.log(this.src, this.tex.width, this.tex.height)
     if (this.src !== null && this.dynamic === true) {
+      // Skip GPU upload if canvas source hasn't received a new video frame
+      if (this.src._newFrame === false) return
+
       if (this.src.videoWidth && this.src.videoWidth !== this.tex.width) {
         console.log(
           this.src.videoWidth,
@@ -124,6 +127,8 @@ class HydraSource {
       }
 
       this.tex.subimage(this.src)
+      // Clear flag after upload — next subimage skipped until new video frame arrives
+      if ('_newFrame' in this.src) this.src._newFrame = false
     }
   }
 

@@ -2471,7 +2471,10 @@ var _default = () => [{
   type: 'src',
   inputs: [],
   glsl: `   return texture2D(prevBuffer, fract(_st));`
-}, {
+}, // grayScott removed from GLSL — standalone WebGL engine in gray-scott.js
+// is the reliable path (separate context, proper ping-pong FBOs).
+// GLSL prevBuffer approach is fragile per community reports.
+{
   name: 'sum',
   type: 'color',
   inputs: [{
@@ -2805,6 +2808,9 @@ class HydraSource {
   tick(time) {
     //  console.log(this.src, this.tex.width, this.tex.height)
     if (this.src !== null && this.dynamic === true) {
+      // Skip GPU upload if canvas source hasn't received a new video frame
+      if (this.src._newFrame === false) return;
+
       if (this.src.videoWidth && this.src.videoWidth !== this.tex.width) {
         console.log(this.src.videoWidth, this.src.videoHeight, this.tex.width, this.tex.height);
         this.tex.resize(this.src.videoWidth, this.src.videoHeight);
@@ -2814,7 +2820,9 @@ class HydraSource {
         this.tex.resize(this.src.width, this.src.height);
       }
 
-      this.tex.subimage(this.src);
+      this.tex.subimage(this.src); // Clear flag after upload — next subimage skipped until new video frame arrives
+
+      if ('_newFrame' in this.src) this.src._newFrame = false;
     }
   }
 

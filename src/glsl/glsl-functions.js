@@ -1007,6 +1007,9 @@ export default () => [
   glsl:
 `   return texture2D(prevBuffer, fract(_st));`
 },
+// grayScott removed from GLSL — standalone WebGL engine in gray-scott.js
+// is the reliable path (separate context, proper ping-pong FBOs).
+// GLSL prevBuffer approach is fragile per community reports.
 {
   name: 'sum',
   type: 'color',

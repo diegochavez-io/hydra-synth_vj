@@ -57,13 +57,112 @@
       overflow: hidden;
       flex-shrink: 0;
     }
+    #stageWrap {
+      position: relative;
+      flex-shrink: 1;
+      min-height: 200px;
+    }
+    #stageOverlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 6px 8px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    #stageOverlay > * { pointer-events: auto; }
+    #linkBar {
+      position: absolute;
+      bottom: 6px; left: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: auto;
+    }
+    #linkBar .btn {
+      background: rgba(10,10,14,0.75);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      font-size: 10px;
+      padding: 3px 6px;
+    }
+    #linkBar .link-info {
+      font-size: 10px;
+      color: #777;
+      background: rgba(10,10,14,0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    #linkBar .link-info.active { color: var(--accent); }
+    #stageOverlay .so-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    #stageOverlay .so-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    #stageOverlay .btn {
+      background: rgba(10,10,14,0.75);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      font-size: 11px;
+    }
+    #stageOverlay select {
+      background: rgba(10,10,14,0.75);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      font-size: 11px;
+      padding: 4px 8px;
+      border: 1px solid #1a1a22;
+      border-radius: 5px;
+      color: #ccc;
+      font-family: inherit;
+    }
+    #stageOverlay .btn.rec { font-size: 10px; padding: 3px 6px; }
+    #stageOverlay .so-sources .src-label {
+      font-size: 9px; color: #777; font-variant-numeric: tabular-nums;
+    }
+    #stageOverlay .so-sources .src-select {
+      padding: 2px 4px; font-size: 10px; max-width: 100px;
+      background: rgba(10,10,14,0.75); backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1px solid #1a1a22; border-radius: 4px; color: #999;
+      font-family: inherit;
+    }
+    #stageOverlay .so-sources .src-select.active { border-color: var(--accent); color: var(--accent); }
+    .section-head {
+      padding: 6px 10px 4px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-head .sh-title {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #666;
+    }
+    .section-head .sh-title.hydra { color: #7a8fff; }
+    .section-head .sh-title.ca { color: #6ec87a; }
+    .section-head .sh-title.scope { color: #c488e8; }
     #stage {
       border: 1px solid #111;
       border-radius: 6px 6px 0 0;
       overflow: hidden;
       background: #000;
-      flex-shrink: 1;
-      min-height: 200px;
+      width: 100%;
+      height: 100%;
     }
     #stage canvas { width: 100%; height: 100%; display: block; object-fit: contain; }
     #controls {
@@ -173,13 +272,27 @@
     }
     #globalControls {
       border-bottom: 1px solid var(--line);
-      padding: 6px 10px;
+      padding: 4px 10px 6px;
       display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 3px;
       color: #bbb;
     }
+    #globalControls .gc-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 1px;
+    }
+    #globalControls .gc-reset {
+      padding: 1px 4px;
+      font-size: 9px;
+      color: #555;
+      border-color: #1a1a22;
+      opacity: 0.5;
+      transition: opacity 0.15s;
+    }
+    #globalControls .gc-reset:hover { opacity: 1; color: #aaa; }
     #globalControls label {
       display: flex;
       align-items: center;
@@ -187,12 +300,20 @@
       white-space: nowrap;
       letter-spacing: 0.02em;
     }
-    #globalControls label > span:first-child { min-width: 14px; }
+    #globalControls label > span:first-child { min-width: 52px; font-size: 10px; color: #666; }
     #globalControls span.val {
       width: 32px;
       text-align: right;
       font-variant-numeric: tabular-nums;
-      color: #999;
+      color: #555;
+      font-size: 10px;
+    }
+    #globalControls input[type="range"] { flex: 1; min-width: 0; }
+    #globalControls .gc-sep {
+      width: 100%;
+      height: 1px;
+      background: #1a1a22;
+      margin: 2px 0;
     }
 
     /* -- Custom range slider: Figma-style -- */
@@ -249,7 +370,7 @@
     }
 
     /* -- Contextual track gradients for color controls -- */
-    #globalControls input[type="range"] { flex: 1; min-width: 60px; }
+    /* slider flex handled in #globalControls block above */
     #hueCtrl::-webkit-slider-runnable-track {
       background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
       opacity: 0.5;
@@ -411,7 +532,61 @@
 <body>
   <div id="app">
     <div id="leftCol">
-      <div id="stage"></div>
+      <div id="stageWrap">
+        <div id="stageOverlay">
+          <div class="so-group">
+            <div class="so-row">
+              <button id="runAllBtn" class="btn main" title="Cmd/Ctrl+Shift+Enter">Run</button>
+              <button id="stopBtn" class="btn stop">Stop</button>
+            </div>
+          </div>
+          <div class="so-group so-sources">
+            <div class="so-row">
+              <button id="startAudioBtn" class="btn" style="font-size:10px;padding:3px 6px;">Audio</button>
+              <span class="src-label">s0</span><select class="src-select" data-src="0"><option value="none">—</option></select>
+              <span class="src-label">s1</span><select class="src-select" data-src="1"><option value="none">—</option></select>
+              <span class="src-label">s2</span><select class="src-select" data-src="2"><option value="none">—</option></select>
+              <span class="src-label">s3</span><select class="src-select" data-src="3"><option value="none">—</option></select>
+            </div>
+          </div>
+          <div class="so-group" style="align-items:flex-end;">
+            <div class="so-row">
+              <button id="openOutBtn" class="btn">Output</button>
+              <select id="resolutionCtrl">
+                <option value="auto">Auto</option>
+                <option value="1920x1200" selected>1920x1200</option>
+                <option value="1920x1080">1920x1080</option>
+                <option value="1280x720">1280x720</option>
+                <option value="3840x2160">3840x2160</option>
+                <option value="1080x1920">1080x1920</option>
+                <option value="1080x1350">1080x1350</option>
+                <option value="1080x1080">1080x1080</option>
+                <option value="custom">Custom</option>
+              </select>
+              <span id="resLabel"></span>
+            </div>
+            <div class="so-row">
+              <button id="recordBtn" class="btn rec" title="Record canvas to MP4">Rec</button>
+              <button id="batchRecordBtn" class="btn rec" title="Record all presets automatically">Batch</button>
+            </div>
+          </div>
+        </div>
+        <div id="linkBar">
+          <button id="linkBtn" class="btn" style="display:none;">Link</button>
+          <span id="linkBpmDisplay" class="link-info" style="display:none;"></span>
+          <span id="linkPeers" class="link-info" style="display:none;"></span>
+        </div>
+        <div id="stage"></div>
+      </div>
+      <div id="globalControls">
+          <label><span>Speed</span><input type="range" id="speedCtrl" min="0" max="4" step="0.1" value="1"><span class="val" id="speedVal">1.0</span></label>
+          <div class="gc-sep"></div>
+          <label><span>Hue</span><input type="range" id="hueCtrl" min="0" max="360" value="0"><span class="val" id="hueVal">0°</span></label>
+          <label><span>Saturation</span><input type="range" id="satCtrl" min="0" max="300" value="100"><span class="val" id="satVal">100</span></label>
+          <label><span>Brightness</span><input type="range" id="brightCtrl" min="0" max="300" value="100"><span class="val" id="brightVal">100</span></label>
+          <label><span>Contrast</span><input type="range" id="contrastCtrl" min="0" max="300" value="100"><span class="val" id="contrastVal">100</span></label>
+          <div style="display:flex;justify-content:flex-end;"><button id="resetFiltersBtn" class="btn gc-reset">R</button></div>
+        </div>
       <div id="audioMeterPanel">
         <canvas id="audioMeterCanvas"></canvas>
         <div style="position:absolute;top:3px;left:4px;display:flex;align-items:center;gap:6px;z-index:1;">
@@ -422,55 +597,23 @@
           <div style="width:1px;height:10px;background:#222;margin:0 2px;"></div>
           <label style="display:flex;align-items:center;gap:3px;white-space:nowrap;font-size:10px;color:#555;">BPM <span id="bpmVal" style="width:24px;text-align:right;font-variant-numeric:tabular-nums;">30</span></label>
           <button id="tapTempoBtn" class="btn" style="padding:2px 6px;font-size:10px;border-color:#222;">Tap</button>
-          <button id="linkBtn" class="btn" style="padding:2px 6px;font-size:10px;border-color:#222;display:none;">Link</button>
-          <span id="linkPeers" style="display:none;font-size:10px;color:#555;"></span>
+          <!-- linkBtn moved to stageOverlay #linkBar -->
         </div>
       </div>
       <div class="h-splitter" id="hSplitter" title="Drag to resize preview"></div>
       <div id="controls">
         <div id="toolbar">
-          <div class="toolbar-group">
-            <button id="runAllBtn" class="btn main" title="Cmd/Ctrl+Shift+Enter">Run</button>
-            <button id="stopBtn" class="btn stop">Stop</button>
-          </div>
-          <div class="toolbar-sep"></div>
-          <div class="toolbar-group">
-            <button id="openOutBtn" class="btn">Output</button>
-            <select id="resolutionCtrl">
-              <option value="auto">Auto</option>
-              <option value="1920x1200" selected>1920x1200</option>
-              <option value="1920x1080">1920x1080</option>
-              <option value="1280x720">1280x720</option>
-              <option value="3840x2160">3840x2160</option>
-              <option value="1080x1920">1080x1920</option>
-              <option value="1080x1350">1080x1350</option>
-              <option value="1080x1080">1080x1080</option>
-              <option value="custom">Custom</option>
-            </select>
-            <span id="resLabel"></span>
-          </div>
-          <div class="toolbar-sep"></div>
-          <div class="toolbar-group">
-            <button id="startAudioBtn" class="btn">Audio</button>
-            <span class="src-label">s0</span><select class="src-select" data-src="0"><option value="none">—</option></select>
-            <span class="src-label">s1</span><select class="src-select" data-src="1"><option value="none">—</option></select>
-            <span class="src-label">s2</span><select class="src-select" data-src="2"><option value="none">—</option></select>
-            <span class="src-label">s3</span><select class="src-select" data-src="3"><option value="none">—</option></select>
-          </div>
           <div class="toolbar-group" style="margin-left:auto;">
             <button id="saveBtn" class="btn">Save</button>
             <button id="saveAsBtn" class="btn">Save As</button>
-            <div class="toolbar-sep"></div>
-            <button id="recordBtn" class="btn rec" title="Record canvas to MP4">Rec</button>
-            <button id="batchRecordBtn" class="btn rec" title="Record all presets automatically">Batch</button>
           </div>
           <button id="openNdiBtn" class="btn" style="display:none;">NDI Out: Off</button>
           <button id="fsOutBtn" class="btn" style="display:none;">Fullscreen Output</button>
           <button id="toggleCodeBtn" class="btn" style="display:none;">Audience Mode</button>
         </div>
         <div id="status">Ready</div>
-        <div id="presetsHeader" style="border-bottom:1px solid var(--line);padding:6px 10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <span style="color:#888;white-space:nowrap;">Hydra Presets</span>
+        <div id="presetsHeader" class="section-head" style="flex-wrap:wrap;">
+          <span class="sh-title hydra">Hydra</span>
           <button id="communityRandomBtn" class="btn" style="padding:4px 8px;" title="Load random community Hydra sketch">Shuffle</button>
           <a href="https://hydra.ojack.xyz/api/" target="_blank" class="btn" style="padding:4px 8px;text-decoration:none;">Docs</a>
           <div class="toolbar-sep"></div>
@@ -494,19 +637,15 @@
           <span id="autoplayCountdown" style="font-variant-numeric:tabular-nums;"></span>
         </div>
         <div id="presets"></div>
-        <div id="globalControls">
-          <button id="resetFiltersBtn" class="btn" style="padding:4px 8px;border-color:#1a1a22;">Reset</button>
-          <label><span>Hue</span><input type="range" id="hueCtrl" min="0" max="360" value="0"><span class="val" id="hueVal">0°</span></label>
-          <label><span>Saturation</span><input type="range" id="satCtrl" min="0" max="300" value="100"><span class="val" id="satVal">100</span></label>
-          <label><span>Brightness</span><input type="range" id="brightCtrl" min="0" max="300" value="100"><span class="val" id="brightVal">100</span></label>
-          <label><span>Contrast</span><input type="range" id="contrastCtrl" min="0" max="300" value="100"><span class="val" id="contrastVal">100</span></label>
-          <div style="width:1px;height:12px;background:#1a1a22;margin:0 2px;"></div>
-          <label><span>Speed</span><input type="range" id="speedCtrl" min="0" max="4" step="0.1" value="1"><span class="val" id="speedVal">1.0</span></label>
-        </div>
+        <!-- globalControls moved above audioMeterPanel -->
         <div id="autoplayBar" style="display:none;">
           <div id="beatGrid"></div>
           <div id="autoplayProgress" style="display:none;"><div id="autoplayProgressFill"></div></div>
         </div>
+        <div class="section-head" style="margin-top:2px;">
+          <span class="sh-title scope">Daydream / Scope</span>
+        </div>
+        <div id="scopePresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
         <div id="daydreamBar">
           <!-- Hidden elements kept for JS compatibility -->
           <select id="ddMode" style="display:none;"><option value="scope">Scope</option><option value="cloud">Cloud</option></select>
@@ -531,8 +670,53 @@
             <input type="text" id="ddPrompt" placeholder="Prompt..." value="abstract fluid art, iridescent light" style="flex:1;min-width:180px;">
             <button id="ddSend" class="btn" style="padding:4px 8px;">Send</button>
           </div>
+          <div id="piPanel" style="display:none;padding:4px 0 2px;">
+            <div class="dd-row" style="margin-bottom:4px;">
+              <button id="piRunBtn" class="btn main" style="padding:4px 12px;font-weight:700;">▶ Sequence</button>
+              <select id="piBarsSelect" style="font-size:inherit;">
+                <option value="1">1 bar</option>
+                <option value="2">2 bars</option>
+                <option value="4" selected>4 bars</option>
+                <option value="8">8 bars</option>
+                <option value="16">16 bars</option>
+                <option value="32">32 bars</option>
+              </select>
+              <button id="piPrevBtn" class="btn" style="padding:4px 8px;">◀</button>
+              <button id="piNextBtn" class="btn" style="padding:4px 8px;">▶</button>
+              <button id="piListToggle" class="btn" style="padding:4px 8px;margin-left:auto;" title="Show/hide prompt list">Prompts</button>
+            </div>
+            <div id="piListBody">
+              <div class="dd-row" style="margin-bottom:4px;">
+                <select id="piSceneSelect" style="font-size:inherit;flex:1;min-width:0;"></select>
+                <button id="piSceneSaveBtn" class="btn" style="padding:4px 8px;">Save</button>
+                <button id="piSceneNewBtn" class="btn" style="padding:4px 8px;">+ New</button>
+                <button id="piSceneDelBtn" class="btn" style="padding:4px 8px;color:#c44;border-color:#2a1515;">Del</button>
+              </div>
+              <textarea id="piTextarea" spellcheck="false" placeholder="One prompt per line..." style="width:100%;resize:vertical;min-height:80px;background:#08080c;color:#888;border:1px solid #1a1a22;border-radius:4px;padding:6px 8px;font-family:inherit;font-size:inherit;line-height:1.5;outline:none;"></textarea>
+              <div style="padding:3px 2px 0;color:#555;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="piStatus"></div>
+            </div>
+          </div>
+          <!-- scopePresets moved above Scope controls -->
         </div>
         <div id="ddDebugLog"></div>
+        <div class="section-head" style="margin-top:2px;">
+          <span class="sh-title ca">Cellular Automata</span>
+        </div>
+        <div id="caPresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
+        <div id="caControls" style="display:none;border-top:1px solid #1a1a22;padding:4px 0;">
+          <span style="color:#555;font-size:10px;display:block;margin-bottom:2px;">CONTROLS</span>
+          <label><span>Hue</span><input type="range" id="caHue" min="0" max="1" step="0.01" value="0.5"><span class="val" id="caHueVal">0.50</span></label>
+          <label><span>Brightness</span><input type="range" id="caBright" min="0.3" max="2.5" step="0.05" value="1.0"><span class="val" id="caBrightVal">1.00</span></label>
+          <label><span>Speed</span><input type="range" id="caSpeed" min="0.1" max="4" step="0.1" value="1.0"><span class="val" id="caSpeedVal">1.0</span></label>
+          <label><span>Thickness</span><input type="range" id="caThick" min="0" max="10" step="0.5" value="0"><span class="val" id="caThickVal">0</span></label>
+          <span style="color:#555;font-size:10px;display:block;margin-top:4px;margin-bottom:2px;">SHAPE</span>
+          <label><span>Growth</span><input type="range" id="caFeed" min="0.01" max="0.08" step="0.001" value="0.037"><span class="val" id="caFeedVal">0.037</span></label>
+          <label><span>Tolerance</span><input type="range" id="caKill" min="0.04" max="0.07" step="0.001" value="0.06"><span class="val" id="caKillVal">0.060</span></label>
+          <label><span>Smoothness</span><input type="range" id="caSmooth" min="5" max="30" step="1" value="10"><span class="val" id="caSmoothVal">10</span></label>
+          <div style="margin-top:4px;display:flex;gap:4px;">
+            <button id="caReseedBtn" class="btn" style="padding:4px 8px;flex:1;">Reseed</button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="v-splitter" id="vSplitter" title="Drag to resize"></div>
@@ -588,6 +772,8 @@
     .cm-s-hydra .cm-tag { color: #f07178; }
     .cm-s-hydra .cm-error { color: #ff5370; }
     .cm-s-hydra .cm-builtin { color: #ffcb6b; }
+    /* GLSL inside template literals — subtle background tint */
+    .cm-s-hydra .cm-glsl-block { background: rgba(60, 80, 120, 0.18); border-radius: 2px; }
     .CodeMirror-scrollbar-filler { background: transparent !important; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
@@ -596,8 +782,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/closebrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/selection/active-line.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/comment/comment.min.js"></script>
-  <script src="hydra-synth.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/mode/multiplex.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/glsl/glsl.min.js"></script>
+  <script src="/dist/hydra-synth.js"></script>
   <script>if (typeof Hydra === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"><\/script>')</script>
+  <script src="/dist/gray-scott.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0.7/dist/obs-ws.global.js"></script>
   <script src="https://unpkg.com/prettier@3.3.3/standalone.js"></script>
   <script src="https://unpkg.com/prettier@3.3.3/plugins/babel.js"></script>
@@ -1479,6 +1668,10 @@
 
       function cleanupSources () {
         if (!hydra) return
+
+        // Tear down any active CA (WebGL engine + WebSocket stream + s0 binding)
+        if (typeof window.cleanupCA === 'function') window.cleanupCA()
+
         // Only clean s0 — persistent sources (s1-s3) survive preset changes
         if (typeof s0 !== 'undefined' && s0 && !persistentSources[0]) {
           if (s0.src && s0.src.pause) { s0.src.pause(); s0.src.src = '' }
@@ -1512,10 +1705,81 @@
           localStorage.setItem('hydra-live-code', JSON.stringify({ code: snippet, ts: Date.now() }))
           if (relayWs && relayWs.readyState === 1) relayWs.send(JSON.stringify({ code: snippet }))
           setStatus(`Ran ${label}.`, false)
+          // Auto health-check after preset loads (delayed so textures settle)
+          if (label === 'all code') setTimeout(function () { if (window.hydraHealth) window.hydraHealth() }, 500)
         } catch (error) {
           setStatus(`${label} error: ${error.message}`, true)
           console.error(error)
         }
+      }
+
+      // ---- Health check: diagnose buffer/source state ----
+      // Call from console: hydraHealth()  or wire to MCP/button
+      window.hydraHealth = function () {
+        var report = { ok: true, issues: [], sources: {}, buffers: {}, ca: {} }
+
+        // Check sources s0-s3
+        for (var i = 0; i < 4; i++) {
+          var s = window['s' + i]
+          if (!s) { report.issues.push('s' + i + ' is undefined'); report.ok = false; continue }
+          var info = { dynamic: s.dynamic, hasSrc: !!s.src }
+          if (s.src) {
+            info.srcType = s.src.constructor ? s.src.constructor.name : typeof s.src
+            if (s.src.videoWidth !== undefined) {
+              info.videoWidth = s.src.videoWidth
+              info.videoHeight = s.src.videoHeight
+              if (s.src.videoWidth === 0) { report.issues.push('s' + i + ' video has 0 width (not receiving frames)'); report.ok = false }
+            }
+            if (s.src.width !== undefined && s.src.tagName === 'CANVAS') {
+              info.canvasWidth = s.src.width
+              info.canvasHeight = s.src.height
+            }
+          }
+          if (s.tex) {
+            var texShape = s.tex._tex ? [s.tex._tex.width, s.tex._tex.height] : s.tex.shape || null
+            info.texShape = texShape
+            if (texShape && texShape[0] === 1 && texShape[1] === 1) {
+              report.issues.push('s' + i + ' texture is 1x1 (uninitialized)')
+            }
+          }
+          report.sources['s' + i] = info
+        }
+
+        // Check CA state
+        report.ca.engineActive = !!(window.ca && window.ca.running)
+        report.ca.wsConnected = !!(window._caWsDebug || (typeof _caWs !== 'undefined' && _caWs && _caWs.readyState === 1))
+        if (report.ca.engineActive && !report.ca.wsConnected) {
+          report.issues.push('Gray-Scott engine running but no WS stream (expected for WebGL CA)')
+        }
+
+        // Check if window.update is stacked (gray-scott tick leaking)
+        var updateStr = (window.update || '').toString ? (window.update || '').toString() : ''
+        report.ca.updateHooked = updateStr.indexOf('gray-scott') !== -1 || updateStr.indexOf('_engine') !== -1
+        if (report.ca.updateHooked && !report.ca.engineActive) {
+          report.issues.push('window.update still has gray-scott hook but engine is stopped — call cleanupCA()')
+          report.ok = false
+        }
+
+        // Check persistent sources
+        report.persistentSources = Object.keys(persistentSources).map(function (k) {
+          return 's' + k + ': ' + (persistentSources[k].label || 'unknown')
+        })
+
+        // Log it
+        console.log('%c[hydraHealth]', 'color: #0ff', report.ok ? 'ALL OK' : 'ISSUES FOUND')
+        if (report.issues.length) console.warn('Issues:', report.issues)
+        console.table(report.sources)
+
+        // Post to server so external tools (MCP, TD, curl) can GET /api/health
+        try {
+          fetch('/api/health', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(report)
+          }).catch(function () {})
+        } catch (e) {}
+
+        return report
       }
 
       function runLine () {
@@ -2012,18 +2276,38 @@
           if (val.startsWith('cam:')) {
             var deviceId = val.replace('cam:', '')
             navigator.mediaDevices.getUserMedia({
-              video: { deviceId: { exact: deviceId } }, audio: false
+              video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }, audio: false
             }).then(function (stream) {
               sourceStreams[idx] = stream
               var vid = document.createElement('video')
               vid.srcObject = stream; vid.autoplay = true; vid.muted = true; vid.playsInline = true
               vid.style.display = 'none'
               document.body.appendChild(vid)
+
+              // Use canvas intermediary with requestVideoFrameCallback
+              // Only redraws when video has a new frame — avoids redundant texSubImage2D
+              var cvs = document.createElement('canvas')
+              var cctx = cvs.getContext('2d', { willReadFrequently: false })
+              cvs._newFrame = false
+
+              function onVideoFrame () {
+                if (cvs.width !== vid.videoWidth) { cvs.width = vid.videoWidth; cvs.height = vid.videoHeight }
+                cctx.drawImage(vid, 0, 0)
+                cvs._newFrame = true
+                vid.requestVideoFrameCallback(onVideoFrame)
+              }
+
               vid.addEventListener('loadeddata', function () {
-                src.init({ src: vid, dynamic: true })
-                persistentSources[idx] = { stream: stream, video: vid, label: stream.getVideoTracks()[0].label }
+                cvs.width = vid.videoWidth; cvs.height = vid.videoHeight
+                cctx.drawImage(vid, 0, 0)
+                cvs._newFrame = true
+                src.init({ src: cvs, dynamic: true })
+                persistentSources[idx] = { stream: stream, video: vid, canvas: cvs, label: stream.getVideoTracks()[0].label }
                 if (sel) sel.classList.add('active')
                 console.log('s' + idx + ' ← ' + stream.getVideoTracks()[0].label + ' (' + vid.videoWidth + 'x' + vid.videoHeight + ')')
+                if (vid.requestVideoFrameCallback) {
+                  vid.requestVideoFrameCallback(onVideoFrame)
+                }
               })
               vid.play()
             }).catch(function (err) {
@@ -2111,11 +2395,24 @@
         })
       })()
 
+      // Mixed mode: JavaScript with GLSL inside backtick template literals
+      CodeMirror.defineMode('hydra-js', function (config) {
+        return CodeMirror.multiplexingMode(
+          CodeMirror.getMode(config, 'javascript'),
+          {
+            open: '`',
+            close: '`',
+            mode: CodeMirror.getMode(config, 'glsl'),
+            delimStyle: 'string'
+          }
+        )
+      })
+
       // Init CodeMirror
       var cm = null
       try {
       cm = CodeMirror.fromTextArea(editorEl, {
-        mode: 'javascript',
+        mode: 'hydra-js',
         theme: 'hydra',
         lineNumbers: false,
         matchBrackets: true,
@@ -2233,6 +2530,8 @@
       toggleCodeBtn.addEventListener('click', toggleAudienceMode)
       document.getElementById('stopBtn').addEventListener('click', function () {
         if (!hydra) return
+        // Tear down any active CA before clearing
+        if (typeof window.cleanupCA === 'function') window.cleanupCA()
         // clear all buffers to black and stop any video sources
         hydra.eval('solid(0,0,0,1).out(o0); solid(0,0,0,1).out(o1); solid(0,0,0,1).out(o2); solid(0,0,0,1).out(o3); render(o0)')
         // stop video elements on s0-s3
@@ -3259,6 +3558,7 @@
         document.getElementById('ddScopeOpenTab').style.display = ''
         ddToggle.style.display = ''
         document.getElementById('ddPromptRow').style.display = ''
+        document.getElementById('piPanel').style.display = ''
         // Auto-connect WebRTC to get AI video into s0
         if (!ddActive) {
           ddLog('Scope healthy — auto-connecting WebRTC', 'ok')
@@ -3511,8 +3811,8 @@
           var ndiDevice = videoDevices.find(function (d) { return d.label.toLowerCase().indexOf('ndi') !== -1 })
           var constraints = {
             video: ndiDevice
-              ? { deviceId: { exact: ndiDevice.deviceId }, width: { ideal: 576 }, height: { ideal: 320 } }
-              : { width: { ideal: 576 }, height: { ideal: 320 } }
+              ? { deviceId: { exact: ndiDevice.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }
+              : { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }
           }
           if (ndiDevice) {
             ddLog('Found: ' + ndiDevice.label, 'ok')
@@ -3531,16 +3831,35 @@
             ddVideo.autoplay = true
             ddVideo.playsInline = true
             ddVideo.muted = true
+            ddVideo.style.display = 'none'
             document.body.appendChild(ddVideo)
           }
           ddVideo.srcObject = stream
           ddVideo.play()
 
+          // Canvas intermediary — only update on new video frames
+          var ddCanvas = document.createElement('canvas')
+          var ddCtx = ddCanvas.getContext('2d', { willReadFrequently: false })
+          ddCanvas._newFrame = false
+
+          function ddOnVideoFrame () {
+            if (ddCanvas.width !== ddVideo.videoWidth) { ddCanvas.width = ddVideo.videoWidth; ddCanvas.height = ddVideo.videoHeight }
+            ddCtx.drawImage(ddVideo, 0, 0)
+            ddCanvas._newFrame = true
+            ddVideo.requestVideoFrameCallback(ddOnVideoFrame)
+          }
+
           function wireS0 () {
             if (typeof s0 !== 'undefined' && s0.init && ddVideo.videoWidth > 0) {
-              s0.init({ src: ddVideo, dynamic: true })
+              ddCanvas.width = ddVideo.videoWidth; ddCanvas.height = ddVideo.videoHeight
+              ddCtx.drawImage(ddVideo, 0, 0)
+              ddCanvas._newFrame = true
+              s0.init({ src: ddCanvas, dynamic: true })
               ddLog('Wired to s0 — ' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight, 'ok')
               ddSetState('on', 'src(s0) = NDI (' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight + ')')
+              if (ddVideo.requestVideoFrameCallback) {
+                ddVideo.requestVideoFrameCallback(ddOnVideoFrame)
+              }
             } else {
               setTimeout(wireS0, 200)
             }
@@ -3852,12 +4171,15 @@
 
       function ddUpdatePrompt () {
         var prompt = ddPromptEl.value || 'abstract fluid art'
-        // Scope mode: send via data channel
-        if (ddModeEl.value === 'scope' && ddScopeDataChannel && ddScopeDataChannel.readyState === 'open') {
-          ddScopeDataChannel.send(JSON.stringify({
-            prompts: [{ text: prompt, weight: 1.0 }]
-          }))
-          ddInfo.textContent = 'Prompt sent'
+        // Scope mode: send via OSC relay (same path confirmed working for noise_scale)
+        if (ddModeEl.value === 'scope') {
+          fetch('/api/scope-osc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: 'prompt', value: prompt, type: 'string' })
+          }).then(function (r) { return r.json() }).then(function (res) {
+            ddInfo.textContent = res.ok ? 'Prompt sent' : '⚠ OSC failed'
+          }).catch(function () { ddInfo.textContent = '⚠ OSC error' })
           return
         }
         // Cloud mode: PATCH API
@@ -3999,6 +4321,63 @@
       }
       speedCtrlEl.addEventListener('input', updateSpeed)
 
+      // ---- CA Controls ----
+      var caControlsEl = document.getElementById('caControls')
+
+      // Send to Python CA server — all params go through one command
+      function caSend (type, value) {
+        var ws = window._caWs
+        if (ws && ws.readyState === 1) {
+          ws.send(JSON.stringify({ type: type, value: value }))
+        }
+      }
+
+      function showCaControls () { if (caControlsEl) caControlsEl.style.display = '' }
+      function hideCaControls () { if (caControlsEl) caControlsEl.style.display = 'none' }
+
+      // Wire all sliders — single event handler pattern
+      ;[
+        ['caHue', 'caHueVal', 2, 'hue'],
+        ['caBright', 'caBrightVal', 2, 'brightness'],
+        ['caSpeed', 'caSpeedVal', 1, 'speed'],
+        ['caThick', 'caThickVal', 1, 'thickness'],
+        ['caFeed', 'caFeedVal', 3, 'feed'],
+        ['caKill', 'caKillVal', 3, 'kill'],
+        ['caSmooth', 'caSmoothVal', 0, 'T']
+      ].forEach(function (def) {
+        var el = document.getElementById(def[0])
+        var valEl = document.getElementById(def[1])
+        if (!el || !valEl) return
+        el.addEventListener('input', function () {
+          var v = def[2] === 0 ? parseInt(el.value, 10) : parseFloat(el.value)
+          valEl.textContent = def[2] === 0 ? v : v.toFixed(def[2])
+          caSend('params', (function(){ var o = {}; o[def[3]] = v; return o })())
+        })
+      })
+
+      // Reseed button
+      document.getElementById('caReseedBtn').addEventListener('click', function () {
+        caSend('reseed', true)
+      })
+
+      // Show controls when caStream is called
+      var _origCaStream = window.caStream
+      if (typeof _origCaStream === 'function') {
+        window.caStream = function () {
+          var result = _origCaStream.apply(this, arguments)
+          showCaControls()
+          return result
+        }
+      }
+      var _origGrayScott = window.grayScott
+      if (typeof _origGrayScott === 'function') {
+        window.grayScott = function () {
+          var result = _origGrayScott.apply(this, arguments)
+          showCaControls()
+          return result
+        }
+      }
+
       // ---- BPM tap tempo ----
       var bpmValEl = document.getElementById('bpmVal')
       var tapTempoBtn = document.getElementById('tapTempoBtn')
@@ -4030,11 +4409,17 @@
       // ---- Ableton Link ----
       var linkBtn = document.getElementById('linkBtn')
       var linkPeersEl = document.getElementById('linkPeers')
+      var linkBpmEl = document.getElementById('linkBpmDisplay')
       var linkActive = false
       var linkAvailable = false
 
       function setLinkButtonState () {
-        if (!linkAvailable) { linkBtn.style.display = 'none'; linkPeersEl.style.display = 'none'; return }
+        if (!linkAvailable) {
+          linkBtn.style.display = 'none'
+          linkPeersEl.style.display = 'none'
+          linkBpmEl.style.display = 'none'
+          return
+        }
         linkBtn.style.display = ''
         linkBtn.textContent = linkActive ? 'Link: On' : 'Link'
         if (linkActive) {
@@ -4042,6 +4427,8 @@
         } else {
           linkBtn.classList.remove('main')
           linkPeersEl.style.display = 'none'
+          linkBpmEl.style.display = 'none'
+          linkBpmEl.classList.remove('active')
         }
       }
 
@@ -4063,7 +4450,11 @@
             if (data.enabled) linkActive = true
             setLinkButtonState()
             if (data.available && data.bpm) {
-              bpmValEl.textContent = Math.round(data.bpm)
+              var rb = Math.round(data.bpm)
+              bpmValEl.textContent = rb
+              linkBpmEl.textContent = rb + ' BPM'
+              linkBpmEl.style.display = ''
+              linkBpmEl.classList.toggle('active', linkActive)
             }
             return
           }
@@ -4076,6 +4467,9 @@
             // Update BPM display and Hydra global
             var roundedBpm = Math.round(data.bpm)
             bpmValEl.textContent = roundedBpm
+            linkBpmEl.textContent = roundedBpm + ' BPM'
+            linkBpmEl.style.display = ''
+            linkBpmEl.classList.add('active')
             if (typeof window.bpm !== 'undefined') window.bpm = data.bpm
             // Show peer count
             linkPeersEl.style.display = ''
@@ -4083,6 +4477,9 @@
             // Drive beat-synced autoplay from Link's actual beat position
             if (typeof data.beat === 'number') {
               autoplayOnLinkBeat(data.beat)
+              if (window.__piOnBeat) window.__piOnBeat(data.beat)
+              if (window.__breathOnBeat) window.__breathOnBeat(data.beat)
+              if (window.__hueOnBeat) window.__hueOnBeat(data.beat)
             }
             return
           }
@@ -4126,6 +4523,557 @@
           }
         }
       })
+
+      // ---- Prompt Injector / Beat Sequencer ----
+      // Uses window.__piOnBeat hook (called from handleLinkMessage above)
+      ;(function () {
+        var STORAGE_KEY = 'hydra-pi-scenes-v1'
+
+        var DEFAULT_SCENES = {
+          'Museum Ambient': [
+            'slow translucent ink diffusing through still water, deep indigo and warm copper tones, soft caustic light',
+            'abstract geological strata, layered sediment textures in slate gray and oxidized bronze, very slow erosion',
+            'bioluminescent deep ocean organisms, soft teal and violet glow pulsing gently against dark water',
+            'weathered metal patina close-up, verdigris green and raw copper textures, matte surface detail',
+            'aerial view of salt flats at dusk, soft pink and pale lavender reflected in thin water layer',
+            'microscopic crystal growth, translucent mineral formations in amber and smoky quartz tones',
+            'fog moving through ancient stone architecture, warm amber light diffusing through gray mist',
+            'abstract fluid dynamics, viscous dark liquid with iridescent surface tension in petroleum colors',
+            'moth wing macro texture, soft powder scales in muted sage and warm cream, organic geometry',
+            'molten glass cooling slowly, deep amber and dark ruby with internal light refractions',
+            'lichen growing on volcanic rock, sage green organic patterns on matte black basalt texture',
+            'thin ice forming on dark water surface, delicate crystalline fracture patterns catching soft light',
+            'abstract topographic landscape, contour lines in warm gray dissolving into soft ochre gradient',
+            'smoke rising through a beam of warm light, layered translucent gray and amber wisps',
+            'petri dish culture, organic circular growth patterns in muted earth tones on dark substrate',
+            'tarnished silver surface, dark patina with subtle iridescent oxidation patterns',
+            'slow lava flow at night, deep red and black with thin orange crusting at edges',
+            'morning dew on spider silk, translucent droplets catching soft diffused light against dark background',
+            'eroded sandstone canyon wall, layered warm ochre and rust striations, smooth organic curves',
+            'abstract magnetic field visualization, iron filings in dark metallic patterns on pale surface'
+          ],
+          'Datamosh': [
+            'I-frame stripped RGB pixel scatter, red and cyan macroblock debris from dual-source codec collision, motion vectors pulling fragments diagonally',
+            'P-frame drift on neon green base, hot pink and yellow macroblock shrapnel smearing along original motion paths, single-reference melt',
+            'repeat-P melt on acid green, multicolor macroblock clusters breaking free from corrupted reference frame, decoder propagation error',
+            'hue-rotated P-frame bleed through lavender field, magenta and cyan compression ghosts floating in corrupted GOP, soft temporal smear',
+            'gentle keyframe deletion on purple wash, gray organic shapes drifting with green and red quantization fringe, slow codec decay',
+            'minimal P-frame drift on neon green, early-stage keyframe deletion with soft macroblock blur beginning to propagate',
+            'deep emerald P-frame storm, crimson macroblock artifacts propagating through destroyed reference, dense inter-frame bleeding',
+            'horizontal GOP boundary artifacts in warm red and steel blue, stratified compression bands from I-frame removal, molten bitstream layers',
+            'dark field with diagonal motion vector tears, magenta quantization dust over muted green, reverse P-frame propagation',
+            'violet and green macroblock confetti from hue-shifted source, dense diagonal P-frame drift pattern, shattered reference dissolution',
+            'inverted palette P-frame scatter, pastel mint and pink compression fragments drifting across corrupted reference, soft decoder error',
+            'dark green base with crimson macroblock shards from I-frame deletion, dense horizontal motion vector tear pattern',
+            'maximum entropy repeat-P explosion, saturated RGB macroblock collision at full corruption, every color channel bleeding simultaneously',
+            'hue-shifted P-frame bleed on tropical green, pink organic compression ghosts swirling through corrupted emerald reference frame',
+            'inverted color P-frame shatter, neon cyan and lime macroblocks breaking over magenta base, chaotic motion vector propagation',
+            'dense saturated P-frame cascade, magenta and red codec melt with cyan motion vector interruptions consuming the frame',
+            'double-moshed codec shapes, warm orange field with soft oval forms from melted macroblocks drifting like biological cells, deep GOP destruction',
+            'repeat-P at maximum corruption, vivid RGB macroblock mosaic from single P-frame applied across entire sequence, total reference destruction',
+            'deep violet P-frame ocean with neon green motion vector bursts, diagonal decoder errors streaking through corrupted purple reference',
+            'crimson reference frame with scattered cyan macroblock debris from hue-shifted I-frame deletion, warm P-frame dissolution',
+            'deep red P-frame wash with chromatic motion vector ripples, organic wave compression artifacts melting through inverted crimson field',
+            'violet and indigo P-frame cascade, pink and green quantization fragments dissolving through corrupted purple reference',
+            'red and cyan macroblock vortex from hue-shifted keyframe deletion, multicolor compression debris spiraling in dense P-frame drift',
+            'coral and teal diagonal motion vector streaks from hue-shifted GOP corruption, warm striped inter-frame bleed pattern',
+            'inverted golden P-frame drift, warm ochre macroblocks dissolving diagonally with scattered multicolor quantization fragments',
+            'electric blue diagonal P-frame weave, dense saturated motion vector texture from aggressive I-frame stripping',
+            'hot pink macroblock dissolution into black void, high contrast I-frame removal with magenta compression blocks collapsing',
+            'dark jewel-tone P-frame vortex, green magenta and red macroblocks spiraling from corrupted reference into deep abstraction',
+            'deep green and cobalt P-frame melt, organic motion vector swirl with pink quantization accents from codec decay',
+            'thermal-palette datamosh, warm amber and green soft forms from heavy I-frame deletion, heat-map compression ghost aesthetic',
+            'magenta and mint P-frame dissolve, blurred organic macroblocks melting through hue-shifted pastel reference corruption',
+            'inverted crimson and cobalt soft macroblock dissolve, warm red reference frame with blue P-frame fragments bleeding through',
+            'double-processed datamosh, red and green macroblock confetti in dense diagonal weave from re-moshed I-frame stripped source',
+            'emerald and magenta vertical P-frame melt, organic motion vector wave texture with chromatic decoder fringing',
+            'purple and green macroblock scatter with pink motion vector bursts, hue-shifted lavender reference dissolving into P-frame confetti',
+            'inverted cyan and magenta P-frame scatter on pale aqua reference, pastel macroblock debris from codec corruption drifting diagonally',
+            'olive green macroblock cascade from hue-shifted source, dense P-frame field dissolving into multicolor quantization texture',
+            'inverted mint and pink horizontal motion vector streaks, soft pastel P-frame drift dissolving across corrupted reference',
+            'magenta and teal vertical P-frame cascade, dense saturated motion vector streaks from aggressive keyframe deletion',
+            'double-moshed teal and cerulean, ocean blue macroblocks melting from re-corrupted reference with scattered hot pixel fragments',
+            'reverse P-frame propagation on deep teal, azure organic compression bloom with soft aquatic decoder artifacts',
+            'dark void with neon red and cyan P-frame bloom, glowing macroblocks emerging from black through corrupted reference frame',
+            'NAL cross-sequence mosh, deep violet diagonal P-frame rain from donor motion vectors applied to inverted reference, digital waterfall',
+            'concat-moshed bright green field, multicolor macroblock debris from GOP boundary deletion, yellow motion vector streaks and magenta shards',
+            'I-frame stripped green wash, gentle P-frame decay with drifting yellow and magenta macroblock fragments on neon reference',
+            'triple-source concat melt, deep red and olive layered pixel destruction from three-clip GOP collision, horizontal compression banding',
+            'triple-source datamosh, emerald vertical motion vector melt with magenta decoder fringe from three-clip bitstream collision'
+          ]
+        }
+
+        var piRunBtn       = document.getElementById('piRunBtn')
+        var piPanel        = document.getElementById('piPanel')
+        var piTextarea     = document.getElementById('piTextarea')
+        var piBarsSelect   = document.getElementById('piBarsSelect')
+        var piPrevBtn      = document.getElementById('piPrevBtn')
+        var piNextBtn      = document.getElementById('piNextBtn')
+        var piStatus       = document.getElementById('piStatus')
+        var piSceneSelect  = document.getElementById('piSceneSelect')
+        var piSceneSaveBtn = document.getElementById('piSceneSaveBtn')
+        var piSceneNewBtn  = document.getElementById('piSceneNewBtn')
+        var piSceneDelBtn  = document.getElementById('piSceneDelBtn')
+        var piListToggle   = document.getElementById('piListToggle')
+        var piListBody     = document.getElementById('piListBody')
+
+        // --- Prompt list collapse (hidden by default) ---
+        var piListVisible = false
+        piListBody.style.display = 'none'
+        piListToggle.addEventListener('click', function () {
+          piListVisible = !piListVisible
+          piListBody.style.display = piListVisible ? '' : 'none'
+          piListToggle.textContent = 'Prompts'
+        })
+
+        var piSync  = false
+        var piIndex = 0
+        var piTimer = null
+
+        // --- Scene storage ---
+        function piLoadScenes () {
+          try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {} } catch (e) { return {} }
+        }
+        function piSaveScenes (scenes) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(scenes))
+        }
+        function piAllScenes () {
+          var stored = piLoadScenes()
+          // Merge defaults (stored takes priority)
+          var merged = {}
+          Object.keys(DEFAULT_SCENES).forEach(function (k) { merged[k] = DEFAULT_SCENES[k] })
+          Object.keys(stored).forEach(function (k) { merged[k] = stored[k] })
+          return merged
+        }
+        function piRebuildSelect (active) {
+          var scenes = piAllScenes()
+          piSceneSelect.innerHTML = ''
+          Object.keys(scenes).forEach(function (name) {
+            var opt = document.createElement('option')
+            opt.value = name
+            opt.textContent = name
+            if (name === active) opt.selected = true
+            piSceneSelect.appendChild(opt)
+          })
+        }
+        function piLoadScene (name) {
+          var scenes = piAllScenes()
+          if (!scenes[name]) return
+          piTextarea.value = scenes[name].join('\n')
+          piIndex = 0
+          piUpdateStatus(piGetList())
+        }
+
+        // --- Prompts ---
+        function piGetList () {
+          return piTextarea.value.split('\n').map(function (s) { return s.trim() }).filter(function (s) { return s.length > 0 })
+        }
+
+        function piUpdateStatus (list, sent) {
+          if (!list.length) { piStatus.textContent = 'no prompts'; return }
+          var idx = piIndex % list.length
+          var label = (idx + 1) + '/' + list.length + '  ' + list[idx]
+          piStatus.textContent = sent ? '→ ' + label : label
+        }
+
+        function piFlash () {
+          var panel = document.getElementById('piPanel')
+          if (!panel) return
+          panel.style.transition = 'none'
+          panel.style.background = '#ffffff22'
+          setTimeout(function () { panel.style.transition = 'background 0.4s'; panel.style.background = '' }, 60)
+        }
+
+        function piSendCurrent () {
+          var list = piGetList()
+          if (!list.length) { piStatus.textContent = 'no prompts'; return }
+          var idx = piIndex % list.length
+          var raw = list[idx]
+          var prompt = 'datamosh, ' + raw
+          ddPromptEl.value = prompt
+          piFlash()
+          fetch('/api/scope-osc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: 'prompt', value: prompt, type: 'string' })
+          }).then(function (r) { return r.json() }).then(function (res) {
+            if (res.ok) {
+              piUpdateStatus(list, true)
+            } else {
+              piStatus.textContent = '⚠ OSC error: ' + JSON.stringify(res).slice(0, 80)
+            }
+          }).catch(function (e) {
+            piStatus.textContent = '⚠ ' + e.message
+          })
+        }
+
+        function piAdvance () {
+          var list = piGetList()
+          if (!list.length) return
+          piIndex = (piIndex + 1) % list.length
+          piSendCurrent()
+        }
+
+        function piPrev () {
+          var list = piGetList()
+          if (!list.length) return
+          piIndex = (piIndex - 1 + list.length) % list.length
+          piSendCurrent()
+        }
+
+        // --- Beat sync via window.__piOnBeat (called from handleLinkMessage) ---
+        var piLastBar = -1
+        var piLastFireMs = 0  // shared dedup: ms timestamp of last piAdvance call
+        window.__piOnBeat = function (beat) {
+          if (!piSync) return
+          var bars = parseInt(piBarsSelect.value) || 4
+          var bar = Math.floor(beat / (bars * 4))
+          if (bar !== piLastBar) {
+            piLastBar = bar
+            piLastFireMs = Date.now()
+            piAdvance()
+          }
+        }
+
+        // --- Timer fallback (also runs when Link active, deduplicated via piLastFireMs) ---
+        function piGetIntervalMs () {
+          var bpm = parseFloat(bpmValEl ? bpmValEl.textContent : '120') || 120
+          var bars = parseInt(piBarsSelect.value) || 4
+          return (60 / bpm) * bars * 4 * 1000
+        }
+        function piStartTimer () {
+          piStopTimer()
+          piTimer = setInterval(function () {
+            if (!piSync) return
+            var intervalMs = piGetIntervalMs()
+            var now = Date.now()
+            if (now - piLastFireMs >= intervalMs) {
+              piLastFireMs = now
+              piLastBar = -1  // force __piOnBeat to re-arm
+              piAdvance()
+            }
+          }, 1000)
+        }
+        function piStopTimer () {
+          if (piTimer) { clearInterval(piTimer); piTimer = null }
+        }
+
+        // --- UI events ---
+        piRunBtn.addEventListener('click', function () {
+          piSync = !piSync
+          piRunBtn.textContent = piSync ? '■ Sequence' : '▶ Sequence'
+          piRunBtn.classList.toggle('stop', piSync)
+          piRunBtn.classList.toggle('main', !piSync)
+          if (piSync) {
+            piLastBar = -1
+            piSendCurrent()
+            piStartTimer()  // always start timer; __piOnBeat deduplicates via piLastBar
+          } else {
+            piStopTimer()
+          }
+        })
+        piPrevBtn.addEventListener('click', piPrev)
+        piNextBtn.addEventListener('click', piAdvance)
+        piBarsSelect.addEventListener('change', function () {
+          piLastBar = -1
+          if (piSync) { piStopTimer(); piStartTimer() }
+        })
+        piSceneSelect.addEventListener('change', function () {
+          piLoadScene(piSceneSelect.value)
+        })
+        piSceneSaveBtn.addEventListener('click', function () {
+          var name = piSceneSelect.value
+          if (!name) return
+          var scenes = piLoadScenes()
+          scenes[name] = piGetList()
+          piSaveScenes(scenes)
+          piRebuildSelect(name)
+          piSceneSaveBtn.textContent = 'Saved!'
+          setTimeout(function () { piSceneSaveBtn.textContent = 'Save' }, 1200)
+        })
+        piSceneNewBtn.addEventListener('click', function () {
+          var name = prompt('Scene name:')
+          if (!name || !name.trim()) return
+          name = name.trim()
+          var scenes = piLoadScenes()
+          scenes[name] = piGetList()
+          piSaveScenes(scenes)
+          piRebuildSelect(name)
+        })
+        piSceneDelBtn.addEventListener('click', function () {
+          var name = piSceneSelect.value
+          if (!name || DEFAULT_SCENES[name]) return // don't delete built-ins
+          if (!confirm('Delete scene "' + name + '"?')) return
+          var scenes = piLoadScenes()
+          delete scenes[name]
+          piSaveScenes(scenes)
+          piRebuildSelect(Object.keys(piAllScenes())[0])
+          piLoadScene(piSceneSelect.value)
+        })
+
+        // --- Init ---
+        piRebuildSelect('Datamosh')
+        piLoadScene('Datamosh')
+      })()
+
+      // ---- Scope Breathing Oscillator ----
+      // Modulates noise_scale, vace_context_scale, kv_cache_attention_bias via OSC.
+      // When Link is active: phase is driven by beat position so oscillation is
+      // musically timed and BPM-aware (faster tempo = faster cycle).
+      // When Link is inactive: falls back to a wall-clock timer.
+      ;(function () {
+        var breathActive = false
+        var breathTimer = null
+        // Oscillator periods in BEATS (at 4/4: 32 beats = 8 bars, etc.)
+        // Phase = beat / period * 2π — scales automatically with BPM.
+        var PERIOD_NOISE  = 32   // 8 bars
+        var PERIOD_VACE   = 64   // 16 bars
+        var PERIOD_KV     = 48   // 12 bars
+        var SEND_EVERY    = 2    // fire every 2 beats (every half-bar)
+        var lastSentBeat  = -999
+        var TWO_PI = 2 * Math.PI
+
+        function oscSend (key, value, type) {
+          fetch('/api/scope-osc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key, value: value, type: type || 'float' })
+          }).catch(function () {})
+        }
+
+        function breathCalc (beat) {
+          // beat is a float that increments with the clock regardless of BPM
+          var noise  = 0.18 + 0.12 * Math.sin(beat / PERIOD_NOISE * TWO_PI)  // 0.06–0.30
+          var vace   = 1.0  + 0.35 * Math.sin(beat / PERIOD_VACE  * TWO_PI)  // 0.65–1.35
+          var kv     = 0.55 + 0.20 * Math.sin(beat / PERIOD_KV    * TWO_PI)  // 0.35–0.75
+          return { noise: noise, vace: vace, kv: kv }
+        }
+
+        function breathSend (beat) {
+          if (!breathActive) return
+          var v = breathCalc(beat)
+          oscSend('noise_scale',            Math.round(v.noise * 1000) / 1000, 'float')
+          oscSend('vace_context_scale',     Math.round(v.vace  * 1000) / 1000, 'float')
+          oscSend('kv_cache_attention_bias',Math.round(v.kv    * 1000) / 1000, 'float')
+        }
+
+        // Link beat hook — fires every beat from handleLinkMessage
+        window.__breathOnBeat = function (beat) {
+          if (!breathActive) return
+          var bar = Math.floor(beat / SEND_EVERY)
+          if (bar === lastSentBeat) return
+          lastSentBeat = bar
+          breathSend(beat)
+        }
+
+        // Fallback timer when Link is not active (uses beat-equivalent via BPM=120)
+        function breathFallbackTick () {
+          if (!breathActive) return
+          // Simulate beat from wall clock at 120 BPM
+          var fakeBeat = (Date.now() / 1000) * 2  // 120 BPM = 2 beats/sec
+          breathSend(fakeBeat)
+        }
+
+        function breathStart () {
+          if (breathActive) return
+          breathActive = true
+          lastSentBeat = -999
+          // Fire once immediately using current time
+          breathFallbackTick()
+          // Fallback timer fires every half-bar at 120 BPM (1s) — Link beats override it
+          breathTimer = setInterval(breathFallbackTick, 1000)
+          breathBtn.textContent = '■ Breathe'
+          breathBtn.classList.add('stop')
+          breathBtn.classList.remove('main')
+        }
+
+        function breathStop () {
+          breathActive = false
+          if (breathTimer) { clearInterval(breathTimer); breathTimer = null }
+          breathBtn.textContent = '~ Breathe'
+          breathBtn.classList.remove('stop')
+          breathBtn.classList.add('main')
+        }
+
+        var breathBtn = document.createElement('button')
+        breathBtn.id = 'breathBtn'
+        breathBtn.className = 'btn main'
+        breathBtn.textContent = '~ Breathe'
+        breathBtn.style.cssText = 'padding:4px 10px;font-size:11px;'
+        breathBtn.addEventListener('click', function () {
+          if (breathActive) breathStop(); else breathStart()
+        })
+
+        // Insert next to ▶ Sequence button row
+        var piRunBtn = document.getElementById('piRunBtn')
+        if (piRunBtn && piRunBtn.parentNode) {
+          piRunBtn.parentNode.appendChild(breathBtn)
+        }
+
+        // Auto-start when Scope becomes connected
+        var origShowScope = document.getElementById('ddScopeOpenTab')
+        if (origShowScope) {
+          var obs = new MutationObserver(function () {
+            if (origShowScope.style.display !== 'none' && !breathActive) breathStart()
+          })
+          obs.observe(origShowScope, { attributes: true, attributeFilter: ['style'] })
+        }
+      })()
+
+      // ---- Link Hue Sweep ----
+      // Cycles hue (0–360°) over N bars. Link beat drives phase; timer is
+      // fallback only — guarded so both never fire simultaneously.
+      ;(function () {
+        var hueActive = false
+        var hueTimer = null
+        var hueOffset = 0
+        var lastLinkBeatMs = 0  // tracks recency of Link beats
+
+        function hueGetBars () {
+          var el = document.getElementById('hueBarsSelect')
+          return el ? (parseInt(el.value) || 32) : 32
+        }
+
+        function hueSetFromBeat (beat) {
+          var bars = hueGetBars()
+          var hue = ((beat / (bars * 4)) % 1) * 360 + hueOffset
+          hue = ((hue % 360) + 360) % 360
+          var hc = document.getElementById('hueCtrl')
+          if (!hc) return
+          hc.value = Math.round(hue)
+          var hv = document.getElementById('hueVal')
+          if (hv) hv.textContent = Math.round(hue) + '°'
+          if (typeof applyFilters === 'function') applyFilters()
+        }
+
+        // Called from handleLinkMessage — primary driver when Link is active
+        window.__hueOnBeat = function (beat) {
+          if (!hueActive) return
+          lastLinkBeatMs = Date.now()
+          hueSetFromBeat(beat)
+        }
+
+        // Fallback timer — only fires when no Link beat received in past 2s
+        function hueTickFallback () {
+          if (!hueActive) return
+          if (Date.now() - lastLinkBeatMs < 2000) return  // Link active, skip
+          var fakeBeat = (Date.now() / 1000) * 2  // 120 BPM
+          hueSetFromBeat(fakeBeat)
+        }
+
+        function hueStart () {
+          if (hueActive) return
+          var hc = document.getElementById('hueCtrl')
+          var currentHue = hc ? parseFloat(hc.value) : 0
+          var fakeBeat = (Date.now() / 1000) * 2
+          var phase = (fakeBeat / (hueGetBars() * 4)) % 1
+          hueOffset = ((currentHue - phase * 360) % 360 + 360) % 360
+          hueActive = true
+          lastLinkBeatMs = 0
+          hueTimer = setInterval(hueTickFallback, 500)
+          hueBtn.textContent = '■ Hue'
+          hueBtn.classList.add('stop'); hueBtn.classList.remove('main')
+        }
+
+        function hueStop () {
+          hueActive = false
+          if (hueTimer) { clearInterval(hueTimer); hueTimer = null }
+          hueBtn.textContent = '~ Hue'
+          hueBtn.classList.remove('stop'); hueBtn.classList.add('main')
+        }
+
+        var hueBtn = document.createElement('button')
+        hueBtn.className = 'btn main'
+        hueBtn.textContent = '~ Hue'
+        hueBtn.style.cssText = 'padding:4px 8px;font-size:11px;'
+        hueBtn.addEventListener('click', function () {
+          if (hueActive) hueStop(); else hueStart()
+        })
+
+        var hueBars = document.createElement('select')
+        hueBars.id = 'hueBarsSelect'
+        hueBars.style.cssText = 'font-size:11px;'
+        hueBars.title = 'Bars per full hue cycle'
+        ;[8, 16, 32, 64, 128].forEach(function (n) {
+          var o = document.createElement('option')
+          o.value = n; o.textContent = n + ' bars'
+          if (n === 32) o.selected = true
+          hueBars.appendChild(o)
+        })
+
+        // Insert into #linkBar alongside Link button + BPM display
+        var linkBar = document.getElementById('linkBar')
+        if (linkBar) {
+          linkBar.appendChild(hueBtn)
+          linkBar.appendChild(hueBars)
+        }
+      })()
+
+      // ---- Denoising Stepper ----
+      // Steps through preset denoising_step_list values via Scope REST API.
+      // More steps = higher quality, fewer steps = more abstract/glitchy.
+      ;(function () {
+        var DENOISE_PRESETS = [
+          { label: 'Ultra',   steps: [999, 750, 500, 250] },
+          { label: 'High',    steps: [999, 500, 250] },
+          { label: 'Mid',     steps: [999, 500] },
+          { label: 'Low',     steps: [999, 250] },
+          { label: 'Min',     steps: [999] }
+        ]
+        var dnIdx = 1  // start at High
+
+        function dnSend () {
+          var preset = DENOISE_PRESETS[dnIdx]
+          fetch('/api/scope/api/v1/session/parameters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ denoising_step_list: preset.steps })
+          }).then(function (r) { return r.json() }).then(function () {
+            dnLabel.textContent = preset.label
+          }).catch(function () {
+            dnLabel.textContent = '⚠'
+          })
+        }
+
+        var row = document.createElement('div')
+        row.style.cssText = 'display:flex;align-items:center;gap:4px;margin-top:4px;'
+
+        var dnDown = document.createElement('button')
+        dnDown.className = 'btn'
+        dnDown.textContent = '◀'
+        dnDown.style.cssText = 'padding:2px 8px;font-size:11px;'
+        dnDown.title = 'Less denoising (more abstract)'
+        dnDown.addEventListener('click', function () {
+          if (dnIdx < DENOISE_PRESETS.length - 1) { dnIdx++; dnSend() }
+        })
+
+        var dnLabel = document.createElement('span')
+        dnLabel.textContent = DENOISE_PRESETS[dnIdx].label
+        dnLabel.style.cssText = 'font-size:10px;color:#888;min-width:32px;text-align:center;'
+
+        var dnUp = document.createElement('button')
+        dnUp.className = 'btn'
+        dnUp.textContent = '▶'
+        dnUp.style.cssText = 'padding:2px 8px;font-size:11px;'
+        dnUp.title = 'More denoising (crisper)'
+        dnUp.addEventListener('click', function () {
+          if (dnIdx > 0) { dnIdx--; dnSend() }
+        })
+
+        var dnTitle = document.createElement('span')
+        dnTitle.textContent = 'Denoise'
+        dnTitle.style.cssText = 'font-size:10px;color:#555;margin-left:2px;'
+
+        row.appendChild(dnDown)
+        row.appendChild(dnLabel)
+        row.appendChild(dnUp)
+        row.appendChild(dnTitle)
+
+        var piRunBtn = document.getElementById('piRunBtn')
+        if (piRunBtn && piRunBtn.parentNode) {
+          piRunBtn.parentNode.appendChild(row)
+        }
+      })()
 
       // Resizable splitters
       ;(function () {
@@ -4194,6 +5142,100 @@
 
       console.log('[hydra] Init complete. Calling loadPresets()...')
       loadPresets()
+
+      // ---- Daydream Scope presets ----
+      ;(function () {
+        var scopePresets = [
+          { name: 'Clean',
+            code: "// Daydream Clean — pure AI feed, no hydra processing\n// s3 = Scope NDI (auto-initialized)\n\nsrc(s3)\n  .out(o0);" },
+          { name: 'Blend',
+            code: "// Daydream Blend — AI feed layered with hydra organic texture\n// s3 = Scope NDI (auto-initialized)\n\nAUDIO.bins = 6; AUDIO.smooth = 0.92; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar low  = env(_lo, 0.4, 0.04);\nvar mid  = env(_mi, 0.45, 0.05);\nvar amp  = function(){ return (low() + mid()) * 0.5 };\n\nsrc(s3)\n  .saturate(1.2)\n  .out(o1);\n\nnoise(2.5, 0.04)\n  .rotate(() => time * 0.02)\n  .modulate(noise(1.2, 0.03), 0.12)\n  .color(0.85, 0.5, 0.3)\n  .brightness(-0.25)\n  .out(o2);\n\nsrc(o1)\n  .blend(src(o2), 0.25)\n  .out(o3);\n\nsrc(o0)\n  .blend(src(o3), 0.4)\n  .modulateScale(noise(1.4, 0.02), () => 0.005 + amp() * 0.0005)\n  .modulateRotate(noise(0.3, 0.015), 0.003)\n  .hue(() => 0.015 * Math.sin(time * 0.02) + 0.004 * low())\n  .luma(0.01, 0.06)\n  .saturate(() => 1.35 + amp() * 0.025)\n  .contrast(1.02)\n  .out(o0);" },
+          { name: 'Smoke Mirror',
+            code: "// Smoke Mirror — AI feed diffused through deep feedback fog\n// s3 = Scope NDI (auto-initialized)\n\nAUDIO.bins = 4; AUDIO.smooth = 0.94; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar low = env(_lo, 0.5, 0.03);\nvar mid = env(_mi, 0.4, 0.05);\n\n// AI feed — soft, desaturated\nsrc(s3)\n  .saturate(0.7)\n  .brightness(-0.05)\n  .out(o1);\n\n// feedback accumulator — very long decay\nsrc(o0)\n  .scale(1.002)\n  .rotate(function(){ return 0.0008 + low() * 0.0002 })\n  .saturate(0.97)\n  .brightness(-0.003)\n  .out(o2);\n\n// composite: seed AI into feedback fog\nsrc(o2)\n  .blend(src(o1), 0.12)\n  .modulate(noise(1.5, 0.015), function(){ return 0.008 + mid() * 0.003 })\n  .hue(function(){ return 0.006 * Math.sin(time * 0.015) })\n  .luma(0.008, 0.04)\n  .contrast(1.015)\n  .out(o0);" },
+        ]
+
+        var scopeContainer = document.getElementById('scopePresets')
+        scopePresets.forEach(function (preset) {
+          var btn = document.createElement('button')
+          btn.className = 'presetBtn'
+          btn.textContent = preset.name
+          btn.title = preset.code.split('\n')[0]
+          btn.addEventListener('click', function () {
+            var code = preset.code
+            if (typeof cm !== 'undefined' && cm) {
+              cm.setValue(code)
+            } else {
+              editorEl.value = code
+            }
+            localStorage.setItem(STORAGE_EDITOR, code)
+            currentPresetName = 'Scope: ' + preset.name
+            currentPresetFile = null
+            localStorage.setItem(STORAGE_PRESET_NAME, currentPresetName)
+            runCode(code, 'Scope: ' + preset.name)
+            highlightActivePreset()
+          })
+          scopeContainer.appendChild(btn)
+        })
+      })()
+
+      // ---- Cellular Automata presets ----
+      ;(function () {
+        var caPresets = [
+          // Rich Hydra base (flock + chromatic + feedback from presets 7/8/13)
+          // renders instantly on o0. CA streams to o1, floats on top.
+
+          { name: 'Gliders',
+            code: "// Caustics + CA — the version that looked amazing + audio\ncaStream('sl_gliders').out(o1)\n\nAUDIO.bins = 4; AUDIO.smooth = 0.88; AUDIO.apply();\nvar low = env(()=>a.fft[0]||0, 0.3, 0.05);\nvar mid = env(()=>a.fft[1]||0, 0.35, 0.06);\nvar high = env(()=>a.fft[3]||0, 0.25, 0.08);\nvar amp = ()=>(low()+mid())*0.5;\n\nsetFunction({\n  name: 'caustic',\n  type: 'src',\n  inputs: [\n    {name: 'scale', type: 'float', default: 3.0},\n    {name: 'spd', type: 'float', default: 0.03},\n    {name: 'hueShift', type: 'float', default: 0.0}\n  ],\n  glsl: `\n    vec2 uv = _st * scale;\n    float t = time * spd;\n    vec2 q = vec2(\n      sin(uv.x*1.7 + uv.y*1.3 + t) + sin(uv.y*2.1 + t*0.7),\n      sin(uv.y*1.9 + uv.x*1.1 + t*0.8) + cos(uv.x*2.3 + t*0.5)\n    ) * 0.5;\n    vec2 r = vec2(\n      sin((uv.x+q.x)*1.3 + (uv.y+q.y)*1.7 + t*0.4),\n      cos((uv.y+q.y)*1.5 + (uv.x+q.x)*1.1 + t*0.3)\n    ) * 0.5;\n    vec2 w1 = uv + q * 2.0;\n    vec2 w2 = uv * 1.3 + r * 1.8;\n    vec2 w3 = uv * 0.8 + (q + r) * 1.2;\n    float c1 = pow(0.5 + 0.5*sin(w1.x*3.14)*sin(w1.y*3.14), 6.0);\n    float c2 = pow(0.5 + 0.5*sin(w2.x*2.7)*sin(w2.y*2.7), 6.0);\n    float c3 = pow(0.5 + 0.5*sin(w3.x*3.5)*sin(w3.y*3.5), 6.0);\n    float cv = max(c1, max(c2, c3));\n    float warpH = atan(r.y + q.x, r.x + q.y) / 6.2831 + 0.5;\n    float warpM = length(q + r);\n    float spatial = (uv.x + uv.y) * 0.08 / scale;\n    float h = warpH * 0.5 + spatial + warpM * 0.3 + hueShift;\n    vec3 lineCol = 0.5 + 0.5 * cos(6.2831 * (h + vec3(0.0, 0.15, 0.4)));\n    vec3 col = lineCol * cv * 2.5;\n    col += vec3(0.015, 0.008, 0.028) * (1.0 - cv) * warpM;\n    col = col / (1.0 + col);\n    col = pow(col, vec3(0.78));\n    return vec4(col, 1.0);\n  `\n})\n\ncaustic(3.5, ()=>0.06+amp()*0.008, ()=>time*0.003+low()*0.002)\n  .modulate(src(o1), 0.06)\n  .modulateRotate(src(o1), 0.04)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), ()=>0.015+amp()*0.004)\n  .blend(src(o2), ()=>0.38+low()*0.04)\n  .modulateScale(noise(1.6, 0.03), ()=>0.003+high()*0.001)\n  .modulateRotate(noise(0.2, 0.02), ()=>0.002+mid()*0.001)\n  .hue(()=>0.003+low()*0.002)\n  .luma(0.005, 0.06)\n  .brightness(()=>0.022+amp()*0.003)\n  .saturate(()=>1.2+low()*0.06)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), ()=>0.12+mid()*0.03)\n  .out(o0)" },
+
+          { name: 'Tide Pool',
+            code: "// Caustics — denser, slower, offset palette. CA ripples through\ncaStream('tide_pool').out(o1)\n\nsetFunction({\n  name: 'caustic',\n  type: 'src',\n  inputs: [\n    {name: 'scale', type: 'float', default: 3.0},\n    {name: 'spd', type: 'float', default: 0.03},\n    {name: 'hueShift', type: 'float', default: 0.0}\n  ],\n  glsl: `\n    vec2 uv = _st * scale;\n    float t = time * spd;\n    vec2 q = vec2(\n      sin(uv.x*1.7 + uv.y*1.3 + t) + sin(uv.y*2.1 + t*0.7),\n      sin(uv.y*1.9 + uv.x*1.1 + t*0.8) + cos(uv.x*2.3 + t*0.5)\n    ) * 0.5;\n    vec2 r = vec2(\n      sin((uv.x+q.x)*1.3 + (uv.y+q.y)*1.7 + t*0.4),\n      cos((uv.y+q.y)*1.5 + (uv.x+q.x)*1.1 + t*0.3)\n    ) * 0.5;\n    vec2 w1 = uv + q * 2.0;\n    vec2 w2 = uv * 1.3 + r * 1.8;\n    vec2 w3 = uv * 0.8 + (q + r) * 1.2;\n    float c1 = pow(0.5 + 0.5*sin(w1.x*3.14)*sin(w1.y*3.14), 6.0);\n    float c2 = pow(0.5 + 0.5*sin(w2.x*2.7)*sin(w2.y*2.7), 6.0);\n    float c3 = pow(0.5 + 0.5*sin(w3.x*3.5)*sin(w3.y*3.5), 6.0);\n    float cv = max(c1, max(c2, c3));\n    float warpH = atan(r.y + q.x, r.x + q.y) / 6.2831 + 0.5;\n    float warpM = length(q + r);\n    float spatial = (uv.x + uv.y) * 0.08 / scale;\n    float h = warpH * 0.5 + spatial + warpM * 0.3 + hueShift;\n    vec3 lineCol = 0.5 + 0.5 * cos(6.2831 * (h + vec3(0.0, 0.15, 0.4)));\n    vec3 col = lineCol * cv * 2.5;\n    col += vec3(0.015, 0.008, 0.028) * (1.0 - cv) * warpM;\n    col = col / (1.0 + col);\n    col = pow(col, vec3(0.78));\n    return vec4(col, 1.0);\n  `\n})\n\ncaustic(5.0, 0.04, ()=>time*0.005+0.33)\n  .modulate(src(o1), 0.08)\n  .modulateRotate(src(o1), 0.05)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.025)\n  .modulateRotate(src(o1), 0.015)\n  .blend(src(o2), 0.38)\n  .modulateScale(noise(1.2, 0.02), 0.004)\n  .modulateRotate(noise(0.25, 0.015), 0.003)\n  .hue(()=>0.004)\n  .luma(0.004, 0.05)\n  .brightness(0.022)\n  .saturate(1.25)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.1)\n  .out(o0)" },
+
+          { name: 'Amoeba',
+            code: "// Caustics — wide scale, organic speed. CA creatures warp the light\ncaStream('amoeba').out(o1)\n\nsetFunction({\n  name: 'caustic',\n  type: 'src',\n  inputs: [\n    {name: 'scale', type: 'float', default: 3.0},\n    {name: 'spd', type: 'float', default: 0.03},\n    {name: 'hueShift', type: 'float', default: 0.0}\n  ],\n  glsl: `\n    vec2 uv = _st * scale;\n    float t = time * spd;\n    vec2 q = vec2(\n      sin(uv.x*1.7 + uv.y*1.3 + t) + sin(uv.y*2.1 + t*0.7),\n      sin(uv.y*1.9 + uv.x*1.1 + t*0.8) + cos(uv.x*2.3 + t*0.5)\n    ) * 0.5;\n    vec2 r = vec2(\n      sin((uv.x+q.x)*1.3 + (uv.y+q.y)*1.7 + t*0.4),\n      cos((uv.y+q.y)*1.5 + (uv.x+q.x)*1.1 + t*0.3)\n    ) * 0.5;\n    vec2 w1 = uv + q * 2.0;\n    vec2 w2 = uv * 1.3 + r * 1.8;\n    vec2 w3 = uv * 0.8 + (q + r) * 1.2;\n    float c1 = pow(0.5 + 0.5*sin(w1.x*3.14)*sin(w1.y*3.14), 6.0);\n    float c2 = pow(0.5 + 0.5*sin(w2.x*2.7)*sin(w2.y*2.7), 6.0);\n    float c3 = pow(0.5 + 0.5*sin(w3.x*3.5)*sin(w3.y*3.5), 6.0);\n    float cv = max(c1, max(c2, c3));\n    float warpH = atan(r.y + q.x, r.x + q.y) / 6.2831 + 0.5;\n    float warpM = length(q + r);\n    float spatial = (uv.x + uv.y) * 0.08 / scale;\n    float h = warpH * 0.5 + spatial + warpM * 0.3 + hueShift;\n    vec3 lineCol = 0.5 + 0.5 * cos(6.2831 * (h + vec3(0.0, 0.15, 0.4)));\n    vec3 col = lineCol * cv * 2.5;\n    col += vec3(0.015, 0.008, 0.028) * (1.0 - cv) * warpM;\n    col = col / (1.0 + col);\n    col = pow(col, vec3(0.78));\n    return vec4(col, 1.0);\n  `\n})\n\ncaustic(2.5, 0.035, ()=>time*0.004+0.67)\n  .modulate(src(o1), 0.1)\n  .modulateRotate(src(o1), 0.06)\n  .modulateScale(src(o1), 0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.03)\n  .modulateRotate(src(o1), 0.02)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.0, 0.015), 0.004)\n  .modulateRotate(noise(0.2, 0.01), 0.003)\n  .hue(()=>0.005*Math.sin(time*0.012))\n  .luma(0.004, 0.05)\n  .brightness(0.022)\n  .saturate(1.2)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.12)\n  .out(o0)" },
+
+          { name: 'Lenia',
+            code: "// Warm osc field — CA blobs modulate the oscillator math\ncaStream('lava_lamp').out(o1)\n\nosc(4, 0.015, 0.6).rotate(()=>time*0.01)\n  .modulate(src(o1), 0.07)\n  .modulateRotate(osc(3, 0.01, 0), 0.04)\n  .mult(src(o1).add(solid(0.3, 0.15, 0.1), 0.8))\n  .color(0.55, 0.3, 0.2).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.02)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.5, 0.02), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.02)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.08)\n  .out(o0)" },
+
+          { name: 'SL Worms',
+            code: "// Noise feedback — CA worms tunnel through the texture\ncaStream('sl_worms').out(o1)\n\nnoise(3, 0.025).rotate(()=>time*0.012)\n  .modulate(src(o1), 0.06)\n  .modulateScale(src(o1), 0.04)\n  .color(0.2, 0.45, 0.35).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateRotate(src(o1), 0.03)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.6, 0.03), 0.003)\n  .modulateRotate(noise(0.2, 0.015), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.022)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.1)\n  .out(o0)" },
+
+          { name: 'MNCA',
+            code: "// Voronoi + osc — CA solitons warp both coordinate systems\ncaStream('mnca_worm').out(o1)\n\nvoronoi(8, 0.012, 0.15)\n  .modulate(src(o1), 0.06)\n  .add(osc(5, 0.008, 0.4).rotate(()=>time*0.01)\n    .modulate(src(o1), 0.04), 0.4)\n  .color(0.35, 0.2, 0.55).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.025)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.4, 0.02), 0.003)\n  .modulateRotate(noise(0.25, 0.015), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.022)\n  .saturate(1.2)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.1)\n  .out(o0)" },
+
+          { name: 'MNCA 2',
+            code: "// Deep feedback — CA mitosis drives the accumulator\ncaStream('mnca_mitosis').out(o1)\n\nnoise(2, 0.02).rotate(()=>time*0.008)\n  .mult(src(o1).add(solid(0.2, 0.15, 0.35), 0.7))\n  .modulate(src(o1), 0.05)\n  .color(0.3, 0.2, 0.5).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateRotate(src(o1), 0.03)\n  .modulateScale(src(o1), 0.02)\n  .blend(src(o2), 0.3)\n  .modulateScale(noise(1.5, 0.025), 0.004)\n  .hue(()=>0.004)\n  .luma(0.005, 0.06)\n  .brightness(0.022)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.12)\n  .out(o0)" },
+
+          { name: 'CA Flock',
+            code: "// Flock shapes — CA vortex distorts their coordinates\ncaStream('tentacles').out(o1)\n\nshape(100, 0.012, 0.01).repeat(8, 6)\n  .scale(()=>0.5+Math.sin(time*0.3)*0.03)\n  .rotate(()=>time*0.08)\n  .scrollX(()=>Math.sin(time*0.1)*0.15)\n  .scrollY(()=>Math.cos(time*0.08)*0.12)\n  .modulate(src(o1), 0.06)\n  .modulateRotate(src(o1), 0.04)\n  .modulate(noise(0.8, 0.03), 0.15)\n  .color(()=>0.45+Math.sin(time*0.09)*0.25, ()=>0.3+Math.cos(time*0.07)*0.2, ()=>0.6+Math.sin(time*0.11)*0.2)\n  .brightness(0.025)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.02)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.4, 0.02), 0.003)\n  .modulateRotate(noise(0.2, 0.015), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.022)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.1)\n  .out(o0)" },
+
+          { name: 'CA Warp',
+            code: "// Deep warp — CA organisms bend space itself\ncaStream('amoeba').out(o1)\n\nnoise(3, 0.015).rotate(()=>time*0.006)\n  .modulate(src(o1), 0.08)\n  .modulateRotate(src(o1), 0.06)\n  .modulateScale(src(o1), 0.03)\n  .color(0.4, 0.3, 0.55).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulate(src(o1), 0.03)\n  .modulateRotate(src(o1), 0.02)\n  .blend(src(o2), 0.3)\n  .modulateScale(noise(1.2, 0.015), 0.004)\n  .hue(()=>0.004*Math.sin(time*0.01))\n  .luma(0.004, 0.05)\n  .brightness(0.022)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.12)\n  .out(o0)" },
+        ]
+
+        var container = document.getElementById('caPresets')
+        caPresets.forEach(function (preset) {
+          var btn = document.createElement('button')
+          btn.className = 'presetBtn'
+          btn.textContent = preset.name
+          btn.title = preset.code.split('\n')[0]
+          btn.addEventListener('click', function () {
+            var code = preset.code
+            if (typeof cm !== 'undefined' && cm) {
+              cm.setValue(code)
+            } else {
+              editorEl.value = code
+            }
+            localStorage.setItem(STORAGE_EDITOR, code)
+            currentPresetName = 'CA: ' + preset.name
+            currentPresetFile = null
+            localStorage.setItem(STORAGE_PRESET_NAME, currentPresetName)
+            runCode(code, 'CA: ' + preset.name)
+            highlightActivePreset()
+          })
+          container.appendChild(btn)
+        })
+      })()
+
       setNdiButtonState()
       startAudio()
       // keep attempting auto-resume for audio-reactive patches
