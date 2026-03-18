@@ -1040,6 +1040,40 @@
       loadMapPresets()
 
       // ---- Grid overlay editor ----
+      // Compute the actual canvas content rect within #stage (accounting for object-fit: contain)
+      function getCanvasContentRect () {
+        var stageEl = document.getElementById('stage')
+        var cvs = stageEl ? stageEl.querySelector('canvas') : null
+        if (!cvs) {
+          // Fallback to SVG bounds
+          var svg = document.getElementById('mapOverlay')
+          var r = svg.getBoundingClientRect()
+          return { x: 0, y: 0, w: r.width, h: r.height }
+        }
+        var stageRect = stageEl.getBoundingClientRect()
+        var sw = stageRect.width
+        var sh = stageRect.height
+        var cw = cvs.width || sw
+        var ch = cvs.height || sh
+        var canvasAspect = cw / ch
+        var stageAspect = sw / sh
+        var contentW, contentH, offsetX, offsetY
+        if (stageAspect > canvasAspect) {
+          // Stage wider than canvas — pillarbox
+          contentH = sh
+          contentW = sh * canvasAspect
+          offsetX = (sw - contentW) / 2
+          offsetY = 0
+        } else {
+          // Stage taller than canvas — letterbox
+          contentW = sw
+          contentH = sw / canvasAspect
+          offsetX = 0
+          offsetY = (sh - contentH) / 2
+        }
+        return { x: offsetX, y: offsetY, w: contentW, h: contentH }
+      }
+
       function updateMapOverlay () {
         var svg = document.getElementById('mapOverlay')
         if (!mapModeActive) {
@@ -1049,26 +1083,24 @@
         svg.style.display = ''
         var cols = currentWarp.gridSize[0]
         var rows = currentWarp.gridSize[1]
-        var rect = svg.getBoundingClientRect()
-        var w = rect.width
-        var h = rect.height
+        var cr = getCanvasContentRect()
         var html = ''
         for (var r = 0; r < rows; r++) {
           for (var c = 0; c < cols - 1; c++) {
             var i1 = r * cols + c
             var i2 = r * cols + c + 1
-            html += '<line x1="' + (currentWarp.points[i1][0] * w) + '" y1="' + (currentWarp.points[i1][1] * h) + '" x2="' + (currentWarp.points[i2][0] * w) + '" y2="' + (currentWarp.points[i2][1] * h) + '"/>'
+            html += '<line x1="' + (cr.x + currentWarp.points[i1][0] * cr.w) + '" y1="' + (cr.y + currentWarp.points[i1][1] * cr.h) + '" x2="' + (cr.x + currentWarp.points[i2][0] * cr.w) + '" y2="' + (cr.y + currentWarp.points[i2][1] * cr.h) + '"/>'
           }
         }
         for (var c = 0; c < cols; c++) {
           for (var r = 0; r < rows - 1; r++) {
             var i1 = r * cols + c
             var i2 = (r + 1) * cols + c
-            html += '<line x1="' + (currentWarp.points[i1][0] * w) + '" y1="' + (currentWarp.points[i1][1] * h) + '" x2="' + (currentWarp.points[i2][0] * w) + '" y2="' + (currentWarp.points[i2][1] * h) + '"/>'
+            html += '<line x1="' + (cr.x + currentWarp.points[i1][0] * cr.w) + '" y1="' + (cr.y + currentWarp.points[i1][1] * cr.h) + '" x2="' + (cr.x + currentWarp.points[i2][0] * cr.w) + '" y2="' + (cr.y + currentWarp.points[i2][1] * cr.h) + '"/>'
           }
         }
         for (var i = 0; i < currentWarp.points.length; i++) {
-          html += '<circle cx="' + (currentWarp.points[i][0] * w) + '" cy="' + (currentWarp.points[i][1] * h) + '" r="6" data-idx="' + i + '"/>'
+          html += '<circle cx="' + (cr.x + currentWarp.points[i][0] * cr.w) + '" cy="' + (cr.y + currentWarp.points[i][1] * cr.h) + '" r="6" data-idx="' + i + '"/>'
         }
         svg.innerHTML = html
       }
@@ -1086,9 +1118,11 @@
         })
         window.addEventListener('mousemove', function (e) {
           if (!dragging || dragIdx < 0) return
-          var rect = svg.getBoundingClientRect()
-          var x = (e.clientX - rect.left) / rect.width
-          var y = (e.clientY - rect.top) / rect.height
+          var svgRect = svg.getBoundingClientRect()
+          var cr = getCanvasContentRect()
+          // Map mouse position to normalized coords within the canvas content area
+          var x = (e.clientX - svgRect.left - cr.x) / cr.w
+          var y = (e.clientY - svgRect.top - cr.y) / cr.h
           x = Math.max(0, Math.min(1, x))
           y = Math.max(0, Math.min(1, y))
           currentWarp.points[dragIdx] = [x, y]
@@ -5082,9 +5116,14 @@
         var PERIOD_NOISE  = 32   // 8 bars
         var PERIOD_VACE   = 64   // 16 bars
         var PERIOD_KV     = 48   // 12 bars
+        var PERIOD_STEPS  = 128  // 32 bars — slow drift through step counts
         var SEND_EVERY    = 2    // fire every 2 beats (every half-bar)
         var lastSentBeat  = -999
+        var lastStepVal   = -1
         var TWO_PI = 2 * Math.PI
+        // Step counts to cycle through: 4 steps (crisp) down to 1 (abstract)
+        var STEP_VALUES = [4, 3, 2, 1]
+        var STEP_LABELS = ['4s', '3s', '2s', '1s']
 
         function oscSend (key, value, type) {
           fetch('/api/scope-osc', {
@@ -5102,12 +5141,28 @@
           return { noise: noise, vace: vace, kv: kv }
         }
 
+        function stepCalc (beat) {
+          // Sine oscillates 0→1→0 over PERIOD_STEPS beats, maps to step index
+          var t = 0.5 + 0.5 * Math.sin(beat / PERIOD_STEPS * TWO_PI)  // 0–1
+          return Math.round(t * (STEP_VALUES.length - 1))  // 0–3
+        }
+
         function breathSend (beat) {
           if (!breathActive) return
           var v = breathCalc(beat)
           oscSend('noise_scale',            Math.round(v.noise * 1000) / 1000, 'float')
           oscSend('vace_context_scale',     Math.round(v.vace  * 1000) / 1000, 'float')
           oscSend('kv_cache_attention_bias',Math.round(v.kv    * 1000) / 1000, 'float')
+          // Cycle denoising steps via OSC /steps (no /scope/ prefix)
+          var si = stepCalc(beat)
+          var sv = STEP_VALUES[si]
+          if (sv !== lastStepVal) {
+            lastStepVal = sv
+            oscSend('/steps', sv, 'int')
+            var lbl = document.getElementById('breathStepLabel')
+            if (lbl) lbl.textContent = STEP_LABELS[si]
+            console.log('[Breathe] /steps →', sv)
+          }
         }
 
         // Link beat hook — fires every beat from handleLinkMessage
@@ -5131,6 +5186,7 @@
           if (breathActive) return
           breathActive = true
           lastSentBeat = -999
+          lastStepVal = -1
           // Fire once immediately using current time
           breathFallbackTick()
           // Fallback timer fires every half-bar at 120 BPM (1s) — Link beats override it
@@ -5157,10 +5213,15 @@
           if (breathActive) breathStop(); else breathStart()
         })
 
+        var breathStepLabel = document.createElement('span')
+        breathStepLabel.id = 'breathStepLabel'
+        breathStepLabel.style.cssText = 'font-size:10px;color:#555;margin-left:2px;'
+
         // Insert next to ▶ Sequence button row
         var piRunBtn = document.getElementById('piRunBtn')
         if (piRunBtn && piRunBtn.parentNode) {
           piRunBtn.parentNode.appendChild(breathBtn)
+          piRunBtn.parentNode.appendChild(breathStepLabel)
         }
 
         // Auto-start when Scope becomes connected
