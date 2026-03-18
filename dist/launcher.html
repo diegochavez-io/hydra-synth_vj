@@ -55,6 +55,7 @@
     /* ── Stage ── */
     #stageWrap { position: relative; flex-shrink: 1; min-height: 200px; }
     #stage {
+      position: relative;
       border: 1px solid var(--line); border-radius: 4px 4px 0 0;
       overflow: hidden; background: #000;
       width: 100%; height: 100%;
@@ -328,6 +329,8 @@
     #brightCtrl::-moz-range-track { background: linear-gradient(to right, var(--bg), #999); }
     #contrastCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, #444, var(--bg) 50%, #999); }
     #contrastCtrl::-moz-range-track { background: linear-gradient(to right, #444, var(--bg) 50%, #999); }
+    #sharpenCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--bg), #b0a0d0); }
+    #sharpenCtrl::-moz-range-track { background: linear-gradient(to right, var(--bg), #b0a0d0); }
     #audioGainSlider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--line), #5ab8c8); }
     #audioGainSlider::-moz-range-track { background: linear-gradient(to right, var(--line), #5ab8c8); }
     #audioGainSlider::-webkit-slider-thumb { width: 7px; height: 7px; margin-top: -2.5px; }
@@ -426,6 +429,20 @@
     .dd-label { color: var(--dim); white-space: nowrap; }
     #ddDebugToggle { cursor: pointer; color: var(--dim); text-decoration: none; opacity: 0.6; transition: opacity 0.12s; }
     #ddDebugToggle:hover { opacity: 1; }
+    /* SCOPE AUTO */
+    #scopeAuto { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+    #scopeAuto .sa-head { font-size: 9px; letter-spacing: 0.12em; color: #333; margin-bottom: 5px; }
+    #scopeAuto .sa-row { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; transition: opacity 0.15s; font-size: 10px; }
+    #scopeAuto .sa-row.off { opacity: 0.3; }
+    #scopeAuto .sa-toggle { font-size: 9px; letter-spacing: 0.08em; padding: 1px 5px; border: 1px solid #2a4a2a; color: #5a9a5a; background: transparent; cursor: pointer; font-family: monospace; white-space: nowrap; }
+    #scopeAuto .sa-toggle.off { border-color: #222; color: #333; }
+    #scopeAuto .sa-name { color: #666; min-width: 148px; white-space: nowrap; }
+    #scopeAuto .sa-num { width: 40px; background: #0d0d0d; border: 1px solid #1e1e1e; color: #888; font-family: monospace; font-size: 10px; padding: 1px 3px; text-align: right; -moz-appearance: textfield; }
+    #scopeAuto .sa-num::-webkit-inner-spin-button { opacity: 0.4; }
+    #scopeAuto .sa-num:focus { border-color: #333; outline: none; color: #bbb; }
+    #scopeAuto .sa-sep { color: #222; }
+    #scopeAuto .sa-bars { background: #0d0d0d; border: 1px solid #1e1e1e; color: #555; font-family: monospace; font-size: 10px; padding: 1px 2px; cursor: pointer; }
+    #scopeAuto .sa-val { color: #3a6a3a; min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
     #ddDebugLog {
       display: none;
       border-top: 1px solid var(--line);
@@ -533,6 +550,7 @@
           <label><span>Saturation</span><input type="range" id="satCtrl" min="0" max="300" value="100"><span class="val" id="satVal">100</span></label>
           <label><span>Brightness</span><input type="range" id="brightCtrl" min="0" max="300" value="100"><span class="val" id="brightVal">100</span></label>
           <label><span>Contrast</span><input type="range" id="contrastCtrl" min="0" max="300" value="100"><span class="val" id="contrastVal">100</span></label>
+          <label><span>Sharpen</span><input type="range" id="sharpenCtrl" min="0" max="100" value="0"><span class="val" id="sharpenVal">0</span></label>
           <div style="display:flex;justify-content:flex-end;"><button id="resetFiltersBtn" class="btn gc-reset">R</button></div>
         </div>
       <div id="audioMeterPanel">
@@ -948,15 +966,30 @@
         cb.width = outW
         cb.height = outH
         var ctx = cb.getContext('2d')
-        var tileSize = Math.round(Math.max(outW, outH) / 20)
+        // High-contrast alignment grid
+        var tileSize = Math.round(Math.max(outW, outH) / 16)
         var cols = Math.ceil(outW / tileSize)
         var rows = Math.ceil(outH / tileSize)
+        // Black/white checkerboard
         for (var r = 0; r < rows; r++) {
           for (var c = 0; c < cols; c++) {
-            ctx.fillStyle = (r + c) % 2 === 0 ? '#333' : '#555'
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#000' : '#fff'
             ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize)
           }
         }
+        // Crosshair at center
+        ctx.strokeStyle = '#f00'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(outW / 2, 0)
+        ctx.lineTo(outW / 2, outH)
+        ctx.moveTo(0, outH / 2)
+        ctx.lineTo(outW, outH / 2)
+        ctx.stroke()
+        // Border outline
+        ctx.strokeStyle = '#f00'
+        ctx.lineWidth = 3
+        ctx.strokeRect(1, 1, outW - 2, outH - 2)
       }
 
       function updateMapModeDisplay () {
@@ -2949,12 +2982,34 @@
         }
       }
 
+      // Apply 3x3 unsharp mask convolution for recording pipeline
+      function applySharpenConvolution (imageData, w, h, amount) {
+        var k = amount / 50
+        var src = new Uint8ClampedArray(imageData.data)
+        var dst = imageData.data
+        for (var y = 1; y < h - 1; y++) {
+          for (var x = 1; x < w - 1; x++) {
+            var i = (y * w + x) * 4
+            for (var ch = 0; ch < 3; ch++) {
+              var idx = i + ch
+              var val = src[idx] * (1 + 4*k)
+                - k * src[idx - 4]       // left
+                - k * src[idx + 4]       // right
+                - k * src[idx - w*4]     // top
+                - k * src[idx + w*4]     // bottom
+              dst[idx] = Math.max(0, Math.min(255, val + 0.5 | 0))
+            }
+          }
+        }
+      }
+
       // Check if filters are at default (no transform needed)
       function filtersAreDefault () {
         return parseInt(hueCtrl.value, 10) === 0 &&
                parseInt(satCtrl.value, 10) === 100 &&
                parseInt(brightCtrl.value, 10) === 100 &&
-               parseInt(contrastCtrl.value, 10) === 100
+               parseInt(contrastCtrl.value, 10) === 100 &&
+               parseInt(sharpenCtrl.value, 10) === 0
       }
 
       function captureRawFrame () {
@@ -2980,6 +3035,8 @@
             parseInt(contrastCtrl.value, 10)
           )
           applyColorMatrix(imageData, mat)
+          var shAmt = parseInt(sharpenCtrl.value, 10)
+          if (shAmt > 0) applySharpenConvolution(imageData, w, h, shAmt)
         }
 
         return imageData.data.buffer
@@ -4520,10 +4577,60 @@
       var satCtrl = document.getElementById('satCtrl')
       var brightCtrl = document.getElementById('brightCtrl')
       var contrastCtrl = document.getElementById('contrastCtrl')
+      var sharpenCtrl = document.getElementById('sharpenCtrl')
       var hueVal = document.getElementById('hueVal')
       var satVal = document.getElementById('satVal')
       var brightVal = document.getElementById('brightVal')
       var contrastVal = document.getElementById('contrastVal')
+      var sharpenVal = document.getElementById('sharpenVal')
+      // ---- WebGL sharpen overlay ----
+      var sharpenCanvas = document.createElement('canvas')
+      sharpenCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;display:none;pointer-events:none;object-fit:contain;'
+      document.getElementById('stage').appendChild(sharpenCanvas)
+      var shGL = sharpenCanvas.getContext('webgl', { alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: false })
+      var shProgram = null, shTexture = null, shAmountLoc = null, shTexSizeLoc = null, shAnimId = null
+      ;(function initSharpenGL () {
+        var gl = shGL; if (!gl) return
+        var vs = gl.createShader(gl.VERTEX_SHADER)
+        gl.shaderSource(vs, 'attribute vec2 a_pos;varying vec2 v_uv;void main(){v_uv=a_pos*0.5+0.5;gl_Position=vec4(a_pos,0,1);}')
+        gl.compileShader(vs)
+        var fs = gl.createShader(gl.FRAGMENT_SHADER)
+        gl.shaderSource(fs, [
+          'precision mediump float;',
+          'varying vec2 v_uv;',
+          'uniform sampler2D u_tex;',
+          'uniform vec2 u_texSize;',
+          'uniform float u_amount;',
+          'void main(){',
+          '  vec2 px=1.0/u_texSize;',
+          '  vec4 c=texture2D(u_tex,v_uv);',
+          '  vec4 t=texture2D(u_tex,v_uv+vec2(0,-px.y));',
+          '  vec4 b=texture2D(u_tex,v_uv+vec2(0,px.y));',
+          '  vec4 l=texture2D(u_tex,v_uv+vec2(-px.x,0));',
+          '  vec4 r=texture2D(u_tex,v_uv+vec2(px.x,0));',
+          '  vec4 sharp=c*(1.0+4.0*u_amount)-(t+b+l+r)*u_amount;',
+          '  gl_FragColor=clamp(sharp,0.0,1.0);',
+          '}'
+        ].join('\n'))
+        gl.compileShader(fs)
+        shProgram = gl.createProgram()
+        gl.attachShader(shProgram, vs); gl.attachShader(shProgram, fs)
+        gl.linkProgram(shProgram); gl.useProgram(shProgram)
+        var buf = gl.createBuffer()
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf)
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW)
+        var aPos = gl.getAttribLocation(shProgram, 'a_pos')
+        gl.enableVertexAttribArray(aPos)
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
+        shAmountLoc = gl.getUniformLocation(shProgram, 'u_amount')
+        shTexSizeLoc = gl.getUniformLocation(shProgram, 'u_texSize')
+        shTexture = gl.createTexture()
+        gl.bindTexture(gl.TEXTURE_2D, shTexture)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+      })()
 
       function getFilterState () {
         return {
@@ -4531,6 +4638,7 @@
           sat: parseInt(satCtrl.value, 10),
           bright: parseInt(brightCtrl.value, 10),
           contrast: parseInt(contrastCtrl.value, 10),
+          sharpen: parseInt(sharpenCtrl.value, 10),
           speed: parseFloat(speedCtrlEl.value)
         }
       }
@@ -4541,6 +4649,7 @@
         if (state.sat !== undefined) satCtrl.value = state.sat
         if (state.bright !== undefined) brightCtrl.value = state.bright
         if (state.contrast !== undefined) contrastCtrl.value = state.contrast
+        if (state.sharpen !== undefined) sharpenCtrl.value = state.sharpen
         if (state.speed !== undefined) { speedCtrlEl.value = state.speed; updateSpeed() }
         applyFilters()
       }
@@ -4563,18 +4672,53 @@
         }
       }
 
+      var currentSharpenAmt = 0
+
+      function startSharpenLoop () {
+        if (shAnimId || !shGL || !hydraCanvas) return
+        sharpenCanvas.style.display = 'block'
+        hydraCanvas.style.visibility = 'hidden'
+        function tick () {
+          shAnimId = requestAnimationFrame(tick)
+          var gl = shGL
+          var w = hydraCanvas.width, h = hydraCanvas.height
+          if (sharpenCanvas.width !== w) sharpenCanvas.width = w
+          if (sharpenCanvas.height !== h) sharpenCanvas.height = h
+          gl.viewport(0, 0, w, h)
+          gl.useProgram(shProgram)
+          gl.uniform1f(shAmountLoc, currentSharpenAmt / 50)
+          gl.uniform2f(shTexSizeLoc, w, h)
+          gl.bindTexture(gl.TEXTURE_2D, shTexture)
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, hydraCanvas)
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+        }
+        tick()
+      }
+
+      function stopSharpenLoop () {
+        if (shAnimId) { cancelAnimationFrame(shAnimId); shAnimId = null }
+        sharpenCanvas.style.display = 'none'
+        hydraCanvas.style.visibility = 'visible'
+      }
+
       function applyFilters () {
         if (!hydraCanvas) return
         var h = hueCtrl.value
         var s = satCtrl.value
         var b = brightCtrl.value
         var c = contrastCtrl.value
+        var sh = parseInt(sharpenCtrl.value, 10)
+        currentSharpenAmt = sh
         hueVal.textContent = h + '°'
         satVal.textContent = s
         brightVal.textContent = b
         contrastVal.textContent = c
+        sharpenVal.textContent = sh
         var filterStr = buildFilterString(h, s, b, c)
+        // Apply color filters to whichever canvas is visible
         hydraCanvas.style.filter = filterStr
+        sharpenCanvas.style.filter = filterStr
+        if (sh > 0) { startSharpenLoop() } else { stopSharpenLoop() }
         broadcastFilters(filterStr)
       }
       window.__applyFilters = applyFilters  // expose for hue sweep IIFE
@@ -4583,8 +4727,9 @@
       satCtrl.addEventListener('input', applyFilters)
       brightCtrl.addEventListener('input', applyFilters)
       contrastCtrl.addEventListener('input', applyFilters)
+      sharpenCtrl.addEventListener('input', applyFilters)
       document.getElementById('resetFiltersBtn').addEventListener('click', function () {
-        hueCtrl.value = 0; satCtrl.value = 100; brightCtrl.value = 100; contrastCtrl.value = 100
+        hueCtrl.value = 0; satCtrl.value = 100; brightCtrl.value = 100; contrastCtrl.value = 100; sharpenCtrl.value = 0
         applyFilters()
         speedCtrlEl.value = 1; updateSpeed()
       })
@@ -5123,27 +5268,31 @@
         piLoadScene('Datamosh')
       })()
 
-      // ---- Scope Breathing Oscillator ----
-      // Modulates noise_scale, vace_context_scale, kv_cache_attention_bias via OSC.
-      // When Link is active: phase is driven by beat position so oscillation is
-      // musically timed and BPM-aware (faster tempo = faster cycle).
-      // When Link is inactive: falls back to a wall-clock timer.
+      // ---- Scope Parameter Automation ----
+      // Always-on oscillators for Scope params. Link-synced when available.
       ;(function () {
-        var breathActive = false
-        var breathTimer = null
-        // Oscillator periods in BEATS (at 4/4: 32 beats = 8 bars, etc.)
-        // Phase = beat / period * 2π — scales automatically with BPM.
-        var PERIOD_NOISE  = 32   // 8 bars
-        var PERIOD_VACE   = 64   // 16 bars
-        var PERIOD_KV     = 48   // 12 bars
-        var PERIOD_STEPS  = 128  // 32 bars — slow drift through step counts
-        var SEND_EVERY    = 2    // fire every 2 beats (every half-bar)
-        var lastSentBeat  = -999
-        var lastStepVal   = -1
         var TWO_PI = 2 * Math.PI
-        // Step counts to cycle through: 4 steps (crisp) down to 1 (abstract)
-        var STEP_VALUES = [4, 3, 2, 1]
-        var STEP_LABELS = ['4s', '3s', '2s', '1s']
+        var SEND_EVERY = 2
+        var lastSentBeat = -999
+        var lastStepIdx  = -1
+        var BAR_OPTIONS  = [4, 8, 16, 24, 32, 48, 64, 96, 128]
+
+        // Each param: bars = period / 4 beats
+        var PARAMS = [
+          { id: 'noise', label: 'noise_scale',             key: 'noise_scale',             bars: 16, min: 0.10, max: 0.20 },
+          { id: 'vace',  label: 'vace_context_scale',      key: 'vace_context_scale',      bars: 24, min: 0.88, max: 1.12 },
+          { id: 'kv',    label: 'kv_cache_attention_bias', key: 'kv_cache_attention_bias',  bars: 20, min: 0.52, max: 0.68 }
+        ]
+        var STEP_VALUES = [[1000,750,500,250],[1000,750,500],[1000,500],[1000,250],[1000]]
+        var STEP_LABELS = ['4s','3s','2s·b','2s·f','1s']
+        var stepBars    = 32
+
+        // State — populated after UI build
+        var state = {}
+        PARAMS.forEach(function (p) {
+          state[p.id] = { enabled: true, min: p.min, max: p.max, bars: p.bars, valSpan: null }
+        })
+        var stepState = { enabled: true, valSpan: null }
 
         function oscSend (key, value, type) {
           fetch('/api/scope-osc', {
@@ -5153,104 +5302,164 @@
           }).catch(function () {})
         }
 
-        function breathCalc (beat) {
-          // beat is a float that increments with the clock regardless of BPM
-          var noise  = 0.18 + 0.12 * Math.sin(beat / PERIOD_NOISE * TWO_PI)  // 0.06–0.30
-          var vace   = 1.0  + 0.35 * Math.sin(beat / PERIOD_VACE  * TWO_PI)  // 0.65–1.35
-          var kv     = 0.55 + 0.20 * Math.sin(beat / PERIOD_KV    * TWO_PI)  // 0.35–0.75
-          return { noise: noise, vace: vace, kv: kv }
-        }
-
-        function stepCalc (beat) {
-          // Sine oscillates 0→1→0 over PERIOD_STEPS beats, maps to step index
-          var t = 0.5 + 0.5 * Math.sin(beat / PERIOD_STEPS * TWO_PI)  // 0–1
-          return Math.round(t * (STEP_VALUES.length - 1))  // 0–3
-        }
-
-        function breathSend (beat) {
-          if (!breathActive) return
-          var v = breathCalc(beat)
-          oscSend('noise_scale',            Math.round(v.noise * 1000) / 1000, 'float')
-          oscSend('vace_context_scale',     Math.round(v.vace  * 1000) / 1000, 'float')
-          oscSend('kv_cache_attention_bias',Math.round(v.kv    * 1000) / 1000, 'float')
-          // Cycle denoising steps via OSC /steps (no /scope/ prefix)
-          var si = stepCalc(beat)
-          var sv = STEP_VALUES[si]
-          if (sv !== lastStepVal) {
-            lastStepVal = sv
-            oscSend('/steps', sv, 'int')
-            var lbl = document.getElementById('breathStepLabel')
-            if (lbl) lbl.textContent = STEP_LABELS[si]
-            console.log('[Breathe] /steps →', sv)
+        function doSend (beat) {
+          PARAMS.forEach(function (p) {
+            var s = state[p.id]
+            if (!s.enabled) return
+            var period = s.bars * 4
+            var val = (s.min + s.max) / 2 + (s.max - s.min) / 2 * Math.sin(beat / period * TWO_PI)
+            val = Math.round(val * 1000) / 1000
+            oscSend(p.key, val, 'float')
+            if (s.valSpan) s.valSpan.textContent = val.toFixed(3)
+          })
+          if (stepState.enabled) {
+            var period = stepBars * 4
+            var t  = 0.5 + 0.5 * Math.sin(beat / period * TWO_PI)
+            var si = Math.round(t * (STEP_VALUES.length - 1))
+            if (si !== lastStepIdx) {
+              lastStepIdx = si
+              fetch('/api/scope/api/v1/session/parameters', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ denoising_step_list: STEP_VALUES[si] })
+              }).catch(function () {})
+              if (stepState.valSpan) stepState.valSpan.textContent = STEP_LABELS[si]
+            }
           }
         }
 
-        // Link beat hook — fires every beat from handleLinkMessage
-        window.__breathOnBeat = function (beat) {
-          if (!breathActive) return
-          var bar = Math.floor(beat / SEND_EVERY)
-          if (bar === lastSentBeat) return
-          lastSentBeat = bar
-          breathSend(beat)
+        function throttledSend (beat) {
+          var slot = Math.floor(beat / SEND_EVERY)
+          if (slot === lastSentBeat) return
+          lastSentBeat = slot
+          doSend(beat)
         }
 
-        // Fallback timer when Link is not active (uses beat-equivalent via BPM=120)
-        function breathFallbackTick () {
-          if (!breathActive) return
-          // Simulate beat from wall clock at 120 BPM
-          var fakeBeat = (Date.now() / 1000) * 2  // 120 BPM = 2 beats/sec
-          breathSend(fakeBeat)
-        }
+        // Link hook
+        window.__breathOnBeat = function (beat) { throttledSend(beat) }
 
-        function breathStart () {
-          if (breathActive) return
-          breathActive = true
-          lastSentBeat = -999
-          lastStepVal = -1
-          // Fire once immediately using current time
-          breathFallbackTick()
-          // Fallback timer fires every half-bar at 120 BPM (1s) — Link beats override it
-          breathTimer = setInterval(breathFallbackTick, 1000)
-          breathBtn.textContent = '■ Breathe'
-          breathBtn.classList.add('stop')
-          breathBtn.classList.remove('main')
-        }
+        // Fallback when Link not active
+        setInterval(function () {
+          if (typeof linkActive !== 'undefined' && linkActive) return
+          throttledSend((Date.now() / 500))  // 2 fake beats/sec = 120 BPM equiv
+        }, 500)
 
-        function breathStop () {
-          breathActive = false
-          if (breathTimer) { clearInterval(breathTimer); breathTimer = null }
-          breathBtn.textContent = '~ Breathe'
-          breathBtn.classList.remove('stop')
-          breathBtn.classList.add('main')
-        }
-
-        var breathBtn = document.createElement('button')
-        breathBtn.id = 'breathBtn'
-        breathBtn.className = 'btn main'
-        breathBtn.textContent = '~ Breathe'
-        breathBtn.style.cssText = 'padding:4px 10px;font-size:11px;'
-        breathBtn.addEventListener('click', function () {
-          if (breathActive) breathStop(); else breathStart()
-        })
-
-        var breathStepLabel = document.createElement('span')
-        breathStepLabel.id = 'breathStepLabel'
-        breathStepLabel.style.cssText = 'font-size:10px;color:#555;margin-left:2px;'
-
-        // Insert next to ▶ Sequence button row
-        var piRunBtn = document.getElementById('piRunBtn')
-        if (piRunBtn && piRunBtn.parentNode) {
-          piRunBtn.parentNode.appendChild(breathBtn)
-          piRunBtn.parentNode.appendChild(breathStepLabel)
-        }
-
-        // Auto-start when Scope becomes connected
-        var origShowScope = document.getElementById('ddScopeOpenTab')
-        if (origShowScope) {
-          var obs = new MutationObserver(function () {
-            if (origShowScope.style.display !== 'none' && !breathActive) breathStart()
+        // ---- UI ----
+        function makeBarsSelect (currentBars, onChange) {
+          var sel = document.createElement('select')
+          sel.className = 'sa-bars'
+          BAR_OPTIONS.forEach(function (b) {
+            var o = document.createElement('option')
+            o.value = b; o.textContent = b + ' bars'
+            if (b === currentBars) o.selected = true
+            sel.appendChild(o)
           })
-          obs.observe(origShowScope, { attributes: true, attributeFilter: ['style'] })
+          sel.addEventListener('change', function () { onChange(parseInt(sel.value)) })
+          return sel
+        }
+
+        function buildUI () {
+          var wrap = document.createElement('div')
+          wrap.id = 'scopeAuto'
+
+          var hdr = document.createElement('div')
+          hdr.className = 'sa-head'
+          hdr.textContent = 'SCOPE AUTO'
+          wrap.appendChild(hdr)
+
+          PARAMS.forEach(function (p) {
+            var s = state[p.id]
+            var row = document.createElement('div')
+            row.className = 'sa-row'
+
+            // Toggle
+            var tog = document.createElement('span')
+            tog.className = 'sa-toggle'
+            tog.textContent = 'ON'
+            tog.addEventListener('click', function () {
+              s.enabled = !s.enabled
+              tog.textContent = s.enabled ? 'ON' : 'OFF'
+              tog.classList.toggle('off', !s.enabled)
+              row.classList.toggle('off', !s.enabled)
+            })
+
+            // Name
+            var name = document.createElement('span')
+            name.className = 'sa-name'
+            name.textContent = p.label
+
+            // Min
+            var minIn = document.createElement('input')
+            minIn.type = 'number'; minIn.className = 'sa-num'
+            minIn.value = p.min; minIn.step = 0.01
+            minIn.title = 'Min'
+            minIn.addEventListener('input', function () { s.min = parseFloat(minIn.value) || p.min })
+
+            var sep = document.createElement('span')
+            sep.className = 'sa-sep'; sep.textContent = '↔'
+
+            // Max
+            var maxIn = document.createElement('input')
+            maxIn.type = 'number'; maxIn.className = 'sa-num'
+            maxIn.value = p.max; maxIn.step = 0.01
+            maxIn.title = 'Max'
+            maxIn.addEventListener('input', function () { s.max = parseFloat(maxIn.value) || p.max })
+
+            // Bars
+            var barsEl = makeBarsSelect(p.bars, function (b) { s.bars = b })
+
+            // Current value
+            var val = document.createElement('span')
+            val.className = 'sa-val'
+            val.textContent = ((p.min + p.max) / 2).toFixed(3)
+            s.valSpan = val
+
+            row.appendChild(tog); row.appendChild(name)
+            row.appendChild(minIn); row.appendChild(sep); row.appendChild(maxIn)
+            row.appendChild(barsEl); row.appendChild(val)
+            wrap.appendChild(row)
+          })
+
+          // Steps row
+          var stepRow = document.createElement('div')
+          stepRow.className = 'sa-row'
+
+          var stepTog = document.createElement('span')
+          stepTog.className = 'sa-toggle'
+          stepTog.textContent = 'ON'
+          stepTog.addEventListener('click', function () {
+            stepState.enabled = !stepState.enabled
+            stepTog.textContent = stepState.enabled ? 'ON' : 'OFF'
+            stepTog.classList.toggle('off', !stepState.enabled)
+            stepRow.classList.toggle('off', !stepState.enabled)
+          })
+
+          var stepName = document.createElement('span')
+          stepName.className = 'sa-name'
+          stepName.textContent = 'denoising_step_list'
+
+          var stepBarsEl = makeBarsSelect(stepBars, function (b) { stepBars = b })
+
+          var stepVal = document.createElement('span')
+          stepVal.className = 'sa-val'
+          stepVal.textContent = STEP_LABELS[2]
+          stepState.valSpan = stepVal
+
+          stepRow.appendChild(stepTog); stepRow.appendChild(stepName)
+          stepRow.appendChild(stepBarsEl); stepRow.appendChild(stepVal)
+          wrap.appendChild(stepRow)
+
+          return wrap
+        }
+
+        // Insert after piPanel
+        var piPanel = document.getElementById('piPanel')
+        if (piPanel && piPanel.parentNode) {
+          piPanel.parentNode.insertBefore(buildUI(), piPanel.nextSibling)
+        } else {
+          // Fallback: append to daydreamBar
+          var bar = document.getElementById('daydreamBar')
+          if (bar) bar.appendChild(buildUI())
         }
       })()
 
@@ -5260,15 +5469,18 @@
       ;(function () {
         var hueBtn  = document.getElementById('hueSweepBtn')
         var barsBtn = document.getElementById('hueBarsBtn')
-        if (!hueBtn || !barsBtn) return
+        var hc      = document.getElementById('hueCtrl')
+        var hv      = document.getElementById('hueVal')
+        if (!hueBtn || !barsBtn || !hc) return
 
         var BAR_OPTIONS = [8, 16, 32, 64, 128]
         var barIdx = 2  // default 32 bars
         var hueActive = false
         var hueTimer = null
         var hueBpm = 120
-        var hueStartMs = 0    // wall-clock ms when phase=0 of the cycle
-        var hueStartVal = 0   // hue value at phase=0 (so sweep starts from current)
+        var hueStartMs = 0
+        var hueStartVal = 0
+        var dragging = false  // user is dragging the slider
 
         barsBtn.textContent = BAR_OPTIONS[barIdx] + ' bars'
         barsBtn.addEventListener('click', function () {
@@ -5276,7 +5488,29 @@
           barsBtn.textContent = BAR_OPTIONS[barIdx] + ' bars'
         })
 
-        // Re-anchor phase when Link beat arrives — keeps hue in musical sync
+        // When user grabs the slider while sweep is active, pause overwriting
+        // and re-anchor the sweep from the new position on release
+        hc.addEventListener('mousedown', function () { dragging = true })
+        hc.addEventListener('touchstart', function () { dragging = true })
+        function onRelease () {
+          if (!dragging) return
+          dragging = false
+          if (hueActive) {
+            // Re-anchor sweep from current slider position
+            hueStartVal = parseFloat(hc.value)
+            hueStartMs = Date.now()
+          }
+        }
+        window.addEventListener('mouseup', onRelease)
+        window.addEventListener('touchend', onRelease)
+
+        // Visual feedback: dim the slider track when automated
+        function setSliderLocked (locked) {
+          hc.style.opacity = locked ? '0.6' : '1'
+          hc.title = locked ? 'Hue automated — drag to re-anchor' : 'Hue'
+        }
+
+        // Re-anchor phase when Link beat arrives
         window.__hueOnBeat = function (beat, bpm) {
           if (bpm) hueBpm = bpm
           if (!hueActive) return
@@ -5286,36 +5520,27 @@
         }
 
         function tick () {
-          if (!hueActive) return
+          if (!hueActive || dragging) return
           var cycleSec = (BAR_OPTIONS[barIdx] * 4 / hueBpm) * 60
           var elapsed = (Date.now() - hueStartMs) / 1000
           var phase = (elapsed / cycleSec) % 1
           var hue = Math.round((hueStartVal + phase * 360) % 360)
 
-          // Update slider + label
-          var hc = document.getElementById('hueCtrl')
-          if (!hc) return
           hc.value = hue
-          var hv = document.getElementById('hueVal')
           if (hv) hv.textContent = hue + '°'
-
-          // Apply via known-working path (same as manual slider drag)
           if (window.__applyFilters) window.__applyFilters()
-
-          // Live readout in button so user can confirm it's ticking
           hueBtn.textContent = '■ ' + hue + '°'
         }
 
         function hueStart () {
-          var hc = document.getElementById('hueCtrl')
-          hueStartVal = hc ? parseFloat(hc.value) : 0
+          hueStartVal = parseFloat(hc.value)
           hueStartMs = Date.now()
           hueBpm = parseFloat(bpmValEl.textContent) || 120
           hueActive = true
-          hueTimer = setInterval(tick, 50)  // 20fps — smooth but not flooding
+          hueTimer = setInterval(tick, 50)
           hueBtn.textContent = '■ Hue'
           hueBtn.classList.add('main')
-          hueBtn.classList.remove('stop')
+          setSliderLocked(true)
         }
 
         function hueStop () {
@@ -5324,6 +5549,7 @@
           hueTimer = null
           hueBtn.textContent = '~ Hue'
           hueBtn.classList.remove('main')
+          setSliderLocked(false)
         }
 
         hueBtn.addEventListener('click', function () {
