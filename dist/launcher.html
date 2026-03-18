@@ -581,6 +581,7 @@
                 <option value="">Clean</option>
               </select>
               <button id="mapSaveBtn" class="btn" style="display:none;">Save</button>
+              <button id="mapResetBtn" class="btn" style="display:none; font-size:11px;">Reset</button>
               <span id="gridDensityControls" style="display:none;">
                 <button id="gridMinus" class="btn" style="font-size:11px; padding:2px 6px;">-</button>
                 <span id="gridSizeLabel" style="color:#888; font-size:11px;">2x2</span>
@@ -616,6 +617,15 @@
           <div style="width:1px;height:10px;background:#222;margin:0 2px;"></div>
           <label style="display:flex;align-items:center;gap:3px;white-space:nowrap;font-size:10px;color:#555;">BPM <span id="bpmVal" style="width:24px;text-align:right;font-variant-numeric:tabular-nums;">30</span></label>
           <button id="tapTempoBtn" class="btn" style="padding:2px 6px;font-size:10px;border-color:#222;">Tap</button>
+          <div style="width:1px;height:10px;background:#222;margin:0 2px;"></div>
+          <button id="hueSweepBtn" class="btn" style="padding:2px 6px;font-size:10px;border-color:#222;">~ Hue</button>
+          <select id="hueBarsSelect" style="font-size:10px;background:transparent;color:#555;border:1px solid #222;border-radius:3px;padding:2px 4px;">
+            <option value="8">8 bars</option>
+            <option value="16">16 bars</option>
+            <option value="32" selected>32 bars</option>
+            <option value="64">64 bars</option>
+            <option value="128">128 bars</option>
+          </select>
           <!-- linkBtn moved to stageOverlay #linkBar -->
         </div>
       </div>
@@ -1011,6 +1021,10 @@
         mapModeActive = !mapModeActive
         this.classList.toggle('active', mapModeActive)
         document.getElementById('mapSaveBtn').style.display = mapModeActive ? '' : 'none'
+        document.getElementById('mapResetBtn').style.display = mapModeActive ? '' : 'none'
+        // Dim the canvas in map mode so grid handles are visible
+        var stageCanvas = document.getElementById('stage').querySelector('canvas')
+        if (stageCanvas) stageCanvas.style.opacity = mapModeActive ? '0.25' : ''
         if (typeof updateMapOverlay === 'function') updateMapOverlay()
       })
 
@@ -1035,6 +1049,18 @@
             localStorage.setItem('hydra-map-preset', sel.value)
           })
           .catch(function () {})
+      })
+
+      document.getElementById('mapResetBtn').addEventListener('click', function () {
+        currentWarp = {
+          gridSize: [2, 2],
+          points: [[0, 0], [1, 0], [0, 1], [1, 1]]
+        }
+        document.getElementById('gridSizeLabel').textContent = '2x2'
+        document.getElementById('mapPresetSelect').value = ''
+        localStorage.setItem('hydra-map-preset', '')
+        broadcastWarp()
+        if (typeof updateMapOverlay === 'function') updateMapOverlay()
       })
 
       loadMapPresets()

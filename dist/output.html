@@ -119,55 +119,19 @@
     // Render loop
     var video = document.getElementById('v')
 
-    // Viewport that letterboxes to match video aspect ratio
-    var vpX = 0, vpY = 0, vpW = 0, vpH = 0
-
-    function updateViewport () {
-      var dpr = window.devicePixelRatio || 1
-      canvas.width = window.innerWidth * dpr
-      canvas.height = window.innerHeight * dpr
-
-      // Default to canvas size until we know video dimensions
-      var vw = video.videoWidth || canvas.width
-      var vh = video.videoHeight || canvas.height
-      var videoAspect = vw / vh
-      var canvasAspect = canvas.width / canvas.height
-
-      if (canvasAspect > videoAspect) {
-        // Window is wider than video — pillarbox (black on sides)
-        vpH = canvas.height
-        vpW = Math.round(canvas.height * videoAspect)
-        vpX = Math.round((canvas.width - vpW) / 2)
-        vpY = 0
-      } else {
-        // Window is taller than video — letterbox (black on top/bottom)
-        vpW = canvas.width
-        vpH = Math.round(canvas.width / videoAspect)
-        vpX = 0
-        vpY = Math.round((canvas.height - vpH) / 2)
-      }
-
-      gl.viewport(vpX, vpY, vpW, vpH)
+    function resizeCanvas () {
+      canvas.width = window.innerWidth * (window.devicePixelRatio || 1)
+      canvas.height = window.innerHeight * (window.devicePixelRatio || 1)
+      gl.viewport(0, 0, canvas.width, canvas.height)
     }
-    window.addEventListener('resize', updateViewport)
-    updateViewport()
-
-    var lastVideoW = 0, lastVideoH = 0
+    window.addEventListener('resize', resizeCanvas)
+    resizeCanvas()
 
     function render() {
       requestAnimationFrame(render)
       if (video.readyState < 2) return
-
-      // Recalculate viewport if video dimensions changed
-      if (video.videoWidth !== lastVideoW || video.videoHeight !== lastVideoH) {
-        lastVideoW = video.videoWidth
-        lastVideoH = video.videoHeight
-        updateViewport()
-      }
-
       gl.bindTexture(gl.TEXTURE_2D, videoTex)
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video)
-      gl.clearColor(0, 0, 0, 1)
       gl.clear(gl.COLOR_BUFFER_BIT)
       gl.useProgram(program)
       gl.activeTexture(gl.TEXTURE0)
