@@ -6,397 +6,332 @@
   <title>Hydra Live Launcher</title>
   <style>
     :root {
-      --bg: #050508;
-      --panel: #0a0a0e;
-      --line: #1a1a22;
-      --text: #fff;
-      --muted: #ddd;
-      --accent: #42d08f;
-      --danger: #c44;
+      --bg: #08080a;
+      --panel: #0c0c0f;
+      --surface: #101014;
+      --line: #18181e;
+      --text: #e8e8ec;
+      --muted: #c0c0c4;
+      --dim: #888890;
+      --accent: #8a8a90;
+      --active: #b8b8bc;
+      --danger: #8a4444;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
+      width: 100%; height: 100%;
       background: var(--bg);
       color: var(--text);
       font-family: "JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", "Menlo", monospace;
-      font-size: 12px;
+      font-size: 11px;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
     }
+
+    /* ── Layout ── */
     #app {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: row;
-      gap: 0;
-      padding: 6px;
+      width: 100%; height: 100%;
+      display: flex; flex-direction: row;
+      padding: 4px; gap: 0;
     }
     .v-splitter {
-      width: 5px;
-      cursor: col-resize;
-      background: linear-gradient(90deg, transparent, #1a1a22, transparent);
-      flex-shrink: 0;
+      width: 4px; cursor: col-resize; flex-shrink: 0;
+      background: transparent;
       transition: background 0.2s;
     }
-    .v-splitter:hover { background: linear-gradient(90deg, transparent, #333, transparent); }
+    .v-splitter:hover { background: var(--line); }
     .h-splitter {
-      height: 5px;
-      cursor: row-resize;
-      background: linear-gradient(180deg, transparent, #1a1a22, transparent);
-      flex-shrink: 0;
+      height: 4px; cursor: row-resize; flex-shrink: 0;
+      background: transparent;
       transition: background 0.2s;
     }
-    .h-splitter:hover { background: linear-gradient(180deg, transparent, #333, transparent); }
+    .h-splitter:hover { background: var(--line); }
     #leftCol {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      width: 55vw;
-      min-width: 360px;
-      overflow: hidden;
-      flex-shrink: 0;
+      display: flex; flex-direction: column;
+      width: 55vw; min-width: 360px;
+      overflow: hidden; flex-shrink: 0;
     }
-    #stageWrap {
-      position: relative;
-      flex-shrink: 1;
-      min-height: 200px;
-    }
-    #stageOverlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding: 6px 8px;
-      z-index: 10;
-      pointer-events: none;
-    }
-    #stageOverlay > * { pointer-events: auto; }
-    #linkBar {
-      position: absolute;
-      bottom: 6px; left: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      pointer-events: auto;
-    }
-    #linkBar .btn {
-      background: rgba(10,10,14,0.75);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      font-size: 10px;
-      padding: 3px 6px;
-    }
-    #linkBar .link-info {
-      font-size: 10px;
-      color: #777;
-      background: rgba(10,10,14,0.65);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
-    #linkBar .link-info.active { color: var(--accent); }
-    #stageOverlay .so-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    #stageOverlay .so-row {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    #stageOverlay .btn {
-      background: rgba(10,10,14,0.75);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      font-size: 11px;
-    }
-    #stageOverlay select {
-      background: rgba(10,10,14,0.75);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      font-size: 11px;
-      padding: 4px 8px;
-      border: 1px solid #1a1a22;
-      border-radius: 5px;
-      color: #ccc;
-      font-family: inherit;
-    }
-    #stageOverlay .btn.rec { font-size: 10px; padding: 3px 6px; }
-    #stageOverlay .so-sources .src-label {
-      font-size: 9px; color: #777; font-variant-numeric: tabular-nums;
-    }
-    #stageOverlay .so-sources .src-select {
-      padding: 2px 4px; font-size: 10px; max-width: 100px;
-      background: rgba(10,10,14,0.75); backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      border: 1px solid #1a1a22; border-radius: 4px; color: #999;
-      font-family: inherit;
-    }
-    #stageOverlay .so-sources .src-select.active { border-color: var(--accent); color: var(--accent); }
-    .section-head {
-      padding: 6px 10px 4px;
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .section-head .sh-title {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #666;
-    }
-    .section-head .sh-title.hydra { color: #7a8fff; }
-    .section-head .sh-title.ca { color: #6ec87a; }
-    .section-head .sh-title.scope { color: #c488e8; }
+
+    /* ── Stage ── */
+    #stageWrap { position: relative; flex-shrink: 1; min-height: 200px; }
     #stage {
-      border: 1px solid #111;
-      border-radius: 6px 6px 0 0;
-      overflow: hidden;
-      background: #000;
-      width: 100%;
-      height: 100%;
+      border: 1px solid var(--line); border-radius: 4px 4px 0 0;
+      overflow: hidden; background: #000;
+      width: 100%; height: 100%;
     }
     #stage canvas { width: 100%; height: 100%; display: block; object-fit: contain; }
+
+    /* ── Stage overlay ── */
+    #stageOverlay {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 6px 8px; z-index: 10; pointer-events: none;
+    }
+    #stageOverlay > * { pointer-events: auto; }
+    #stageOverlay .so-group { display: flex; flex-direction: column; gap: 3px; }
+    #stageOverlay .so-row { display: flex; align-items: center; gap: 3px; }
+    #stageOverlay .btn,
+    #linkBar .btn {
+      background: rgba(8,8,10,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+    #stageOverlay select {
+      background: rgba(8,8,10,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--line); border-radius: 3px;
+      color: var(--muted); font-family: inherit; font-size: inherit;
+      padding: 3px 6px;
+    }
+    #stageOverlay .btn.rec { padding: 3px 6px; }
+    #stageOverlay .so-sources .src-label {
+      font-size: 9px; color: var(--dim); font-variant-numeric: tabular-nums;
+    }
+    #stageOverlay .so-sources .src-select {
+      padding: 2px 4px; max-width: 100px;
+      background: rgba(8,8,10,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--line); border-radius: 3px; color: var(--dim);
+      font-family: inherit; font-size: 10px;
+    }
+    #stageOverlay .so-sources .src-select.active { border-color: var(--muted); color: var(--text); }
+
+    /* ── Link bar ── */
+    #linkBar {
+      position: absolute; bottom: 6px; left: 8px;
+      display: flex; align-items: center; gap: 4px;
+      pointer-events: auto;
+    }
+    #linkBar .link-info {
+      color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap;
+      background: rgba(8,8,10,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      padding: 2px 6px; border-radius: 3px;
+    }
+    #linkBar .link-info.active { color: var(--text); }
+
+    /* ── Buttons ── */
+    .btn {
+      border: 1px solid var(--line); background: var(--surface);
+      color: var(--muted); padding: 4px 8px; border-radius: 3px;
+      cursor: pointer; font-family: inherit; font-size: inherit;
+      font-weight: 400; letter-spacing: 0.01em;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+      line-height: 1.4;
+    }
+    .btn:hover { border-color: #2a2a32; color: var(--text); }
+    .btn.main { border-color: #252530; color: var(--text); font-weight: 500; }
+    .btn.main:hover { border-color: #3a3a44; }
+    .btn.stop { border-color: #2a1818; color: var(--danger); font-weight: 500; }
+    .btn.stop:hover { border-color: #3a2020; }
+    .btn.rec { color: var(--dim); }
+    .btn.rec:hover { color: var(--muted); }
+    .btn.rec.recording { border-color: var(--danger); color: var(--danger); animation: rec-pulse 1.2s ease-in-out infinite; }
+    @keyframes rec-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    #mapBtn.active { border-color: #3a2020; color: var(--danger); }
+
+    /* ── Selects ── */
+    select {
+      -webkit-appearance: none; appearance: none;
+      padding: 4px 20px 4px 6px;
+      border: 1px solid var(--line); border-radius: 3px;
+      background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 0l3.5 4 3.5-4z' fill='%23333'/%3E%3C/svg%3E") no-repeat right 6px center;
+      color: var(--muted); font-family: inherit; font-size: inherit;
+      cursor: pointer; outline: none;
+      transition: border-color 0.12s;
+    }
+    select:hover { border-color: #2a2a32; color: var(--text); }
+    select:focus { border-color: #333; }
+
+    /* ── Map ── */
+    #mapPresetSelect { font-size: inherit; }
+    #mapOverlay line { stroke: rgba(255,255,255,0.3); stroke-width: 1; }
+    #mapOverlay circle { fill: rgba(200,200,200,0.7); stroke: #fff; stroke-width: 1; cursor: grab; pointer-events: auto; }
+    #mapOverlay circle:hover { fill: #fff; }
+
+    /* ── Section headers ── */
+    .section-head {
+      padding: 6px 10px 5px;
+      margin-top: 8px;
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .section-head .sh-title {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text);
+    }
+    .section-head .sh-title.hydra,
+    .section-head .sh-title.ca,
+    .section-head .sh-title.scope { color: var(--text); }
+
+    /* ── Toolbar ── */
+    .toolbar-group { display: flex; align-items: center; gap: 3px; }
+    .toolbar-sep { width: 1px; height: 14px; background: var(--line); margin: 0 2px; }
+    .src-label { color: var(--dim); font-variant-numeric: tabular-nums; }
+    .src-select {
+      padding: 2px 4px; border: 1px solid var(--line); border-radius: 3px;
+      background: var(--surface); color: var(--muted); max-width: 130px;
+    }
+    .src-select.active { border-color: var(--muted); color: var(--text); }
+
+    /* ── Controls panel ── */
     #controls {
       background: var(--panel);
-      border: 1px solid #111;
-      border-top: 0;
-      border-radius: 0 0 6px 6px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    #panel {
-      border: 1px solid #111;
-      border-radius: 6px;
-      background: var(--panel);
-      display: flex;
-      flex-direction: column;
-      min-width: 200px;
-      flex: 1;
+      border: 1px solid var(--line); border-top: 0;
+      border-radius: 0 0 4px 4px;
+      flex: 1; display: flex; flex-direction: column;
       overflow: hidden;
     }
     #toolbar {
-      padding: 8px 10px;
+      padding: 6px 10px;
       border-bottom: 1px solid var(--line);
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 6px;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
     }
-    .toolbar-group {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .src-label { font-size: 11px; color: #555; font-variant-numeric: tabular-nums; }
-    .src-select { padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: #0a0a0e; color: var(--muted); font-size: 11px; max-width: 130px; }
-    .src-select.active { border-color: var(--accent); color: var(--accent); }
-    .toolbar-sep {
-      width: 1px;
-      height: 16px;
-      background: var(--line);
-      margin: 0 2px;
-    }
-    .btn {
-      border: 1px solid #1a1a22;
-      background: #111114;
-      color: #ccc;
-      padding: 8px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: border-color 0.15s, color 0.15s;
-      font-family: inherit;
-      font-size: inherit;
-    }
-    .btn:hover { border-color: #333; color: #fff; }
-
-    /* -- Unified select styling -- */
-    select {
-      -webkit-appearance: none;
-      appearance: none;
-      padding: 4px 22px 4px 8px;
-      border: 1px solid #1a1a22;
-      border-radius: 5px;
-      background: #0e0e12 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23444'/%3E%3C/svg%3E") no-repeat right 7px center;
-      color: #bbb;
-      font-family: inherit;
-      font-size: inherit;
-      cursor: pointer;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    select:hover { border-color: #333; color: #ddd; }
-    select:focus { border-color: #444; }
-    .btn.main { background: #0c1a14; border-color: #1a3a2a; color: var(--accent); font-weight: 600; }
-    .btn.main:hover { border-color: var(--accent); }
-    .btn.stop { background: #1a0808; border-color: #2a1515; color: var(--danger); font-weight: 600; }
-    .btn.stop:hover { background: #2a0a0a; border-color: #c44; }
-    .btn.rec { background: #111114; border-color: #1a1a22; color: #aaa; }
-    .btn.rec:hover { border-color: #333; color: #ddd; }
-    .btn.rec.recording { background: #1a0808; border-color: #c44; color: #c44; animation: rec-pulse 1.2s ease-in-out infinite; }
-    @keyframes rec-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
-    #mapBtn.active { background: #e05030; color: #fff; }
-    #mapPresetSelect { background: #222; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 2px 4px; font-size: 11px; }
-    #mapSaveBtn { font-size: 11px; }
-    #mapOverlay line { stroke: rgba(255, 255, 255, 0.4); stroke-width: 1; }
-    #mapOverlay circle { fill: rgba(255, 100, 50, 0.9); stroke: #fff; stroke-width: 1.5; cursor: grab; pointer-events: auto; }
-    #mapOverlay circle:hover { fill: #fff; }
     #status {
       padding: 4px 10px;
       border-bottom: 1px solid var(--line);
-      color: #888;
+      color: var(--dim);
     }
-    #editorWrap {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
+
+    /* ── Editor ── */
+    #panel {
+      border: 1px solid var(--line); border-radius: 4px;
+      background: var(--panel);
+      display: flex; flex-direction: column;
+      min-width: 200px; flex: 1; overflow: hidden;
     }
+    #editorWrap { flex: 1; display: flex; flex-direction: column; min-height: 0; }
     #editor {
-      width: 100%;
-      height: 100%;
-      min-height: 200px;
-      resize: none;
-      border: 0;
-      outline: 0;
-      padding: 12px;
-      background: #08080c;
-      color: #888;
-      font-family: inherit;
-      font-size: inherit;
-      line-height: 1.48;
+      width: 100%; height: 100%; min-height: 200px;
+      resize: none; border: 0; outline: 0;
+      padding: 10px;
+      background: #08080a; color: var(--muted);
+      font-family: inherit; font-size: inherit; line-height: 1.5;
     }
+
+    /* ── Presets ── */
+    #presets {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 10px;
+      display: flex; flex-wrap: wrap; gap: 4px;
+      max-height: 34vh; overflow: auto;
+    }
+    .presetBtn {
+      border: 1px solid var(--line); background: var(--surface);
+      color: var(--muted); border-radius: 3px;
+      padding: 3px 8px; cursor: pointer;
+      max-width: 280px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .presetBtn:hover { border-color: #2a2a32; color: var(--text); }
+    .presetBtn.active { border-color: #2a2a32; color: var(--text); font-weight: 500; }
+    .presetBtn.saved { border-color: #2a2a32; color: var(--text); }
+    @keyframes saveFlash {
+      0%   { background: var(--text); color: var(--bg); border-color: var(--text); }
+      100% { background: var(--surface); color: var(--text); border-color: #2a2a32; }
+    }
+
+    /* ── Autoplay ── */
+    #autoplayBar {
+      border-bottom: 1px solid var(--line);
+      padding: 6px 10px;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    #autoplayBar label { color: var(--muted); white-space: nowrap; }
+    #autoplayBar input[type="number"] {
+      width: 50px; padding: 3px 6px;
+      border: 1px solid var(--line); border-radius: 3px;
+      background: var(--surface); color: var(--muted);
+      font-family: inherit; font-size: inherit; text-align: center;
+    }
+    #autoplayBar .divider { width: 1px; height: 16px; background: var(--line); }
+    #autoplayProgress {
+      flex: 1; height: 2px; min-width: 60px;
+      background: var(--line); border-radius: 1px; overflow: hidden;
+    }
+    #autoplayProgressFill { height: 100%; width: 0%; background: var(--muted); }
+
+    /* ── Beat grid ── */
+    #beatGrid {
+      flex: 1; min-width: 80px; display: flex; gap: 1px; align-items: center; height: 14px;
+    }
+    #beatGrid .beat-group { display: flex; gap: 1px; flex: 1; height: 100%; }
+    #beatGrid .beat-group + .beat-group { margin-left: 2px; }
+    #beatGrid .beat-step {
+      flex: 1; height: 100%; background: var(--line); border-radius: 1px;
+      transition: background 0.05s;
+    }
+    #beatGrid .beat-step.lit { background: var(--muted); }
+    #beatGrid .beat-group:nth-child(odd) .beat-step.lit { background: var(--accent); }
+    #beatGrid .beat-group:nth-child(even) .beat-step.lit { background: var(--muted); }
+
+    /* ── Global controls (sliders) ── */
     #globalControls {
       border-bottom: 1px solid var(--line);
       padding: 4px 10px 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      color: #bbb;
+      display: flex; flex-direction: column; gap: 2px;
+      color: var(--muted);
     }
-    #globalControls .gc-header {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 1px;
-    }
+    #globalControls .gc-header { display: flex; align-items: center; gap: 6px; margin-bottom: 1px; }
     #globalControls .gc-reset {
-      padding: 1px 4px;
-      font-size: 9px;
-      color: #555;
-      border-color: #1a1a22;
-      opacity: 0.5;
-      transition: opacity 0.15s;
+      padding: 1px 4px; font-size: 9px;
+      color: var(--dim); opacity: 0.4;
+      transition: opacity 0.12s;
     }
-    #globalControls .gc-reset:hover { opacity: 1; color: #aaa; }
+    #globalControls .gc-reset:hover { opacity: 1; color: var(--muted); }
     #globalControls label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      display: flex; align-items: center; gap: 6px;
       white-space: nowrap;
-      letter-spacing: 0.02em;
     }
-    #globalControls label > span:first-child { min-width: 52px; font-size: 10px; color: #666; }
+    #globalControls label > span:first-child { min-width: 52px; color: var(--muted); }
     #globalControls span.val {
-      width: 32px;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-      color: #555;
-      font-size: 10px;
+      width: 32px; text-align: right;
+      font-variant-numeric: tabular-nums; color: var(--muted);
     }
     #globalControls input[type="range"] { flex: 1; min-width: 0; }
-    #globalControls .gc-sep {
-      width: 100%;
-      height: 1px;
-      background: #1a1a22;
-      margin: 2px 0;
-    }
+    #globalControls .gc-sep { width: 100%; height: 1px; background: var(--line); margin: 2px 0; }
 
-    /* -- Custom range slider: Figma-style -- */
+    /* ── Range sliders ── */
     input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      background: transparent;
-      cursor: pointer;
-      height: 16px;
-      outline: none;
+      -webkit-appearance: none; appearance: none;
+      background: transparent; cursor: pointer;
+      height: 16px; outline: none;
     }
     input[type="range"]::-webkit-slider-runnable-track {
-      height: 3px;
-      border-radius: 1.5px;
-      background: #1e1e26;
+      height: 2px; border-radius: 1px; background: var(--line);
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #888;
-      border: none;
-      margin-top: -3.5px;
-      transition: background 0.15s, box-shadow 0.15s;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--dim); border: none; margin-top: -3px;
+      transition: background 0.12s;
     }
-    input[type="range"]:hover::-webkit-slider-thumb {
-      background: #aaa;
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
-    }
-    input[type="range"]:active::-webkit-slider-thumb {
-      background: var(--accent);
-      box-shadow: 0 0 0 4px rgba(66,208,143,0.15);
-    }
-    /* Firefox */
+    input[type="range"]:hover::-webkit-slider-thumb { background: var(--muted); }
+    input[type="range"]:active::-webkit-slider-thumb { background: var(--text); }
     input[type="range"]::-moz-range-track {
-      height: 3px;
-      border-radius: 1.5px;
-      background: #1e1e26;
-      border: none;
+      height: 2px; border-radius: 1px; background: var(--line); border: none;
     }
     input[type="range"]::-moz-range-thumb {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #888;
-      border: none;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--dim); border: none;
     }
-    input[type="range"]:hover::-moz-range-thumb {
-      background: #aaa;
-    }
-    input[type="range"]:active::-moz-range-thumb {
-      background: var(--accent);
-    }
+    input[type="range"]:hover::-moz-range-thumb { background: var(--muted); }
+    input[type="range"]:active::-moz-range-thumb { background: var(--text); }
 
-    /* -- Contextual track gradients for color controls -- */
-    /* slider flex handled in #globalControls block above */
+    /* ── Contextual track gradients ── */
     #hueCtrl::-webkit-slider-runnable-track {
-      background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
-      opacity: 0.5;
+      background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); opacity: 0.5;
     }
     #hueCtrl::-moz-range-track {
-      background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
-      opacity: 0.5;
+      background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); opacity: 0.5;
     }
-    #satCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, #1e1e26, #42d08f); }
-    #satCtrl::-moz-range-track { background: linear-gradient(to right, #1e1e26, #42d08f); }
-    #brightCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, #0a0a0e, #888); }
-    #brightCtrl::-moz-range-track { background: linear-gradient(to right, #0a0a0e, #888); }
-    #contrastCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, #333, #0a0a0e 50%, #888); }
-    #contrastCtrl::-moz-range-track { background: linear-gradient(to right, #333, #0a0a0e 50%, #888); }
-
-    /* Audio gain slider */
-    #audioGainSlider::-webkit-slider-runnable-track { background: linear-gradient(to right, #1e1e26, #0aa); }
-    #audioGainSlider::-moz-range-track { background: linear-gradient(to right, #1e1e26, #0aa); }
-    #audioGainSlider::-webkit-slider-thumb { width: 8px; height: 8px; margin-top: -2.5px; }
-    #audioGainSlider::-moz-range-thumb { width: 8px; height: 8px; }
+    #satCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--line), #5ac8a0); }
+    #satCtrl::-moz-range-track { background: linear-gradient(to right, var(--line), #5ac8a0); }
+    #brightCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--bg), #999); }
+    #brightCtrl::-moz-range-track { background: linear-gradient(to right, var(--bg), #999); }
+    #contrastCtrl::-webkit-slider-runnable-track { background: linear-gradient(to right, #444, var(--bg) 50%, #999); }
+    #contrastCtrl::-moz-range-track { background: linear-gradient(to right, #444, var(--bg) 50%, #999); }
+    #audioGainSlider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--line), #5ab8c8); }
+    #audioGainSlider::-moz-range-track { background: linear-gradient(to right, var(--line), #5ab8c8); }
+    #audioGainSlider::-webkit-slider-thumb { width: 7px; height: 7px; margin-top: -2.5px; }
+    #audioGainSlider::-moz-range-thumb { width: 7px; height: 7px; }
     #presets {
       border-bottom: 1px solid var(--line);
       padding: 10px;
@@ -465,71 +400,59 @@
     #beatGrid .beat-step.lit { background: var(--accent); }
     #beatGrid .beat-group:nth-child(odd) .beat-step.lit { background: #3ab8e0; }
     #beatGrid .beat-group:nth-child(even) .beat-step.lit { background: var(--accent); }
+    /* ── Daydream / Scope ── */
     #daydreamBar {
       border-top: 1px solid var(--line);
       padding: 6px 10px;
       color: var(--muted);
     }
-    .dd-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .dd-row + .dd-row { margin-top: 6px; }
-    .dd-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; flex-shrink: 0; }
-    .dd-dot.on { background: var(--accent); animation: dd-pulse 2s ease infinite; }
+    .dd-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .dd-row + .dd-row { margin-top: 5px; }
+    .dd-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
+    .dd-dot.on { background: var(--text); animation: dd-pulse 2s ease infinite; }
     .dd-dot.err { background: var(--danger); }
-    .dd-dot.connecting { background: #e8a320; animation: dd-pulse 0.8s ease infinite; }
-    @keyframes dd-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .dd-dot.connecting { background: var(--muted); animation: dd-pulse 0.8s ease infinite; }
+    @keyframes dd-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
     #ddPrompt {
-      flex: 1; min-width: 150px; padding: 4px 8px;
-      border: 1px solid #1a1a22; border-radius: 5px;
-      background: #0e0e12; color: #888;
+      flex: 1; min-width: 150px; padding: 4px 6px;
+      border: 1px solid var(--line); border-radius: 3px;
+      background: var(--surface); color: var(--muted);
       font-family: inherit; font-size: inherit; outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.12s;
     }
-    #ddPrompt:focus { border-color: #333; }
+    #ddPrompt:focus { border-color: #2a2a32; }
     #daydreamBar select { font-size: inherit; }
-    #ddInfo { color: #555; }
-    .dd-label { color: #555; white-space: nowrap; }
-    #ddDebugToggle { cursor: pointer; color: #555; text-decoration: underline; }
+    #ddInfo { color: var(--dim); }
+    .dd-label { color: var(--dim); white-space: nowrap; }
+    #ddDebugToggle { cursor: pointer; color: var(--dim); text-decoration: none; opacity: 0.6; transition: opacity 0.12s; }
+    #ddDebugToggle:hover { opacity: 1; }
     #ddDebugLog {
       display: none;
       border-top: 1px solid var(--line);
-      background: #08080c;
-      max-height: 200px;
-      overflow-y: auto;
-      padding: 6px 10px;
-      line-height: 1.5;
-      color: #888;
+      background: #08080a;
+      max-height: 200px; overflow-y: auto;
+      padding: 6px 10px; line-height: 1.5;
+      color: var(--dim);
     }
-    #ddDebugLog .log-ok { color: var(--accent); }
+    #ddDebugLog .log-ok { color: var(--text); }
     #ddDebugLog .log-err { color: var(--danger); }
-    #ddDebugLog .log-warn { color: #e8a320; }
-    #ddDebugLog .log-info { color: #888; }
-    #ddDebugLog .log-time { color: #555; margin-right: 6px; }
+    #ddDebugLog .log-warn { color: var(--muted); }
+    #ddDebugLog .log-info { color: var(--dim); }
+    #ddDebugLog .log-time { color: var(--dim); margin-right: 6px; }
+
+    /* ── Audio meter ── */
     #audioMeterPanel {
-      display: none;
       border-top: 1px solid var(--line);
-      background: #0a0a0e;
-      height: 80px;
+      background: var(--panel); height: 80px;
       position: relative;
     }
-    #audioMeterCanvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
+    #audioMeterCanvas { width: 100%; height: 100%; display: block; }
+
+    /* ── Audience mode ── */
     #app.audience #panel { display: none; }
-    #app.audience {
-      grid-template-columns: 1fr;
-      gap: 0;
-      padding: 0;
-    }
-    #app.audience #stage {
-      border: 0;
-      border-radius: 0;
-      width: 100%;
-      height: 100%;
-    }
+    #app.audience { gap: 0; padding: 0; }
+    #app.audience #stage { border: 0; border-radius: 0; width: 100%; height: 100%; }
     @media (max-width: 1200px) {
-      #app { grid-template-columns: 1fr; }
       #panel { min-width: 0; }
       #stage { min-height: 40vh; }
     }
@@ -548,7 +471,7 @@
           </div>
           <div class="so-group so-sources">
             <div class="so-row">
-              <button id="startAudioBtn" class="btn" style="font-size:10px;padding:3px 6px;">Audio</button>
+              <button id="startAudioBtn" class="btn">Audio</button>
               <span class="src-label">s0</span><select class="src-select" data-src="0"><option value="none">—</option></select>
               <span class="src-label">s1</span><select class="src-select" data-src="1"><option value="none">—</option></select>
               <span class="src-label">s2</span><select class="src-select" data-src="2"><option value="none">—</option></select>
@@ -582,11 +505,12 @@
               </select>
               <button id="mapOpenBtn" class="btn" style="display:none;">Open</button>
               <button id="mapSaveBtn" class="btn" style="display:none;">Save</button>
-              <button id="mapResetBtn" class="btn" style="display:none; font-size:11px;">Reset</button>
+              <button id="mapResetBtn" class="btn" style="display:none;">Reset</button>
+              <button id="mapPreviewToggle" class="btn" style="display:none;">Preview</button>
               <span id="gridDensityControls" style="display:none;">
-                <button id="gridMinus" class="btn" style="font-size:11px; padding:2px 6px;">-</button>
-                <span id="gridSizeLabel" style="color:#888; font-size:11px;">2x2</span>
-                <button id="gridPlus" class="btn" style="font-size:11px; padding:2px 6px;">+</button>
+                <button id="gridMinus" class="btn">-</button>
+                <span id="gridSizeLabel" style="color:var(--dim);">2x2</span>
+                <button id="gridPlus" class="btn">+</button>
               </span>
             </div>
           </div>
@@ -595,8 +519,11 @@
           <button id="linkBtn" class="btn" style="display:none;">Link</button>
           <span id="linkBpmDisplay" class="link-info" style="display:none;"></span>
           <span id="linkPeers" class="link-info" style="display:none;"></span>
+          <button id="hueSweepBtn" class="btn">~ Hue</button>
+          <button id="hueBarsBtn" class="btn" style="min-width:52px;">32 bars</button>
         </div>
         <div id="stage"></div>
+        <canvas id="mapCheckerboard" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; z-index:5; object-fit:contain;"></canvas>
         <svg id="mapOverlay" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; z-index:10;"></svg>
       </div>
       <div id="globalControls">
@@ -611,13 +538,13 @@
       <div id="audioMeterPanel">
         <canvas id="audioMeterCanvas"></canvas>
         <div style="position:absolute;top:3px;left:4px;display:flex;align-items:center;gap:6px;z-index:1;">
-          <select id="audioInputSelect" style="max-width:180px;padding:2px 18px 2px 4px;background-color:rgba(10,10,14,0.7);font-size:10px;"></select>
-          <span style="color:#444;font-size:10px;">Gain</span>
+          <select id="audioInputSelect" style="max-width:180px;padding:2px 18px 2px 4px;background-color:rgba(8,8,10,0.8);"></select>
+          <span style="color:var(--dim);">Gain</span>
           <input type="range" id="audioGainSlider" min="0.1" max="10" step="0.1" value="1" style="width:80px;">
-          <span id="audioGainVal" style="color:#555;min-width:28px;font-size:10px;">1.0x</span>
-          <div style="width:1px;height:10px;background:#222;margin:0 2px;"></div>
-          <label style="display:flex;align-items:center;gap:3px;white-space:nowrap;font-size:10px;color:#555;">BPM <span id="bpmVal" style="width:24px;text-align:right;font-variant-numeric:tabular-nums;">30</span></label>
-          <button id="tapTempoBtn" class="btn" style="padding:2px 6px;font-size:10px;border-color:#222;">Tap</button>
+          <span id="audioGainVal" style="color:var(--dim);min-width:28px;">1.0x</span>
+          <div style="width:1px;height:10px;background:var(--line);margin:0 2px;"></div>
+          <label style="display:flex;align-items:center;gap:3px;white-space:nowrap;color:var(--dim);">BPM <span id="bpmVal" style="width:24px;text-align:right;font-variant-numeric:tabular-nums;">30</span></label>
+          <button id="tapTempoBtn" class="btn">Tap</button>
           <!-- linkBtn moved to stageOverlay #linkBar -->
         </div>
       </div>
@@ -635,15 +562,15 @@
         <div id="status">Ready</div>
         <div id="presetsHeader" class="section-head" style="flex-wrap:wrap;">
           <span class="sh-title hydra">Hydra</span>
-          <button id="communityRandomBtn" class="btn" style="padding:4px 8px;" title="Load random community Hydra sketch">Shuffle</button>
-          <a href="https://hydra.ojack.xyz/api/" target="_blank" class="btn" style="padding:4px 8px;text-decoration:none;">Docs</a>
+          <a href="https://hydra.ojack.xyz/api/" target="_blank" class="btn" style="text-decoration:none;">Docs</a>
           <div class="toolbar-sep"></div>
-          <button id="autoplayBtn" class="btn" style="padding:4px 8px;">Autoplay</button>
+          <button id="communityRandomBtn" class="btn" title="Load random community Hydra sketch">Shuffle</button>
+          <button id="autoplayBtn" class="btn">Autoplay</button>
           <select id="autoplayMode">
             <option value="time">Time</option>
             <option value="bars" selected>Bars (BPM)</option>
           </select>
-          <label id="autoplayTimeLabel" style="display:none;">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999" style="width:50px;padding:4px 8px;border:1px solid #1a1a22;border-radius:5px;background:#0e0e12;color:#ccc;font-family:inherit;font-size:inherit;outline:none;"></label>
+          <label id="autoplayTimeLabel" style="display:none;">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999" style="width:50px;padding:3px 6px;border:1px solid var(--line);border-radius:3px;background:var(--surface);color:var(--muted);font-family:inherit;font-size:inherit;outline:none;"></label>
           <label id="autoplayBarsLabel" style="display:flex;align-items:center;gap:4px;">Bars:
             <select id="autoplayBars">
               <option value="8" selected>8</option>
@@ -656,15 +583,6 @@
           <span id="autoplayBpmDisplay" style="display:none;"></span>
           <input type="hidden" id="autoplayBpm" value="120">
           <span id="autoplayCountdown" style="font-variant-numeric:tabular-nums;"></span>
-          <div class="toolbar-sep"></div>
-          <button id="hueSweepBtn" class="btn" style="padding:4px 8px;">~ Hue</button>
-          <select id="hueBarsSelect" style="font-size:inherit;">
-            <option value="8">8 bars</option>
-            <option value="16">16 bars</option>
-            <option value="32" selected>32 bars</option>
-            <option value="64">64 bars</option>
-            <option value="128">128 bars</option>
-          </select>
         </div>
         <div id="presets"></div>
         <!-- globalControls moved above audioMeterPanel -->
@@ -672,8 +590,9 @@
           <div id="beatGrid"></div>
           <div id="autoplayProgress" style="display:none;"><div id="autoplayProgressFill"></div></div>
         </div>
-        <div class="section-head" style="margin-top:2px;">
+        <div class="section-head">
           <span class="sh-title scope">Daydream / Scope</span>
+          <a href="https://docs.daydream.live/scope" target="_blank" class="btn" style="text-decoration:none;">Docs</a>
         </div>
         <div id="scopePresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
         <div id="daydreamBar">
@@ -690,19 +609,19 @@
           <div class="dd-row">
             <div class="dd-dot" id="ddDot"></div>
             <span class="dd-label">Scope</span>
-            <button id="ddScopeStart" class="btn" style="padding:4px 8px;">Start</button>
-            <button id="ddToggle" class="btn" style="padding:4px 8px;display:none;">Connect Video</button>
+            <button id="ddScopeStart" class="btn">Start</button>
+            <button id="ddToggle" class="btn" style="display:none;">Connect Video</button>
             <span id="ddInfo"></span>
-            <a href="http://localhost:8000" target="_blank" class="btn" style="padding:4px 8px;text-decoration:none;display:none;font-size:inherit;" id="ddScopeOpenTab">Scope UI</a>
+            <a href="http://localhost:8000" target="_blank" class="btn" style="text-decoration:none;display:none;" id="ddScopeOpenTab">Scope UI</a>
             <span id="ddDebugToggle" style="margin-left:auto;">Log</span>
           </div>
           <div class="dd-row" id="ddPromptRow" style="display:none;">
             <input type="text" id="ddPrompt" placeholder="Prompt..." value="abstract fluid art, iridescent light" style="flex:1;min-width:180px;">
-            <button id="ddSend" class="btn" style="padding:4px 8px;">Send</button>
+            <button id="ddSend" class="btn">Send</button>
           </div>
           <div id="piPanel" style="display:none;padding:4px 0 2px;">
             <div class="dd-row" style="margin-bottom:4px;">
-              <button id="piRunBtn" class="btn main" style="padding:4px 12px;font-weight:700;">▶ Sequence</button>
+              <button id="piRunBtn" class="btn main">▶ Sequence</button>
               <select id="piBarsSelect" style="font-size:inherit;">
                 <option value="1">1 bar</option>
                 <option value="2">2 bars</option>
@@ -711,40 +630,40 @@
                 <option value="16">16 bars</option>
                 <option value="32">32 bars</option>
               </select>
-              <button id="piPrevBtn" class="btn" style="padding:4px 8px;">◀</button>
-              <button id="piNextBtn" class="btn" style="padding:4px 8px;">▶</button>
-              <button id="piListToggle" class="btn" style="padding:4px 8px;margin-left:auto;" title="Show/hide prompt list">Prompts</button>
+              <button id="piPrevBtn" class="btn">◀</button>
+              <button id="piNextBtn" class="btn">▶</button>
+              <button id="piListToggle" class="btn" style="margin-left:auto;" title="Show/hide prompt list">Prompts</button>
             </div>
             <div id="piListBody">
               <div class="dd-row" style="margin-bottom:4px;">
                 <select id="piSceneSelect" style="font-size:inherit;flex:1;min-width:0;"></select>
-                <button id="piSceneSaveBtn" class="btn" style="padding:4px 8px;">Save</button>
-                <button id="piSceneNewBtn" class="btn" style="padding:4px 8px;">+ New</button>
-                <button id="piSceneDelBtn" class="btn" style="padding:4px 8px;color:#c44;border-color:#2a1515;">Del</button>
+                <button id="piSceneSaveBtn" class="btn">Save</button>
+                <button id="piSceneNewBtn" class="btn">+ New</button>
+                <button id="piSceneDelBtn" class="btn" style="color:var(--danger);">Del</button>
               </div>
-              <textarea id="piTextarea" spellcheck="false" placeholder="One prompt per line..." style="width:100%;resize:vertical;min-height:80px;background:#08080c;color:#888;border:1px solid #1a1a22;border-radius:4px;padding:6px 8px;font-family:inherit;font-size:inherit;line-height:1.5;outline:none;"></textarea>
-              <div style="padding:3px 2px 0;color:#555;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="piStatus"></div>
+              <textarea id="piTextarea" spellcheck="false" placeholder="One prompt per line..." style="width:100%;resize:vertical;min-height:80px;background:var(--bg);color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:6px 8px;font-family:inherit;font-size:inherit;line-height:1.5;outline:none;"></textarea>
+              <div style="padding:3px 2px 0;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="piStatus"></div>
             </div>
           </div>
           <!-- scopePresets moved above Scope controls -->
         </div>
         <div id="ddDebugLog"></div>
-        <div class="section-head" style="margin-top:2px;">
+        <div class="section-head">
           <span class="sh-title ca">Cellular Automata</span>
         </div>
         <div id="caPresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
-        <div id="caControls" style="display:none;border-top:1px solid #1a1a22;padding:4px 0;">
-          <span style="color:#555;font-size:10px;display:block;margin-bottom:2px;">CONTROLS</span>
+        <div id="caControls" style="display:none;border-top:1px solid var(--line);padding:4px 10px;">
+          <span style="color:var(--dim);font-size:9px;letter-spacing:0.1em;display:block;margin-bottom:2px;">CONTROLS</span>
           <label><span>Hue</span><input type="range" id="caHue" min="0" max="1" step="0.01" value="0.5"><span class="val" id="caHueVal">0.50</span></label>
           <label><span>Brightness</span><input type="range" id="caBright" min="0.3" max="2.5" step="0.05" value="1.0"><span class="val" id="caBrightVal">1.00</span></label>
           <label><span>Speed</span><input type="range" id="caSpeed" min="0.1" max="4" step="0.1" value="1.0"><span class="val" id="caSpeedVal">1.0</span></label>
           <label><span>Thickness</span><input type="range" id="caThick" min="0" max="10" step="0.5" value="0"><span class="val" id="caThickVal">0</span></label>
-          <span style="color:#555;font-size:10px;display:block;margin-top:4px;margin-bottom:2px;">SHAPE</span>
+          <span style="color:var(--dim);font-size:9px;letter-spacing:0.1em;display:block;margin-top:4px;margin-bottom:2px;">SHAPE</span>
           <label><span>Growth</span><input type="range" id="caFeed" min="0.01" max="0.08" step="0.001" value="0.037"><span class="val" id="caFeedVal">0.037</span></label>
           <label><span>Tolerance</span><input type="range" id="caKill" min="0.04" max="0.07" step="0.001" value="0.06"><span class="val" id="caKillVal">0.060</span></label>
           <label><span>Smoothness</span><input type="range" id="caSmooth" min="5" max="30" step="1" value="10"><span class="val" id="caSmoothVal">10</span></label>
           <div style="margin-top:4px;display:flex;gap:4px;">
-            <button id="caReseedBtn" class="btn" style="padding:4px 8px;flex:1;">Reseed</button>
+            <button id="caReseedBtn" class="btn" style="flex:1;">Reseed</button>
           </div>
         </div>
       </div>
@@ -777,7 +696,7 @@
     .CodeMirror-line { padding-left: 4px !important; }
     .CodeMirror-activeline-background { background: rgba(255,255,255,0.04) !important; }
     /* Flash highlight when code is executed */
-    .cm-ran-flash { background: rgba(66, 208, 143, 0.35) !important; transition: background 0s; }
+    .cm-ran-flash { background: rgba(66, 208, 143, 0.3) !important; transition: background 0s; }
     .cm-ran-flash-fade { background: transparent !important; transition: background 0.8s ease-out; }
     /* Line background highlight like official Hydra */
     .CodeMirror pre.CodeMirror-line,
@@ -802,7 +721,6 @@
     .cm-s-hydra .cm-tag { color: #f07178; }
     .cm-s-hydra .cm-error { color: #ff5370; }
     .cm-s-hydra .cm-builtin { color: #ffcb6b; }
-    /* GLSL inside template literals — subtle background tint */
     .cm-s-hydra .cm-glsl-block { background: rgba(60, 80, 120, 0.18); border-radius: 2px; }
     .CodeMirror-scrollbar-filler { background: transparent !important; }
   </style>
@@ -1018,16 +936,68 @@
         loadMapPreset(val)
       })
 
+      var mapShowPreview = false // false = checkerboard, true = live preview
+
+      function drawCheckerboard () {
+        var cb = document.getElementById('mapCheckerboard')
+        var stageEl = document.getElementById('stage')
+        var cvs = stageEl ? stageEl.querySelector('canvas') : null
+        // Match output resolution aspect ratio
+        var outW = (cvs && cvs.width) || 1920
+        var outH = (cvs && cvs.height) || 1200
+        cb.width = outW
+        cb.height = outH
+        var ctx = cb.getContext('2d')
+        var tileSize = Math.round(Math.max(outW, outH) / 20)
+        var cols = Math.ceil(outW / tileSize)
+        var rows = Math.ceil(outH / tileSize)
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#333' : '#555'
+            ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize)
+          }
+        }
+      }
+
+      function updateMapModeDisplay () {
+        var stageCanvas = document.getElementById('stage').querySelector('canvas')
+        var cb = document.getElementById('mapCheckerboard')
+        if (mapModeActive && !mapShowPreview) {
+          // Checkerboard mode
+          drawCheckerboard()
+          cb.style.display = ''
+          if (stageCanvas) stageCanvas.style.opacity = '0'
+        } else if (mapModeActive && mapShowPreview) {
+          // Live preview mode (dimmed)
+          cb.style.display = 'none'
+          if (stageCanvas) stageCanvas.style.opacity = '0.5'
+        } else {
+          // Map mode off
+          cb.style.display = 'none'
+          if (stageCanvas) stageCanvas.style.opacity = ''
+        }
+      }
+
       document.getElementById('mapBtn').addEventListener('click', function () {
         mapModeActive = !mapModeActive
+        mapShowPreview = false // always start in checkerboard
         this.classList.toggle('active', mapModeActive)
         document.getElementById('mapOpenBtn').style.display = mapModeActive ? '' : 'none'
         document.getElementById('mapSaveBtn').style.display = mapModeActive ? '' : 'none'
         document.getElementById('mapResetBtn').style.display = mapModeActive ? '' : 'none'
-        // Dim the canvas in map mode so grid handles are visible
-        var stageCanvas = document.getElementById('stage').querySelector('canvas')
-        if (stageCanvas) stageCanvas.style.opacity = mapModeActive ? '0.25' : ''
+        document.getElementById('mapPreviewToggle').style.display = mapModeActive ? '' : 'none'
+        var pvBtn = document.getElementById('mapPreviewToggle')
+        pvBtn.textContent = 'Preview'
+        pvBtn.classList.remove('active')
+        updateMapModeDisplay()
         if (typeof updateMapOverlay === 'function') updateMapOverlay()
+      })
+
+      document.getElementById('mapPreviewToggle').addEventListener('click', function () {
+        mapShowPreview = !mapShowPreview
+        this.classList.toggle('active', mapShowPreview)
+        this.textContent = mapShowPreview ? 'Grid' : 'Preview'
+        updateMapModeDisplay()
       })
 
       document.getElementById('mapSaveBtn').addEventListener('click', function () {
@@ -4607,6 +4577,7 @@
         hydraCanvas.style.filter = filterStr
         broadcastFilters(filterStr)
       }
+      window.__applyFilters = applyFilters  // expose for hue sweep IIFE
 
       hueCtrl.addEventListener('input', applyFilters)
       satCtrl.addEventListener('input', applyFilters)
@@ -4815,7 +4786,7 @@
               autoplayOnLinkBeat(data.beat)
               if (window.__piOnBeat) window.__piOnBeat(data.beat)
               if (window.__breathOnBeat) window.__breathOnBeat(data.beat)
-              if (window.__hueOnBeat) window.__hueOnBeat(data.beat)
+              if (window.__hueOnBeat) window.__hueOnBeat(data.beat, data.bpm)
             }
             return
           }
@@ -5284,53 +5255,67 @@
       })()
 
       // ---- Link Hue Sweep ----
+      // Modelled after breathing oscillator — setInterval, wall-clock time,
+      // re-anchored to Link beat when available.
       ;(function () {
-        var hueBtn = document.getElementById('hueSweepBtn')
-        if (!hueBtn) return  // static element must exist
+        var hueBtn  = document.getElementById('hueSweepBtn')
+        var barsBtn = document.getElementById('hueBarsBtn')
+        if (!hueBtn || !barsBtn) return
 
+        var BAR_OPTIONS = [8, 16, 32, 64, 128]
+        var barIdx = 2  // default 32 bars
         var hueActive = false
         var hueTimer = null
-        var hueOffset = 0
-        var lastLinkBeatMs = 0
+        var hueBpm = 120
+        var hueStartMs = 0    // wall-clock ms when phase=0 of the cycle
+        var hueStartVal = 0   // hue value at phase=0 (so sweep starts from current)
 
-        function hueGetBars () {
-          var el = document.getElementById('hueBarsSelect')
-          return el ? (parseInt(el.value) || 32) : 32
+        barsBtn.textContent = BAR_OPTIONS[barIdx] + ' bars'
+        barsBtn.addEventListener('click', function () {
+          barIdx = (barIdx + 1) % BAR_OPTIONS.length
+          barsBtn.textContent = BAR_OPTIONS[barIdx] + ' bars'
+        })
+
+        // Re-anchor phase when Link beat arrives — keeps hue in musical sync
+        window.__hueOnBeat = function (beat, bpm) {
+          if (bpm) hueBpm = bpm
+          if (!hueActive) return
+          var cycleSec = (BAR_OPTIONS[barIdx] * 4 / hueBpm) * 60
+          var phase = (beat / (BAR_OPTIONS[barIdx] * 4)) % 1
+          hueStartMs = Date.now() - phase * cycleSec * 1000
         }
 
-        function hueSetFromBeat (beat) {
-          var hue = ((beat / (hueGetBars() * 4)) % 1) * 360 + hueOffset
-          hue = ((hue % 360) + 360) % 360
+        function tick () {
+          if (!hueActive) return
+          var cycleSec = (BAR_OPTIONS[barIdx] * 4 / hueBpm) * 60
+          var elapsed = (Date.now() - hueStartMs) / 1000
+          var phase = (elapsed / cycleSec) % 1
+          var hue = Math.round((hueStartVal + phase * 360) % 360)
+
+          // Update slider + label
           var hc = document.getElementById('hueCtrl')
           if (!hc) return
-          hc.value = Math.round(hue)
-          hc.dispatchEvent(new Event('input'))  // fires applyFilters via existing listener
-        }
+          hc.value = hue
+          var hv = document.getElementById('hueVal')
+          if (hv) hv.textContent = hue + '°'
 
-        window.__hueOnBeat = function (beat) {
-          if (!hueActive) return
-          lastLinkBeatMs = Date.now()
-          hueSetFromBeat(beat)
-        }
+          // Apply via known-working path (same as manual slider drag)
+          if (window.__applyFilters) window.__applyFilters()
 
-        function hueTick () {
-          if (!hueActive) return
-          if (Date.now() - lastLinkBeatMs < 2000) return  // Link is driving, skip
-          hueSetFromBeat((Date.now() / 1000) * 2)  // 120 BPM fallback
+          // Live readout in button so user can confirm it's ticking
+          hueBtn.textContent = '■ ' + hue + '°'
         }
 
         function hueStart () {
           var hc = document.getElementById('hueCtrl')
-          var currentHue = hc ? parseFloat(hc.value) : 0
-          var fakeBeat = (Date.now() / 1000) * 2
-          var phase = (fakeBeat / (hueGetBars() * 4)) % 1
-          hueOffset = ((currentHue - phase * 360) % 360 + 360) % 360
+          hueStartVal = hc ? parseFloat(hc.value) : 0
+          hueStartMs = Date.now()
+          hueBpm = parseFloat(bpmValEl.textContent) || 120
           hueActive = true
-          lastLinkBeatMs = 0
-          hueTimer = setInterval(hueTick, 500)
+          hueTimer = setInterval(tick, 50)  // 20fps — smooth but not flooding
           hueBtn.textContent = '■ Hue'
-          hueBtn.classList.add('stop')
-          hueBtn.classList.remove('main')
+          hueBtn.classList.add('main')
+          hueBtn.classList.remove('stop')
         }
 
         function hueStop () {
@@ -5338,8 +5323,7 @@
           clearInterval(hueTimer)
           hueTimer = null
           hueBtn.textContent = '~ Hue'
-          hueBtn.classList.remove('stop')
-          hueBtn.classList.add('main')
+          hueBtn.classList.remove('main')
         }
 
         hueBtn.addEventListener('click', function () {
@@ -5481,7 +5465,21 @@
       })()
 
       console.log('[hydra] Init complete. Calling loadPresets()...')
-      loadPresets()
+      loadPresets().then(function () {
+        // Auto-run the loaded preset so something is on screen immediately
+        var code = cm ? cm.getValue() : editorEl.value
+        if (code && code.trim()) {
+          runCode(code, 'auto-run on startup')
+        }
+        // Auto-start audio + meters after a short delay (needs user gesture workaround)
+        setTimeout(function () {
+          startAudio(false)
+          if (!audioMeterStarted) {
+            audioMeterStarted = true
+            startAudioMeter()
+          }
+        }, 500)
+      }).catch(function () {})
 
       // ---- Daydream Scope presets ----
       ;(function () {
