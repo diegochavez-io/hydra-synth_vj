@@ -16,6 +16,16 @@
       --accent: #8a8a90;
       --active: #b8b8bc;
       --danger: #8a4444;
+      /* Section identity accents */
+      --h: #4477dd;           /* Hydra — blue */
+      --h-dim: #1a2a4a;
+      --h-surface: #0c1020;
+      --s: #dd7040;           /* Scope/Daydream — amber */
+      --s-dim: #4a2a14;
+      --s-surface: #160e08;
+      --ca: #3ab87a;          /* Cellular Automata — bio green */
+      --ca-dim: #143a24;
+      --ca-surface: #081410;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -147,19 +157,24 @@
 
     /* ── Section headers ── */
     .section-head {
-      padding: 6px 10px 5px;
-      margin-top: 8px;
+      padding: 5px 10px 5px 9px;
       border-bottom: 1px solid var(--line);
+      border-left: 2px solid transparent;
       display: flex; align-items: center; gap: 6px;
+      background: var(--panel);
     }
     .section-head .sh-title {
-      font-size: 11px; font-weight: 600;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--text);
+      font-size: 9px; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--dim);
     }
-    .section-head .sh-title.hydra,
-    .section-head .sh-title.ca,
-    .section-head .sh-title.scope { color: var(--text); }
+    /* Section identity via :has() — Chrome/Safari OK for local tool */
+    .section-head:has(.sh-title.hydra) { border-left-color: var(--h); }
+    .section-head:has(.sh-title.scope) { border-left-color: var(--s); }
+    .section-head:has(.sh-title.ca)    { border-left-color: var(--ca); }
+    .section-head .sh-title.hydra { color: var(--h); }
+    .section-head .sh-title.scope { color: var(--s); }
+    .section-head .sh-title.ca    { color: var(--ca); }
 
     /* ── Toolbar ── */
     .toolbar-group { display: flex; align-items: center; gap: 3px; }
@@ -443,6 +458,7 @@
     #scopeAuto .sa-sep { color: #222; }
     #scopeAuto .sa-bars { background: #0d0d0d; border: 1px solid #1e1e1e; color: #555; font-family: monospace; font-size: 10px; padding: 1px 2px; cursor: pointer; }
     #scopeAuto .sa-val { color: #3a6a3a; min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+    #scopeAuto .sa-mode { font-size: 8px; color: #2a4a2a; background: #0d1a0d; border: 1px solid #1a2e1a; padding: 1px 3px; font-family: monospace; letter-spacing: 0.05em; white-space: nowrap; }
     #ddDebugLog {
       display: none;
       border-top: 1px solid var(--line);
@@ -1019,7 +1035,7 @@
         loadMapPreset(val)
       })
 
-      var mapShowChecker = true // true = output shows checkerboard, false = output shows live
+      var mapShowChecker = false // true = output shows checkerboard, false = output shows live
 
       function drawCheckerboard () {
         var cb = document.getElementById('mapCheckerboard')
@@ -1082,7 +1098,7 @@
 
       document.getElementById('mapBtn').addEventListener('click', function () {
         mapModeActive = !mapModeActive
-        mapShowChecker = true // output starts in checkerboard
+        mapShowChecker = false // output always starts live
         this.classList.toggle('active', mapModeActive)
         document.getElementById('mapOpenBtn').style.display = mapModeActive ? '' : 'none'
         document.getElementById('mapSaveBtn').style.display = mapModeActive ? '' : 'none'
@@ -1090,7 +1106,7 @@
         document.getElementById('mapPreviewToggle').style.display = mapModeActive ? '' : 'none'
         document.getElementById('mapCurvesBtn').style.display = mapModeActive ? '' : 'none'
         var pvBtn = document.getElementById('mapPreviewToggle')
-        pvBtn.textContent = 'Live'
+        pvBtn.textContent = 'Grid'
         pvBtn.classList.remove('active')
         updateMapModeDisplay()
         if (typeof updateMapOverlay === 'function') updateMapOverlay()
@@ -5348,25 +5364,31 @@
         var TWO_PI = 2 * Math.PI
         var SEND_EVERY = 2
         var lastSentBeat = -999
-        var lastStepIdx  = -1
-        var BAR_OPTIONS  = [4, 8, 16, 24, 32, 48, 64, 96, 128]
+        var BAR_OPTIONS  = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128]
 
-        // Each param: bars = period / 4 beats
+        // mode:'sine' = smooth oscillation  |  mode:'step' = square wave snap
         var PARAMS = [
-          { id: 'noise', label: 'noise_scale',             key: 'noise_scale',             bars: 1, min: 0.10, max: 0.20 },
-          { id: 'vace',  label: 'vace_context_scale',      key: 'vace_context_scale',      bars: 2, min: 0.88, max: 1.12 },
-          { id: 'kv',    label: 'kv_cache_attention_bias', key: 'kv_cache_attention_bias',  bars: 4, min: 0.52, max: 0.68 }
+          { id: 'noise', label: 'noise_scale',             key: 'noise_scale',             bars: 1, min: 0.10, max: 0.20, mode: 'sine' },
+          { id: 'vace',  label: 'vace_context_scale',      key: 'vace_context_scale',      bars: 2, min: 0.88, max: 1.12, mode: 'step' },
+          { id: 'kv',    label: 'kv_cache_attention_bias', key: 'kv_cache_attention_bias', bars: 4, min: 0.52, max: 0.68, mode: 'step' }
         ]
-        var STEP_VALUES = [[1000,750,500,250],[1000,750,500],[1000,500],[1000,250],[1000]]
-        var STEP_LABELS = ['4s','3s','2s·b','2s·f','1s']
-        var stepBars    = 4
+
+        // 3 independent oscillators — sent together as denoising_step_list
+        var STEP_PARAMS = [
+          { id: 's1', label: 'step 1', bars: 1, min: 850, max: 1000 },
+          { id: 's2', label: 'step 2', bars: 2, min: 500, max: 800  },
+          { id: 's3', label: 'step 3', bars: 4, min: 100, max: 500  }
+        ]
 
         // State — populated after UI build
         var state = {}
         PARAMS.forEach(function (p) {
-          state[p.id] = { enabled: true, min: p.min, max: p.max, bars: p.bars, valSpan: null }
+          state[p.id] = { enabled: true, min: p.min, max: p.max, bars: p.bars, mode: p.mode, lastVal: null, valSpan: null }
         })
-        var stepState = { enabled: true, valSpan: null }
+        var stepStates = {}
+        STEP_PARAMS.forEach(function (p) {
+          stepStates[p.id] = { enabled: true, min: p.min, max: p.max, bars: p.bars, lastVal: -1, valSpan: null }
+        })
 
         function oscSend (key, value, type) {
           fetch('/api/scope-osc', {
@@ -5377,27 +5399,49 @@
         }
 
         function doSend (beat) {
-          // Always use wall-clock for phase so oscillation works without Ableton
-          // link.beat is 0 when Ableton not connected, giving sin=0 (stuck at midpoint)
-          var phase = Date.now() / 500   // wall clock in 120-BPM-equivalent beats
+          // Wall-clock phase — link.beat=0 when Ableton disconnected, causes stuck midpoint
+          var phase = Date.now() / 500
+
+          // Float params (noise sine, vace/kv square-wave)
           PARAMS.forEach(function (p) {
             var s = state[p.id]
             if (!s.enabled) return
             var period = s.bars * 4
-            var val = (s.min + s.max) / 2 + (s.max - s.min) / 2 * Math.sin(phase / period * TWO_PI)
-            val = Math.round(val * 1000) / 1000
+            var val
+            if (s.mode === 'step') {
+              // Square wave: snap to max when sin>0, min when sin<=0
+              val = Math.sin(phase / period * TWO_PI) >= 0 ? s.max : s.min
+              val = Math.round(val * 1000) / 1000
+              if (val === s.lastVal) return   // no change, skip send
+              s.lastVal = val
+            } else {
+              val = (s.min + s.max) / 2 + (s.max - s.min) / 2 * Math.sin(phase / period * TWO_PI)
+              val = Math.round(val * 1000) / 1000
+            }
             oscSend(p.key, val, 'float')
             if (s.valSpan) s.valSpan.textContent = val.toFixed(3)
           })
-          if (stepState.enabled) {
-            var period = stepBars * 4
-            var t  = 0.5 + 0.5 * Math.sin(phase / period * TWO_PI)
-            var si = Math.round(t * (STEP_VALUES.length - 1))
-            if (si !== lastStepIdx) {
-              lastStepIdx = si
-              oscSend('denoising_step_list', STEP_VALUES[si], 'int_list')
-              if (stepState.valSpan) stepState.valSpan.textContent = STEP_LABELS[si]
-            }
+
+          // Denoising steps — 3 independent oscillators, sent as one int_list
+          var pending = []
+          var anyChanged = false
+          STEP_PARAMS.forEach(function (p) {
+            var ss = stepStates[p.id]
+            if (!ss.enabled) return
+            var period = ss.bars * 4
+            var t = 0.5 + 0.5 * Math.sin(phase / period * TWO_PI)
+            var x = Math.round((ss.min + (ss.max - ss.min) * t) / 25) * 25
+            pending.push({ x: x, ss: ss })
+            if (Math.abs(x - ss.lastVal) >= 25) anyChanged = true
+          })
+          if (pending.length > 0 && anyChanged) {
+            pending.forEach(function (e) {
+              e.ss.lastVal = e.x
+              if (e.ss.valSpan) e.ss.valSpan.textContent = e.x
+            })
+            // Sort descending — denoising schedule must be high→low
+            var vals = pending.map(function (e) { return e.x }).sort(function (a, b) { return b - a })
+            oscSend('denoising_step_list', vals, 'int_list')
           }
         }
 
@@ -5470,6 +5514,12 @@
             name.className = 'sa-name'
             name.textContent = p.label
 
+            // Mode badge (STEP / SINE)
+            var modeBadge = document.createElement('span')
+            modeBadge.className = 'sa-mode'
+            modeBadge.textContent = p.mode === 'step' ? 'SQ' : '~'
+            modeBadge.title = p.mode === 'step' ? 'Square wave' : 'Sine wave'
+
             // Min
             var minIn = document.createElement('input')
             minIn.type = 'number'; minIn.className = 'sa-num'
@@ -5496,40 +5546,64 @@
             val.textContent = ((p.min + p.max) / 2).toFixed(3)
             s.valSpan = val
 
-            row.appendChild(tog); row.appendChild(name)
+            row.appendChild(tog); row.appendChild(name); row.appendChild(modeBadge)
             row.appendChild(minIn); row.appendChild(sep); row.appendChild(maxIn)
             row.appendChild(barsEl); row.appendChild(val)
             wrap.appendChild(row)
           })
 
-          // Steps row
-          var stepRow = document.createElement('div')
-          stepRow.className = 'sa-row'
+          // Denoising step rows (3 independent oscillators)
+          STEP_PARAMS.forEach(function (p) {
+            var ss = stepStates[p.id]
+            var row = document.createElement('div')
+            row.className = 'sa-row'
 
-          var stepTog = document.createElement('span')
-          stepTog.className = 'sa-toggle'
-          stepTog.textContent = 'ON'
-          stepTog.addEventListener('click', function () {
-            stepState.enabled = !stepState.enabled
-            stepTog.textContent = stepState.enabled ? 'ON' : 'OFF'
-            stepTog.classList.toggle('off', !stepState.enabled)
-            stepRow.classList.toggle('off', !stepState.enabled)
+            var tog = document.createElement('span')
+            tog.className = 'sa-toggle'
+            tog.textContent = 'ON'
+            tog.addEventListener('click', function () {
+              ss.enabled = !ss.enabled
+              tog.textContent = ss.enabled ? 'ON' : 'OFF'
+              tog.classList.toggle('off', !ss.enabled)
+              row.classList.toggle('off', !ss.enabled)
+            })
+
+            var name = document.createElement('span')
+            name.className = 'sa-name'
+            name.textContent = p.label
+
+            var modeBadge = document.createElement('span')
+            modeBadge.className = 'sa-mode'
+            modeBadge.textContent = '~'
+            modeBadge.title = 'Sine wave'
+
+            var minIn = document.createElement('input')
+            minIn.type = 'number'; minIn.className = 'sa-num'
+            minIn.value = p.min; minIn.step = 25
+            minIn.title = 'Min'
+            minIn.addEventListener('input', function () { ss.min = parseInt(minIn.value) || p.min })
+
+            var sep = document.createElement('span')
+            sep.className = 'sa-sep'; sep.textContent = '↔'
+
+            var maxIn = document.createElement('input')
+            maxIn.type = 'number'; maxIn.className = 'sa-num'
+            maxIn.value = p.max; maxIn.step = 25
+            maxIn.title = 'Max'
+            maxIn.addEventListener('input', function () { ss.max = parseInt(maxIn.value) || p.max })
+
+            var barsEl = makeBarsSelect(p.bars, function (b) { ss.bars = b })
+
+            var val = document.createElement('span')
+            val.className = 'sa-val'
+            val.textContent = '—'
+            ss.valSpan = val
+
+            row.appendChild(tog); row.appendChild(name); row.appendChild(modeBadge)
+            row.appendChild(minIn); row.appendChild(sep); row.appendChild(maxIn)
+            row.appendChild(barsEl); row.appendChild(val)
+            wrap.appendChild(row)
           })
-
-          var stepName = document.createElement('span')
-          stepName.className = 'sa-name'
-          stepName.textContent = 'denoising_step_list'
-
-          var stepBarsEl = makeBarsSelect(stepBars, function (b) { stepBars = b })
-
-          var stepVal = document.createElement('span')
-          stepVal.className = 'sa-val'
-          stepVal.textContent = STEP_LABELS[2]
-          stepState.valSpan = stepVal
-
-          stepRow.appendChild(stepTog); stepRow.appendChild(stepName)
-          stepRow.appendChild(stepBarsEl); stepRow.appendChild(stepVal)
-          wrap.appendChild(stepRow)
 
           return wrap
         }
