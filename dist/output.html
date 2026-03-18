@@ -6,22 +6,156 @@
   <style>
     * { margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
-    video { width: 100vw; height: 100vh; display: block; object-fit: cover; background: #000; }
+    video { display: none; }
+    canvas { width: 100vw; height: 100vh; display: block; background: #000; }
   </style>
 </head>
 <body>
   <video id="v" autoplay muted playsinline></video>
+  <canvas id="warpCanvas"></canvas>
   <script>
-    // This page must be opened via the launcher's "Open Output" button.
-    // The launcher sets video.srcObject directly — no encoding, no compression.
+    // WebGL warp renderer — renders video through a deformable mesh
+    var canvas = document.getElementById('warpCanvas')
+    var gl = canvas.getContext('webgl', { alpha: false, antialias: false, preserveDrawingBuffer: false })
+
+    var vertSrc = [
+      'attribute vec2 a_position;',
+      'attribute vec2 a_texcoord;',
+      'varying vec2 v_texcoord;',
+      'void main() {',
+      '  gl_Position = vec4(a_position.x * 2.0 - 1.0, 1.0 - a_position.y * 2.0, 0.0, 1.0);',
+      '  v_texcoord = a_texcoord;',
+      '}'
+    ].join('\n')
+
+    var fragSrc = [
+      'precision mediump float;',
+      'varying vec2 v_texcoord;',
+      'uniform sampler2D u_video;',
+      'void main() {',
+      '  vec2 uv = vec2(v_texcoord.x, 1.0 - v_texcoord.y);',
+      '  gl_FragColor = texture2D(u_video, uv);',
+      '}'
+    ].join('\n')
+
+    function compileShader(gl, src, type) {
+      var s = gl.createShader(type)
+      gl.shaderSource(s, src)
+      gl.compileShader(s)
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(s))
+        return null
+      }
+      return s
+    }
+
+    var vs = compileShader(gl, vertSrc, gl.VERTEX_SHADER)
+    var fs = compileShader(gl, fragSrc, gl.FRAGMENT_SHADER)
+    var program = gl.createProgram()
+    gl.attachShader(program, vs)
+    gl.attachShader(program, fs)
+    gl.linkProgram(program)
+    gl.useProgram(program)
+
+    var aPos = gl.getAttribLocation(program, 'a_position')
+    var aTex = gl.getAttribLocation(program, 'a_texcoord')
+    var uVideo = gl.getUniformLocation(program, 'u_video')
+
+    var posBuf = gl.createBuffer()
+    var texBuf = gl.createBuffer()
+    var idxBuf = gl.createBuffer()
+
+    var videoTex = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, videoTex)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+
+    // Warp mesh state — default identity (2x2 grid, no distortion)
+    var warpState = {
+      gridSize: [2, 2],
+      points: [[0, 0], [1, 0], [0, 1], [1, 1]]
+    }
+
+    function buildMesh(state) {
+      var cols = state.gridSize[0]
+      var rows = state.gridSize[1]
+      var positions = new Float32Array(cols * rows * 2)
+      var texcoords = new Float32Array(cols * rows * 2)
+      var indices = []
+
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          var i = r * cols + c
+          positions[i * 2] = state.points[i][0]
+          positions[i * 2 + 1] = state.points[i][1]
+          texcoords[i * 2] = c / (cols - 1)
+          texcoords[i * 2 + 1] = r / (rows - 1)
+        }
+      }
+
+      for (var r = 0; r < rows - 1; r++) {
+        for (var c = 0; c < cols - 1; c++) {
+          var tl = r * cols + c
+          var tr = tl + 1
+          var bl = (r + 1) * cols + c
+          var br = bl + 1
+          indices.push(tl, bl, tr, tr, bl, br)
+        }
+      }
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf)
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW)
+      gl.bindBuffer(gl.ARRAY_BUFFER, texBuf)
+      gl.bufferData(gl.ARRAY_BUFFER, texcoords, gl.STATIC_DRAW)
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf)
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW)
+      return indices.length
+    }
+
+    var indexCount = buildMesh(warpState)
+
+    // Render loop
+    var video = document.getElementById('v')
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth * (window.devicePixelRatio || 1)
+      canvas.height = window.innerHeight * (window.devicePixelRatio || 1)
+      gl.viewport(0, 0, canvas.width, canvas.height)
+    }
+    window.addEventListener('resize', resizeCanvas)
+    resizeCanvas()
+
+    function render() {
+      requestAnimationFrame(render)
+      if (video.readyState < 2) return
+      gl.bindTexture(gl.TEXTURE_2D, videoTex)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      gl.useProgram(program)
+      gl.activeTexture(gl.TEXTURE0)
+      gl.bindTexture(gl.TEXTURE_2D, videoTex)
+      gl.uniform1i(uVideo, 0)
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf)
+      gl.enableVertexAttribArray(aPos)
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0)
+      gl.bindBuffer(gl.ARRAY_BUFFER, texBuf)
+      gl.enableVertexAttribArray(aTex)
+      gl.vertexAttribPointer(aTex, 2, gl.FLOAT, false, 0, 0)
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf)
+      gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0)
+    }
+    render()
+
+    // Fullscreen shortcut
     window.addEventListener('keydown', function (e) {
       if (e.key.toLowerCase() === 'f') {
         document.documentElement.requestFullscreen().catch(function () {})
       }
     })
 
-    // Listen for filter updates from the launcher via WebSocket
-    var video = document.getElementById('v')
+    // WebSocket connection for filter updates and warp mesh updates
     var ws = null
     var wsRetry = 500
     function connectWs () {
@@ -31,8 +165,12 @@
         ws.onmessage = function (event) {
           try {
             var data = JSON.parse(event.data)
-            if (data.type === 'filters' && video) {
-              video.style.filter = data.filter
+            if (data.type === 'warp-update' && data.data) {
+              warpState = data.data
+              indexCount = buildMesh(warpState)
+            }
+            if (data.type === 'filters') {
+              canvas.style.filter = data.filter
             }
           } catch (e) {}
         }

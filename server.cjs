@@ -50,6 +50,10 @@ function getScopeUrl () {
 var activeDaydreamStreamId = null
 var activeDaydreamPlaybackId = null
 
+// Health check state (browser posts via hydraHealth(), external tools GET /api/health)
+var lastHydraHealth = null
+var lastHydraHealthTs = null
+
 // Scope process management
 var scopeProcess = null
 var SCOPE_DIR = path.join(ROOT, '..', 'scope')
@@ -180,6 +184,29 @@ function slugify (name) {
 const server = http.createServer(function (req, res) {
   var urlPath = req.url.split('?')[0]
 
+  // ---- API: health check (browser posts state, external tools query it) ----
+  if (req.method === 'GET' && urlPath === '/api/health') {
+    jsonResponse(res, 200, {
+      status: 'ok',
+      hydraState: lastHydraHealth,
+      updatedAt: lastHydraHealthTs,
+      serverUptime: Math.floor(process.uptime())
+    })
+    return
+  }
+  if (req.method === 'POST' && urlPath === '/api/health') {
+    readBody(req, function (body) {
+      try {
+        lastHydraHealth = JSON.parse(body)
+        lastHydraHealthTs = new Date().toISOString()
+        jsonResponse(res, 200, { stored: true })
+      } catch (e) {
+        jsonResponse(res, 400, { error: 'Invalid JSON' })
+      }
+    })
+    return
+  }
+
   // ---- API: list presets ----
   if (req.method === 'GET' && urlPath === '/api/presets') {
     var indexPath = path.join(PRESETS_DIR, 'index.json')
@@ -260,6 +287,78 @@ const server = http.createServer(function (req, res) {
         fs.writeFileSync(indexPath, JSON.stringify(index, null, 2) + '\n')
       } catch (e) {}
       jsonResponse(res, 200, { archived: delName })
+    })
+    return
+  }
+
+  // ---- API: list map presets ----
+  if (req.method === 'GET' && urlPath === '/api/maps') {
+    var mapsDir = path.join(__dirname, 'presets', 'maps')
+    if (!fs.existsSync(mapsDir)) {
+      return jsonResponse(res, 200, [])
+    }
+    var files = fs.readdirSync(mapsDir).filter(function (f) { return f.endsWith('.json') })
+    var maps = files.map(function (f) {
+      try {
+        var data = JSON.parse(fs.readFileSync(path.join(mapsDir, f), 'utf8'))
+        return { file: f, name: data.name || f.replace('.json', '') }
+      } catch (e) {
+        return null
+      }
+    }).filter(Boolean)
+    jsonResponse(res, 200, maps)
+    return
+  }
+
+  // ---- API: load a map preset ----
+  if (req.method === 'GET' && urlPath.startsWith('/api/maps/')) {
+    var mapName = path.basename(urlPath)
+    var mapFile = path.join(__dirname, 'presets', 'maps', mapName + '.json')
+    if (!fs.existsSync(mapFile)) {
+      return jsonResponse(res, 404, { error: 'Map preset not found' })
+    }
+    try {
+      var mapData = JSON.parse(fs.readFileSync(mapFile, 'utf8'))
+      jsonResponse(res, 200, mapData)
+    } catch (e) {
+      jsonResponse(res, 500, { error: 'Failed to read map preset' })
+    }
+    return
+  }
+
+  // ---- API: save a map preset ----
+  if (req.method === 'POST' && urlPath === '/api/maps') {
+    readBody(req, function (body) {
+      try {
+        var data = JSON.parse(body)
+        if (!data.name) return jsonResponse(res, 400, { error: 'name is required' })
+        var mapsDir = path.join(__dirname, 'presets', 'maps')
+        if (!fs.existsSync(mapsDir)) {
+          fs.mkdirSync(mapsDir, { recursive: true })
+        }
+        var slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+        var file = path.join(mapsDir, slug + '.json')
+        fs.writeFileSync(file, JSON.stringify(data, null, 2))
+        jsonResponse(res, 200, { ok: true, file: slug + '.json' })
+      } catch (e) {
+        jsonResponse(res, 400, { error: 'Invalid JSON' })
+      }
+    })
+    return
+  }
+
+  // ---- API: archive a map preset ----
+  if (req.method === 'DELETE' && urlPath.startsWith('/api/maps/')) {
+    var delMapName = path.basename(urlPath)
+    var delMapFile = path.join(__dirname, 'presets', 'maps', delMapName + '.json')
+    if (!fs.existsSync(delMapFile)) {
+      return jsonResponse(res, 404, { error: 'Map preset not found' })
+    }
+    var mapArchiveDir = path.join(__dirname, 'presets', 'maps', '_archive')
+    try { fs.mkdirSync(mapArchiveDir, { recursive: true }) } catch (e) {}
+    fs.rename(delMapFile, path.join(mapArchiveDir, delMapName + '.json'), function (err) {
+      if (err) return jsonResponse(res, 500, { error: 'Archive failed' })
+      jsonResponse(res, 200, { archived: delMapName })
     })
     return
   }
@@ -350,6 +449,55 @@ const server = http.createServer(function (req, res) {
     var key = getDaydreamKey()
     var scope = getScopeUrl()
     jsonResponse(res, 200, { available: !!(key || scope), hasCloud: !!key, hasScope: !!scope, scopeUrl: scope || null })
+    return
+  }
+
+  // ---- API: Scope OSC UDP relay ----
+  // POST /api/scope-osc  body: {key, value, type}
+  // Encodes and sends an OSC message to Scope's UDP port (same as HTTP port).
+  if (req.method === 'POST' && urlPath === '/api/scope-osc') {
+    var scopeUrlForOsc = getScopeUrl()
+    if (!scopeUrlForOsc) { return jsonResponse(res, 400, { error: 'No Scope URL' }) }
+    readBody(req, function (oscBody) {
+      try {
+        var oscData = JSON.parse(oscBody)
+        var oscKey = oscData.key
+        var oscValue = oscData.value
+        var oscType = oscData.type || 'float'
+        var oscAddress = '/scope/' + oscKey
+        // Encode OSC string (null-terminated, padded to 4 bytes)
+        function encodeOscStr (s) {
+          var b = Buffer.from(s + '\0', 'utf8')
+          var pad = (4 - (b.length % 4)) % 4
+          return Buffer.concat([b, Buffer.alloc(pad)])
+        }
+        var addrBuf = encodeOscStr(oscAddress)
+        var tagBuf, valBuf
+        if (oscType === 'float' || oscType === 'number') {
+          tagBuf = encodeOscStr(',f')
+          valBuf = Buffer.alloc(4); valBuf.writeFloatBE(parseFloat(oscValue), 0)
+        } else if (oscType === 'int' || oscType === 'integer') {
+          tagBuf = encodeOscStr(',i')
+          valBuf = Buffer.alloc(4); valBuf.writeInt32BE(parseInt(oscValue), 0)
+        } else if (oscType === 'string') {
+          tagBuf = encodeOscStr(',s')
+          valBuf = encodeOscStr(String(oscValue))
+        } else {
+          return jsonResponse(res, 400, { error: 'Unknown type: ' + oscType })
+        }
+        var oscMsg = Buffer.concat([addrBuf, tagBuf, valBuf])
+        var oscUrlParsed = new URL(scopeUrlForOsc)
+        var oscHost = oscUrlParsed.hostname
+        var oscPort = parseInt(oscUrlParsed.port) || 8000
+        var dgram = require('dgram')
+        var sock = dgram.createSocket('udp4')
+        sock.send(oscMsg, oscPort, oscHost, function (err) {
+          sock.close()
+          if (err) { jsonResponse(res, 502, { error: err.message }) }
+          else { jsonResponse(res, 200, { ok: true, address: oscAddress, value: oscValue }) }
+        })
+      } catch (e) { jsonResponse(res, 500, { error: e.message }) }
+    })
     return
   }
 
@@ -793,6 +941,7 @@ server.on('upgrade', function (req, socket, head) {
   }
 })
 var lastCode = null
+var lastWarp = null
 var linkEnabled = false
 var linkBroadcastTimer = null
 
@@ -822,6 +971,7 @@ function stopLinkBroadcast () {
 
 wss.on('connection', function (ws) {
   if (lastCode) ws.send(lastCode)
+  if (lastWarp) ws.send(lastWarp)
 
   // Send current link status on connect
   if (link) {
@@ -864,8 +1014,17 @@ wss.on('connection', function (ws) {
       }
     } catch (e) {}
 
-    // Regular code relay
-    lastCode = str
+    // Regular code/warp relay
+    try {
+      var parsed = JSON.parse(str)
+      if (parsed.type === 'warp-update') {
+        lastWarp = str
+      } else {
+        lastCode = str
+      }
+    } catch (e) {
+      lastCode = str
+    }
     wss.clients.forEach(function (client) {
       if (client !== ws && client.readyState === 1) {
         client.send(str)
