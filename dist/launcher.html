@@ -245,6 +245,9 @@
     .btn.rec:hover { border-color: #333; color: #ddd; }
     .btn.rec.recording { background: #1a0808; border-color: #c44; color: #c44; animation: rec-pulse 1.2s ease-in-out infinite; }
     @keyframes rec-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+    #mapBtn.active { background: #e05030; color: #fff; }
+    #mapPresetSelect { background: #222; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 2px 4px; font-size: 11px; }
+    #mapSaveBtn { font-size: 11px; }
     #status {
       padding: 4px 10px;
       border-bottom: 1px solid var(--line);
@@ -569,6 +572,13 @@
               <button id="recordBtn" class="btn rec" title="Record canvas to MP4">Rec</button>
               <button id="batchRecordBtn" class="btn rec" title="Record all presets automatically">Batch</button>
             </div>
+            <div class="so-row" id="mapControls">
+              <button id="mapBtn" class="btn">Map</button>
+              <select id="mapPresetSelect">
+                <option value="">Clean</option>
+              </select>
+              <button id="mapSaveBtn" class="btn" style="display:none;">Save</button>
+            </div>
           </div>
         </div>
         <div id="linkBar">
@@ -828,6 +838,16 @@
       let obsConnected = false
       let ndiActive = false
       let ndiOutputName = ''
+      // Warp mapping state
+      var mapModeActive = false
+      var currentWarp = {
+        gridSize: [2, 2],
+        points: [[0, 0], [1, 0], [0, 1], [1, 1]]
+      }
+      var warpThrottleTimer = null
+      var WARP_THROTTLE_MS = 33 // ~30Hz
+      var warpPending = null
+
       var broadcastSupported = typeof BroadcastChannel !== 'undefined'
       var codeCh = broadcastSupported ? new BroadcastChannel('hydra-live-code') : null
 
@@ -894,13 +914,119 @@
           relayWs = new WebSocket('ws://' + window.location.host)
           relayWs.onopen = function () { relayRetryMs = 500 }
           relayWs.onmessage = function (event) {
-            try { handleSignaling(JSON.parse(event.data)) } catch (err) {}
+            try {
+              var data = JSON.parse(event.data)
+              if (data.type === 'warp-update') return // ignore echoed warp messages
+              handleSignaling(data)
+            } catch (err) {}
           }
           relayWs.onclose = function () { relayWs = null; setTimeout(connectRelay, relayRetryMs); relayRetryMs = Math.min(relayRetryMs * 2, 5000) }
           relayWs.onerror = function () { if (relayWs) relayWs.close() }
         } catch (err) { relayWs = null }
       }
       connectRelay()
+
+      // ---- Warp mapping functions ----
+      function broadcastWarp () {
+        warpPending = { gridSize: currentWarp.gridSize, points: currentWarp.points }
+        if (warpThrottleTimer) return
+        _sendWarp()
+        warpThrottleTimer = setTimeout(function () {
+          warpThrottleTimer = null
+          if (warpPending) _sendWarp()
+        }, WARP_THROTTLE_MS)
+      }
+
+      function _sendWarp () {
+        var msg = JSON.stringify({ type: 'warp-update', data: warpPending })
+        warpPending = null
+        if (relayWs && relayWs.readyState === 1) {
+          relayWs.send(msg)
+        }
+      }
+
+      function loadMapPresets () {
+        fetch('/api/maps')
+          .then(function (r) { return r.json() })
+          .then(function (maps) {
+            var sel = document.getElementById('mapPresetSelect')
+            while (sel.options.length > 1) sel.remove(1)
+            maps.forEach(function (m) {
+              var opt = document.createElement('option')
+              opt.value = m.file.replace('.json', '')
+              opt.textContent = m.name
+              sel.appendChild(opt)
+            })
+            var last = localStorage.getItem('hydra-map-preset')
+            if (last) {
+              sel.value = last
+              if (sel.value === last) loadMapPreset(last)
+            }
+          })
+          .catch(function () {})
+      }
+
+      function loadMapPreset (name) {
+        if (!name) {
+          currentWarp = {
+            gridSize: [2, 2],
+            points: [[0, 0], [1, 0], [0, 1], [1, 1]]
+          }
+          broadcastWarp()
+          if (typeof updateMapOverlay === 'function') updateMapOverlay()
+          return
+        }
+        fetch('/api/maps/' + name)
+          .then(function (r) { return r.json() })
+          .then(function (data) {
+            currentWarp = {
+              gridSize: data.gridSize,
+              points: data.points
+            }
+            broadcastWarp()
+            localStorage.setItem('hydra-map-preset', name)
+            if (typeof updateMapOverlay === 'function') updateMapOverlay()
+          })
+          .catch(function () {})
+      }
+
+      document.getElementById('mapPresetSelect').addEventListener('change', function () {
+        var val = this.value
+        localStorage.setItem('hydra-map-preset', val)
+        loadMapPreset(val)
+      })
+
+      document.getElementById('mapBtn').addEventListener('click', function () {
+        mapModeActive = !mapModeActive
+        this.classList.toggle('active', mapModeActive)
+        document.getElementById('mapSaveBtn').style.display = mapModeActive ? '' : 'none'
+        if (typeof updateMapOverlay === 'function') updateMapOverlay()
+      })
+
+      document.getElementById('mapSaveBtn').addEventListener('click', function () {
+        var name = prompt('Map preset name:')
+        if (!name) return
+        var payload = {
+          name: name,
+          gridSize: currentWarp.gridSize.slice(),
+          points: currentWarp.points.map(function (p) { return p.slice() })
+        }
+        fetch('/api/maps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+          .then(function (r) { return r.json() })
+          .then(function (result) {
+            loadMapPresets()
+            var sel = document.getElementById('mapPresetSelect')
+            sel.value = result.file.replace('.json', '')
+            localStorage.setItem('hydra-map-preset', sel.value)
+          })
+          .catch(function () {})
+      })
+
+      loadMapPresets()
 
       function setStatus (text, isError) {
         statusEl.textContent = text
