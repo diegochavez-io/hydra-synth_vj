@@ -248,6 +248,9 @@
     #mapBtn.active { background: #e05030; color: #fff; }
     #mapPresetSelect { background: #222; color: #ccc; border: 1px solid #444; border-radius: 3px; padding: 2px 4px; font-size: 11px; }
     #mapSaveBtn { font-size: 11px; }
+    #mapOverlay line { stroke: rgba(255, 255, 255, 0.4); stroke-width: 1; }
+    #mapOverlay circle { fill: rgba(255, 100, 50, 0.9); stroke: #fff; stroke-width: 1.5; cursor: grab; pointer-events: auto; }
+    #mapOverlay circle:hover { fill: #fff; }
     #status {
       padding: 4px 10px;
       border-bottom: 1px solid var(--line);
@@ -578,6 +581,11 @@
                 <option value="">Clean</option>
               </select>
               <button id="mapSaveBtn" class="btn" style="display:none;">Save</button>
+              <span id="gridDensityControls" style="display:none;">
+                <button id="gridMinus" class="btn" style="font-size:11px; padding:2px 6px;">-</button>
+                <span id="gridSizeLabel" style="color:#888; font-size:11px;">2x2</span>
+                <button id="gridPlus" class="btn" style="font-size:11px; padding:2px 6px;">+</button>
+              </span>
             </div>
           </div>
         </div>
@@ -587,6 +595,7 @@
           <span id="linkPeers" class="link-info" style="display:none;"></span>
         </div>
         <div id="stage"></div>
+        <svg id="mapOverlay" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; z-index:10;"></svg>
       </div>
       <div id="globalControls">
           <label><span>Speed</span><input type="range" id="speedCtrl" min="0" max="4" step="0.1" value="1"><span class="val" id="speedVal">1.0</span></label>
@@ -972,6 +981,7 @@
             gridSize: [2, 2],
             points: [[0, 0], [1, 0], [0, 1], [1, 1]]
           }
+          document.getElementById('gridSizeLabel').textContent = '2x2'
           broadcastWarp()
           if (typeof updateMapOverlay === 'function') updateMapOverlay()
           return
@@ -983,6 +993,7 @@
               gridSize: data.gridSize,
               points: data.points
             }
+            document.getElementById('gridSizeLabel').textContent = currentWarp.gridSize[0] + 'x' + currentWarp.gridSize[1]
             broadcastWarp()
             localStorage.setItem('hydra-map-preset', name)
             if (typeof updateMapOverlay === 'function') updateMapOverlay()
@@ -1027,6 +1038,122 @@
       })
 
       loadMapPresets()
+
+      // ---- Grid overlay editor ----
+      function updateMapOverlay () {
+        var svg = document.getElementById('mapOverlay')
+        if (!mapModeActive) {
+          svg.style.display = 'none'
+          return
+        }
+        svg.style.display = ''
+        var cols = currentWarp.gridSize[0]
+        var rows = currentWarp.gridSize[1]
+        var rect = svg.getBoundingClientRect()
+        var w = rect.width
+        var h = rect.height
+        var html = ''
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols - 1; c++) {
+            var i1 = r * cols + c
+            var i2 = r * cols + c + 1
+            html += '<line x1="' + (currentWarp.points[i1][0] * w) + '" y1="' + (currentWarp.points[i1][1] * h) + '" x2="' + (currentWarp.points[i2][0] * w) + '" y2="' + (currentWarp.points[i2][1] * h) + '"/>'
+          }
+        }
+        for (var c = 0; c < cols; c++) {
+          for (var r = 0; r < rows - 1; r++) {
+            var i1 = r * cols + c
+            var i2 = (r + 1) * cols + c
+            html += '<line x1="' + (currentWarp.points[i1][0] * w) + '" y1="' + (currentWarp.points[i1][1] * h) + '" x2="' + (currentWarp.points[i2][0] * w) + '" y2="' + (currentWarp.points[i2][1] * h) + '"/>'
+          }
+        }
+        for (var i = 0; i < currentWarp.points.length; i++) {
+          html += '<circle cx="' + (currentWarp.points[i][0] * w) + '" cy="' + (currentWarp.points[i][1] * h) + '" r="6" data-idx="' + i + '"/>'
+        }
+        svg.innerHTML = html
+      }
+
+      ;(function () {
+        var svg = document.getElementById('mapOverlay')
+        var dragIdx = -1
+        var dragging = false
+        svg.addEventListener('mousedown', function (e) {
+          if (e.target.tagName === 'circle') {
+            dragIdx = parseInt(e.target.getAttribute('data-idx'), 10)
+            dragging = true
+            e.preventDefault()
+          }
+        })
+        window.addEventListener('mousemove', function (e) {
+          if (!dragging || dragIdx < 0) return
+          var rect = svg.getBoundingClientRect()
+          var x = (e.clientX - rect.left) / rect.width
+          var y = (e.clientY - rect.top) / rect.height
+          x = Math.max(0, Math.min(1, x))
+          y = Math.max(0, Math.min(1, y))
+          currentWarp.points[dragIdx] = [x, y]
+          updateMapOverlay()
+          broadcastWarp()
+        })
+        window.addEventListener('mouseup', function () {
+          dragging = false
+          dragIdx = -1
+        })
+      })()
+
+      function resampleWarpGrid (oldState, newCols, newRows) {
+        var oldCols = oldState.gridSize[0]
+        var oldRows = oldState.gridSize[1]
+        var newPoints = []
+        for (var r = 0; r < newRows; r++) {
+          for (var c = 0; c < newCols; c++) {
+            var ox = c / (newCols - 1) * (oldCols - 1)
+            var oy = r / (newRows - 1) * (oldRows - 1)
+            var ix = Math.floor(ox)
+            var iy = Math.floor(oy)
+            var fx = ox - ix
+            var fy = oy - iy
+            var ix1 = Math.min(ix + 1, oldCols - 1)
+            var iy1 = Math.min(iy + 1, oldRows - 1)
+            var tl = oldState.points[iy * oldCols + ix]
+            var tr = oldState.points[iy * oldCols + ix1]
+            var bl = oldState.points[iy1 * oldCols + ix]
+            var br = oldState.points[iy1 * oldCols + ix1]
+            var px = tl[0] * (1 - fx) * (1 - fy) + tr[0] * fx * (1 - fy) + bl[0] * (1 - fx) * fy + br[0] * fx * fy
+            var py = tl[1] * (1 - fx) * (1 - fy) + tr[1] * fx * (1 - fy) + bl[1] * (1 - fx) * fy + br[1] * fx * fy
+            newPoints.push([px, py])
+          }
+        }
+        return { gridSize: [newCols, newRows], points: newPoints }
+      }
+
+      document.getElementById('gridPlus').addEventListener('click', function () {
+        var newCols = currentWarp.gridSize[0] + 1
+        var newRows = currentWarp.gridSize[1] + 1
+        if (newCols > 8) return
+        currentWarp = resampleWarpGrid(currentWarp, newCols, newRows)
+        document.getElementById('gridSizeLabel').textContent = newCols + 'x' + newRows
+        updateMapOverlay()
+        broadcastWarp()
+      })
+
+      document.getElementById('gridMinus').addEventListener('click', function () {
+        var newCols = currentWarp.gridSize[0] - 1
+        var newRows = currentWarp.gridSize[1] - 1
+        if (newCols < 2) return
+        currentWarp = resampleWarpGrid(currentWarp, newCols, newRows)
+        document.getElementById('gridSizeLabel').textContent = newCols + 'x' + newRows
+        updateMapOverlay()
+        broadcastWarp()
+      })
+
+      document.getElementById('mapBtn').addEventListener('click', function () {
+        document.getElementById('gridDensityControls').style.display = mapModeActive ? '' : 'none'
+      })
+
+      window.addEventListener('resize', function () {
+        if (mapModeActive) updateMapOverlay()
+      })
 
       function setStatus (text, isError) {
         statusEl.textContent = text
@@ -5047,13 +5174,14 @@
       })()
 
       // ---- Link Hue Sweep ----
-      // Cycles hue (0–360°) over N bars. Link beat drives phase; timer is
-      // fallback only — guarded so both never fire simultaneously.
       ;(function () {
+        var hueBtn = document.getElementById('hueSweepBtn')
+        if (!hueBtn) return  // static element must exist
+
         var hueActive = false
         var hueTimer = null
         var hueOffset = 0
-        var lastLinkBeatMs = 0  // tracks recency of Link beats
+        var lastLinkBeatMs = 0
 
         function hueGetBars () {
           var el = document.getElementById('hueBarsSelect')
@@ -5061,34 +5189,27 @@
         }
 
         function hueSetFromBeat (beat) {
-          var bars = hueGetBars()
-          var hue = ((beat / (bars * 4)) % 1) * 360 + hueOffset
+          var hue = ((beat / (hueGetBars() * 4)) % 1) * 360 + hueOffset
           hue = ((hue % 360) + 360) % 360
           var hc = document.getElementById('hueCtrl')
           if (!hc) return
           hc.value = Math.round(hue)
-          var hv = document.getElementById('hueVal')
-          if (hv) hv.textContent = Math.round(hue) + '°'
-          if (typeof applyFilters === 'function') applyFilters()
+          hc.dispatchEvent(new Event('input'))  // fires applyFilters via existing listener
         }
 
-        // Called from handleLinkMessage — primary driver when Link is active
         window.__hueOnBeat = function (beat) {
           if (!hueActive) return
           lastLinkBeatMs = Date.now()
           hueSetFromBeat(beat)
         }
 
-        // Fallback timer — only fires when no Link beat received in past 2s
-        function hueTickFallback () {
+        function hueTick () {
           if (!hueActive) return
-          if (Date.now() - lastLinkBeatMs < 2000) return  // Link active, skip
-          var fakeBeat = (Date.now() / 1000) * 2  // 120 BPM
-          hueSetFromBeat(fakeBeat)
+          if (Date.now() - lastLinkBeatMs < 2000) return  // Link is driving, skip
+          hueSetFromBeat((Date.now() / 1000) * 2)  // 120 BPM fallback
         }
 
         function hueStart () {
-          if (hueActive) return
           var hc = document.getElementById('hueCtrl')
           var currentHue = hc ? parseFloat(hc.value) : 0
           var fakeBeat = (Date.now() / 1000) * 2
@@ -5096,43 +5217,24 @@
           hueOffset = ((currentHue - phase * 360) % 360 + 360) % 360
           hueActive = true
           lastLinkBeatMs = 0
-          hueTimer = setInterval(hueTickFallback, 500)
+          hueTimer = setInterval(hueTick, 500)
           hueBtn.textContent = '■ Hue'
-          hueBtn.classList.add('stop'); hueBtn.classList.remove('main')
+          hueBtn.classList.add('stop')
+          hueBtn.classList.remove('main')
         }
 
         function hueStop () {
           hueActive = false
-          if (hueTimer) { clearInterval(hueTimer); hueTimer = null }
+          clearInterval(hueTimer)
+          hueTimer = null
           hueBtn.textContent = '~ Hue'
-          hueBtn.classList.remove('stop'); hueBtn.classList.add('main')
+          hueBtn.classList.remove('stop')
+          hueBtn.classList.add('main')
         }
 
-        var hueBtn = document.createElement('button')
-        hueBtn.className = 'btn main'
-        hueBtn.textContent = '~ Hue'
-        hueBtn.style.cssText = 'padding:4px 8px;font-size:11px;'
         hueBtn.addEventListener('click', function () {
           if (hueActive) hueStop(); else hueStart()
         })
-
-        var hueBars = document.createElement('select')
-        hueBars.id = 'hueBarsSelect'
-        hueBars.style.cssText = 'font-size:11px;'
-        hueBars.title = 'Bars per full hue cycle'
-        ;[8, 16, 32, 64, 128].forEach(function (n) {
-          var o = document.createElement('option')
-          o.value = n; o.textContent = n + ' bars'
-          if (n === 32) o.selected = true
-          hueBars.appendChild(o)
-        })
-
-        // Insert into #linkBar alongside Link button + BPM display
-        var linkBar = document.getElementById('linkBar')
-        if (linkBar) {
-          linkBar.appendChild(hueBtn)
-          linkBar.appendChild(hueBars)
-        }
       })()
 
       // ---- Denoising Stepper ----
@@ -5244,6 +5346,7 @@
           function (dx) {
             var w = Math.max(360, leftCol.offsetWidth + dx)
             leftCol.style.width = w + 'px'
+            if (mapModeActive) updateMapOverlay()
           },
           null,
           function () { saveLayout() }
@@ -5256,6 +5359,7 @@
             var h = Math.max(120, stage.offsetHeight + dy)
             stage.style.height = h + 'px'
             stage.style.flex = 'none'
+            if (mapModeActive) updateMapOverlay()
           },
           null,
           function () { saveLayout() }
