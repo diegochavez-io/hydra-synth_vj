@@ -457,7 +457,7 @@ const server = http.createServer(function (req, res) {
   // Encodes and sends an OSC message to Scope's UDP port (same as HTTP port).
   if (req.method === 'POST' && urlPath === '/api/scope-osc') {
     var scopeUrlForOsc = getScopeUrl()
-    if (!scopeUrlForOsc) { return jsonResponse(res, 400, { error: 'No Scope URL' }) }
+    if (!scopeUrlForOsc) { console.log('  OSC: no Scope URL'); return jsonResponse(res, 400, { error: 'No Scope URL' }) }
     readBody(req, function (oscBody) {
       try {
         var oscData = JSON.parse(oscBody)
@@ -466,6 +466,7 @@ const server = http.createServer(function (req, res) {
         var oscType = oscData.type || 'float'
         // If key starts with '/', use as-is; otherwise prefix with /scope/
         var oscAddress = oscKey.charAt(0) === '/' ? oscKey : '/scope/' + oscKey
+        console.log('  OSC →', oscAddress, oscValue)
         // Encode OSC string (null-terminated, padded to 4 bytes)
         function encodeOscStr (s) {
           var b = Buffer.from(s + '\0', 'utf8')
@@ -948,7 +949,6 @@ server.on('upgrade', function (req, socket, head) {
 })
 var lastCode = null
 var lastWarp = null
-var lastMapMode = null
 var linkEnabled = false
 var linkBroadcastTimer = null
 
@@ -979,7 +979,6 @@ function stopLinkBroadcast () {
 wss.on('connection', function (ws) {
   if (lastCode) ws.send(lastCode)
   if (lastWarp) ws.send(lastWarp)
-  if (lastMapMode) ws.send(lastMapMode)
 
   // Send current link status on connect
   if (link) {
@@ -1028,7 +1027,7 @@ wss.on('connection', function (ws) {
       if (parsed.type === 'warp-update') {
         lastWarp = str
       } else if (parsed.type === 'map-mode') {
-        lastMapMode = str
+        // Transient — relay but don't cache (output defaults to live)
       } else {
         lastCode = str
       }
