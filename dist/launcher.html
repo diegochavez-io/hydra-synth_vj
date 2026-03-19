@@ -5,35 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hydra Live Launcher</title>
   <style>
+    /* ── Type system ── */
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+
     :root {
       --bg: #08080a;
       --panel: #0c0c0f;
       --surface: #101014;
-      --line: #18181e;
-      --text: #e8e8ec;
-      --muted: #c0c0c4;
-      --dim: #888890;
-      --accent: #8a8a90;
-      --active: #b8b8bc;
-      --danger: #8a4444;
-      /* Section identity accents */
-      --h: #4477dd;           /* Hydra — blue */
-      --h-dim: #1a2a4a;
-      --h-surface: #0c1020;
-      --s: #dd7040;           /* Scope/Daydream — amber */
-      --s-dim: #4a2a14;
-      --s-surface: #160e08;
-      --ca: #3ab87a;          /* Cellular Automata — bio green */
-      --ca-dim: #143a24;
-      --ca-surface: #081410;
+      --line: #1e1e24;
+      --text: #eeeef2;
+      --muted: #c8c8d0;
+      --dim: #8888a0;
+      --accent: #6060a0;
+      --danger: #c0404a;
+
+      /* Section identity — pulled from syntax highlight palette */
+      --h: #82aaff;           /* Hydra — light blue (def color) */
+      --h-dim: #1e2a50;
+      --h-surface: #0a0e1c;
+      --s: #c792ea;           /* Scope/Daydream — purple (keyword color) */
+      --s-dim: #3a1e55;
+      --s-surface: #100a18;
+      --ca: #c3e88d;          /* Cellular Automata — green (property color) */
+      --ca-dim: #283a10;
+      --ca-surface: #0e1408;
+
+      --font-ui:   "IBM Plex Mono", "SF Mono", monospace;
+      --font-code: "IBM Plex Mono", "SF Mono", monospace;
+
+      /* Type scale */
+      --ts-xs:  12px;  /* badges, secondary labels */
+      --ts-sm:  13px;  /* param names, control labels */
+      --ts-md:  14px;  /* body text, inputs */
+      --ts-hd:  12px;  /* section headers — spaced caps */
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     html, body {
       width: 100%; height: 100%;
       background: var(--bg);
       color: var(--text);
-      font-family: "JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", "Menlo", monospace;
-      font-size: 11px;
+      font-family: var(--font-ui);
+      font-size: var(--ts-md);
+      font-weight: 400;
       line-height: 1.4;
       -webkit-font-smoothing: antialiased;
     }
@@ -62,92 +77,98 @@
       overflow: hidden; flex-shrink: 0;
     }
 
+    /* ── Stage bar (above preview) ── */
+    #stageBar {
+      display: flex; align-items: center; gap: 4px;
+      padding: 4px 8px;
+      background: var(--panel);
+      border: 1px solid var(--line); border-radius: 4px 4px 0 0;
+    }
+    #stageBar .sb-left { display: flex; align-items: center; gap: 3px; }
+    #stageBar .sb-right { display: flex; align-items: center; gap: 3px; margin-left: auto; }
+    #stageBar .sb-sep { width: 1px; height: 14px; background: var(--line); margin: 0 3px; }
+
     /* ── Stage ── */
-    #stageWrap { position: relative; flex-shrink: 1; min-height: 200px; }
+    #stageWrap {
+      position: relative; flex: 1; min-height: 120px;
+      background: #000;
+      border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
     #stage {
       position: relative;
-      border: 1px solid var(--line); border-radius: 4px 4px 0 0;
       overflow: hidden; background: #000;
-      width: 100%; height: 100%;
+      max-width: 100%; max-height: 100%;
     }
-    #stage canvas { width: 100%; height: 100%; display: block; object-fit: contain; }
+    #stage canvas { width: 100%; height: 100%; display: block; }
 
-    /* ── Stage overlay ── */
-    #stageOverlay {
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      display: flex; justify-content: space-between; align-items: flex-start;
-      padding: 6px 8px; z-index: 10; pointer-events: none;
+    /* ── Below-preview bar ── */
+    #belowStageBar {
+      display: flex; align-items: center; gap: 4px;
+      padding: 3px 8px;
+      background: var(--panel);
+      border: 1px solid var(--line); border-top: 0;
+      border-radius: 0 0 4px 4px;
     }
-    #stageOverlay > * { pointer-events: auto; }
-    #stageOverlay .so-group { display: flex; flex-direction: column; gap: 3px; }
-    #stageOverlay .so-row { display: flex; align-items: center; gap: 3px; }
-    #stageOverlay .btn,
-    #linkBar .btn {
-      background: rgba(8,8,10,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    #belowStageBar .link-info {
+      color: var(--dim); font-family: var(--font-code); font-size: var(--ts-sm);
+      font-variant-numeric: tabular-nums; white-space: nowrap;
+      padding: 2px 6px; border-radius: 2px;
     }
-    #stageOverlay select {
-      background: rgba(8,8,10,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-      border: 1px solid var(--line); border-radius: 3px;
-      color: var(--muted); font-family: inherit; font-size: inherit;
-      padding: 3px 6px;
+    #belowStageBar .link-info.active { color: var(--text); }
+
+    /* ── Sources bar ── */
+    #sourcesBar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
     }
-    #stageOverlay .btn.rec { padding: 3px 6px; }
-    #stageOverlay .so-sources .src-label {
+    #sourcesBar .src-label {
       font-size: 9px; color: var(--dim); font-variant-numeric: tabular-nums;
     }
-    #stageOverlay .so-sources .src-select {
-      padding: 2px 4px; max-width: 100px;
-      background: rgba(8,8,10,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-      border: 1px solid var(--line); border-radius: 3px; color: var(--dim);
+    #sourcesBar .src-select {
+      padding: 2px 4px; max-width: 120px;
+      border: 1px solid var(--line); border-radius: 3px;
+      background: var(--surface); color: var(--dim);
       font-family: inherit; font-size: 10px;
     }
-    #stageOverlay .so-sources .src-select.active { border-color: var(--muted); color: var(--text); }
-
-    /* ── Link bar ── */
-    #linkBar {
-      position: absolute; bottom: 6px; left: 8px;
-      display: flex; align-items: center; gap: 4px;
-      pointer-events: auto;
-    }
-    #linkBar .link-info {
-      color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap;
-      background: rgba(8,8,10,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-      padding: 2px 6px; border-radius: 3px;
-    }
-    #linkBar .link-info.active { color: var(--text); }
+    #sourcesBar .src-select.active { border-color: var(--muted); color: var(--text); }
 
     /* ── Buttons ── */
     .btn {
       border: 1px solid var(--line); background: var(--surface);
-      color: var(--muted); padding: 4px 8px; border-radius: 3px;
-      cursor: pointer; font-family: inherit; font-size: inherit;
-      font-weight: 400; letter-spacing: 0.01em;
+      color: var(--muted); padding: 4px 10px; border-radius: 2px;
+      cursor: pointer; font-family: var(--font-ui); font-size: var(--ts-sm);
+      font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
       transition: border-color 0.12s, color 0.12s, background 0.12s;
-      line-height: 1.4;
+      line-height: 1.4; white-space: nowrap;
     }
-    .btn:hover { border-color: #2a2a32; color: var(--text); }
-    .btn.main { border-color: #252530; color: var(--text); font-weight: 500; }
-    .btn.main:hover { border-color: #3a3a44; }
-    .btn.stop { border-color: #2a1818; color: var(--danger); font-weight: 500; }
-    .btn.stop:hover { border-color: #3a2020; }
+    .btn:hover { border-color: var(--accent); color: var(--text); }
+    .btn.main { border-color: var(--h-dim); color: var(--h); background: var(--h-surface); }
+    .btn.main:hover { border-color: var(--h); color: var(--h); }
+    .btn.stop { border-color: var(--danger); color: var(--danger); background: transparent; }
+    .btn.stop:hover { background: rgba(138,68,68,0.08); }
     .btn.rec { color: var(--dim); }
     .btn.rec:hover { color: var(--muted); }
     .btn.rec.recording { border-color: var(--danger); color: var(--danger); animation: rec-pulse 1.2s ease-in-out infinite; }
     @keyframes rec-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-    #mapBtn.active { border-color: #3a2020; color: var(--danger); }
+    #mapBtn.active { border-color: var(--danger); color: var(--danger); }
 
     /* ── Selects ── */
     select {
       -webkit-appearance: none; appearance: none;
-      padding: 4px 20px 4px 6px;
-      border: 1px solid var(--line); border-radius: 3px;
-      background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 0l3.5 4 3.5-4z' fill='%23333'/%3E%3C/svg%3E") no-repeat right 6px center;
-      color: var(--muted); font-family: inherit; font-size: inherit;
+      padding: 3px 20px 3px 7px;
+      border: 1px solid var(--line); border-radius: 2px;
+      background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4'%3E%3Cpath d='M0 0l3.5 4 3.5-4z' fill='%23444'/%3E%3C/svg%3E") no-repeat right 6px center;
+      color: var(--dim); font-family: var(--font-ui); font-size: var(--ts-sm);
+      font-weight: 400; letter-spacing: 0.03em;
       cursor: pointer; outline: none;
-      transition: border-color 0.12s;
+      transition: border-color 0.12s, color 0.12s;
     }
-    select:hover { border-color: #2a2a32; color: var(--text); }
-    select:focus { border-color: #333; }
+    select:hover { border-color: var(--accent); color: var(--muted); }
+    select:focus { border-color: var(--accent); }
 
     /* ── Map ── */
     #mapPresetSelect { font-size: inherit; }
@@ -164,8 +185,9 @@
       background: var(--panel);
     }
     .section-head .sh-title {
-      font-size: 9px; font-weight: 600;
-      letter-spacing: 0.12em; text-transform: uppercase;
+      font-family: var(--font-ui);
+      font-size: var(--ts-hd); font-weight: 700;
+      letter-spacing: 0.16em; text-transform: uppercase;
       color: var(--dim);
     }
     /* Section identity via :has() — Chrome/Safari OK for local tool */
@@ -175,6 +197,52 @@
     .section-head .sh-title.hydra { color: var(--h); }
     .section-head .sh-title.scope { color: var(--s); }
     .section-head .sh-title.ca    { color: var(--ca); }
+
+    /* ── Section help buttons ── */
+    .sh-help-btn {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 1px solid var(--dim); background: transparent;
+      color: var(--dim); font-size: 11px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: color 0.12s, border-color 0.12s;
+      padding: 0; line-height: 1; flex-shrink: 0;
+    }
+    .sh-help-btn:hover { color: var(--text); border-color: var(--text); }
+    .sh-help-btn.active { color: var(--s); border-color: var(--s); background: var(--s-surface); }
+    .section-head:has(.sh-title.hydra) .sh-help-btn.active { color: var(--h); border-color: var(--h); }
+    .section-head:has(.sh-title.ca) .sh-help-btn.active { color: var(--ca); border-color: var(--ca); }
+    .sh-help-popout {
+      display: none; position: absolute; z-index: 200;
+      width: 340px; background: var(--panel);
+      border: 1px solid var(--line); border-radius: 4px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      flex-direction: column; overflow: hidden;
+    }
+    .sh-help-popout.open { display: flex; }
+    .sh-help-popout .help-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--font-ui); font-size: var(--ts-hd); font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim);
+      cursor: move;
+    }
+    .sh-help-popout .help-body {
+      padding: 10px 12px;
+      font-size: var(--ts-sm); line-height: 1.65; color: var(--muted);
+      max-height: 50vh; overflow-y: auto;
+    }
+    .sh-help-popout .help-body strong { color: var(--text); font-weight: 600; }
+    .sh-help-popout .help-body code {
+      background: var(--surface); padding: 1px 5px; border-radius: 3px;
+      font-family: var(--font-code); font-size: 11px; color: var(--text);
+    }
+    .sh-help-popout .help-body p { margin: 0 0 8px 0; }
+    .sh-help-popout .help-body p:last-child { margin-bottom: 0; }
+    .sh-help-popout .help-body ul { margin: 4px 0 8px 0; padding-left: 16px; }
+    .sh-help-popout .help-body li { margin-bottom: 3px; }
+    .sh-help-popout .help-section { color: var(--dim); font-weight: 700; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; margin: 10px 0 4px 0; }
+    .sh-help-popout .help-section:first-child { margin-top: 0; }
 
     /* ── Toolbar ── */
     .toolbar-group { display: flex; align-items: center; gap: 3px; }
@@ -218,69 +286,11 @@
       resize: none; border: 0; outline: 0;
       padding: 10px;
       background: #08080a; color: var(--muted);
-      font-family: inherit; font-size: inherit; line-height: 1.5;
+      font-family: var(--font-code); font-size: 13px; line-height: 1.5;
     }
-
-    /* ── Presets ── */
-    #presets {
-      border-bottom: 1px solid var(--line);
-      padding: 8px 10px;
-      display: flex; flex-wrap: wrap; gap: 4px;
-      max-height: 34vh; overflow: auto;
-    }
-    .presetBtn {
-      border: 1px solid var(--line); background: var(--surface);
-      color: var(--muted); border-radius: 3px;
-      padding: 3px 8px; cursor: pointer;
-      max-width: 280px; white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis;
-      transition: border-color 0.12s, color 0.12s;
-    }
-    .presetBtn:hover { border-color: #2a2a32; color: var(--text); }
-    .presetBtn.active { border-color: #2a2a32; color: var(--text); font-weight: 500; }
-    .presetBtn.saved { border-color: #2a2a32; color: var(--text); }
-    @keyframes saveFlash {
-      0%   { background: var(--text); color: var(--bg); border-color: var(--text); }
-      100% { background: var(--surface); color: var(--text); border-color: #2a2a32; }
-    }
-
-    /* ── Autoplay ── */
-    #autoplayBar {
-      border-bottom: 1px solid var(--line);
-      padding: 6px 10px;
-      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-    }
-    #autoplayBar label { color: var(--muted); white-space: nowrap; }
-    #autoplayBar input[type="number"] {
-      width: 50px; padding: 3px 6px;
-      border: 1px solid var(--line); border-radius: 3px;
-      background: var(--surface); color: var(--muted);
-      font-family: inherit; font-size: inherit; text-align: center;
-    }
-    #autoplayBar .divider { width: 1px; height: 16px; background: var(--line); }
-    #autoplayProgress {
-      flex: 1; height: 2px; min-width: 60px;
-      background: var(--line); border-radius: 1px; overflow: hidden;
-    }
-    #autoplayProgressFill { height: 100%; width: 0%; background: var(--muted); }
-
-    /* ── Beat grid ── */
-    #beatGrid {
-      flex: 1; min-width: 80px; display: flex; gap: 1px; align-items: center; height: 14px;
-    }
-    #beatGrid .beat-group { display: flex; gap: 1px; flex: 1; height: 100%; }
-    #beatGrid .beat-group + .beat-group { margin-left: 2px; }
-    #beatGrid .beat-step {
-      flex: 1; height: 100%; background: var(--line); border-radius: 1px;
-      transition: background 0.05s;
-    }
-    #beatGrid .beat-step.lit { background: var(--muted); }
-    #beatGrid .beat-group:nth-child(odd) .beat-step.lit { background: var(--accent); }
-    #beatGrid .beat-group:nth-child(even) .beat-step.lit { background: var(--muted); }
 
     /* ── Global controls (sliders) ── */
     #globalControls {
-      border-bottom: 1px solid var(--line);
       padding: 4px 10px 6px;
       display: flex; flex-direction: column; gap: 2px;
       color: var(--muted);
@@ -296,9 +306,13 @@
       display: flex; align-items: center; gap: 6px;
       white-space: nowrap;
     }
-    #globalControls label > span:first-child { min-width: 52px; color: var(--muted); }
+    #globalControls label > span:first-child {
+      min-width: 58px; color: var(--dim);
+      font-size: var(--ts-sm); letter-spacing: 0.05em; text-transform: uppercase;
+    }
     #globalControls span.val {
-      width: 32px; text-align: right;
+      width: 34px; text-align: right;
+      font-family: var(--font-code); font-size: var(--ts-sm);
       font-variant-numeric: tabular-nums; color: var(--muted);
     }
     #globalControls input[type="range"] { flex: 1; min-width: 0; }
@@ -350,74 +364,66 @@
     #audioGainSlider::-moz-range-track { background: linear-gradient(to right, var(--line), #5ab8c8); }
     #audioGainSlider::-webkit-slider-thumb { width: 7px; height: 7px; margin-top: -2.5px; }
     #audioGainSlider::-moz-range-thumb { width: 7px; height: 7px; }
+    /* ── Presets ── */
     #presets {
       border-bottom: 1px solid var(--line);
-      padding: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      max-height: 34vh;
-      overflow: auto;
+      padding: 8px 10px;
+      display: flex; flex-wrap: wrap; gap: 5px;
+      max-height: 34vh; overflow: auto;
     }
     .presetBtn {
-      border: 1px solid #1a1a22;
-      background: #0e0e12;
-      color: #bbb;
-      border-radius: 999px;
-      padding: 5px 10px;
-      cursor: pointer;
-      max-width: 280px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      transition: border-color 0.15s, color 0.15s;
+      border: 1px solid var(--line); background: var(--surface);
+      color: var(--muted); border-radius: 2px;
+      padding: 4px 10px; cursor: pointer;
+      max-width: 280px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+      font-family: var(--font-ui); font-size: var(--ts-sm); font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
     }
-    .presetBtn:hover { border-color: #333; color: #fff; }
-    .presetBtn.active { border-color: #1a3a2a; background: #0a1410; color: var(--accent); font-weight: 600; }
-    .presetBtn.saved {
-      border-color: #1a3a2a; background: #0a1410; color: var(--accent);
-      transition: all 0.15s ease-out;
-    }
+    .presetBtn:hover { border-color: var(--accent); color: var(--text); }
+    .presetBtn.active { border-color: var(--h); background: var(--h-surface); color: var(--h); font-weight: 600; }
+    .presetBtn.running { border-color: #66bb6a; background: rgba(102,187,106,0.10); color: #66bb6a; font-weight: 600; }
+    .presetBtn.played { border-color: #e0a040; background: rgba(224,160,64,0.08); color: #e0a040; }
+    .presetBtn.played:hover { border-color: #e0a040; color: #f0c060; }
+    .presetBtn.running.played { border-color: #66bb6a; background: rgba(102,187,106,0.10); color: #66bb6a; }
+    .presetBtn.saved { border-color: var(--h); background: var(--h-surface); color: var(--h); }
     @keyframes saveFlash {
-      0%   { background: var(--accent); color: #000; border-color: var(--accent); }
-      100% { background: #0c1a14; color: var(--accent); border-color: var(--accent); }
+      0%   { background: var(--h); color: var(--bg); border-color: var(--h); }
+      100% { background: var(--h-surface); color: var(--h); border-color: var(--h); }
     }
+
+    /* ── Autoplay ── */
     #autoplayBar {
       border-bottom: 1px solid var(--line);
-      padding: 8px 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
+      padding: 6px 10px;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
     }
-    #autoplayBar label { color: var(--muted); white-space: nowrap; }
+    #autoplayBar label { color: var(--dim); white-space: nowrap; }
     #autoplayBar input[type="number"] {
-      width: 56px; padding: 4px 6px;
-      border: 1px solid #1a1a22; border-radius: 5px;
-      background: #0e0e12; color: #666;
+      width: 52px; padding: 3px 6px;
+      border: 1px solid var(--line); border-radius: 2px;
+      background: var(--surface); color: var(--muted);
       font-family: inherit; font-size: inherit; text-align: center;
     }
-    #autoplayBar .divider { width: 1px; height: 20px; background: var(--line); }
+    #autoplayBar .divider { width: 1px; height: 16px; background: var(--line); }
     #autoplayProgress {
-      flex: 1; height: 4px; min-width: 60px;
-      background: #151518; border-radius: 2px; overflow: hidden;
+      flex: 1; height: 3px; min-width: 60px;
+      background: var(--line); border-radius: 1px; overflow: hidden;
     }
-    #autoplayProgressFill {
-      height: 100%; width: 0%; background: var(--accent);
-    }
+    #autoplayProgressFill { height: 100%; width: 0%; background: var(--h); }
+
+    /* ── Beat grid ── */
     #beatGrid {
-      flex: 1; min-width: 80px; display: flex; gap: 1px; align-items: center; height: 16px;
+      flex: 1; min-width: 80px; display: flex; gap: 1px; align-items: center; height: 14px;
     }
-    #beatGrid .beat-group {
-      display: flex; gap: 1px; flex: 1; height: 100%;
-    }
-    #beatGrid .beat-group + .beat-group { margin-left: 3px; }
+    #beatGrid .beat-group { display: flex; gap: 1px; flex: 1; height: 100%; }
+    #beatGrid .beat-group + .beat-group { margin-left: 2px; }
     #beatGrid .beat-step {
-      flex: 1; height: 100%; background: #151518; border-radius: 2px; transition: background 0.05s;
+      flex: 1; height: 100%; background: var(--line); border-radius: 1px; transition: background 0.05s;
     }
-    #beatGrid .beat-step.lit { background: var(--accent); }
-    #beatGrid .beat-group:nth-child(odd) .beat-step.lit { background: #3ab8e0; }
-    #beatGrid .beat-group:nth-child(even) .beat-step.lit { background: var(--accent); }
+    #beatGrid .beat-step.lit { background: var(--h); }
+    #beatGrid .beat-group:nth-child(even) .beat-step.lit { background: var(--h-dim); filter: brightness(2); }
     /* ── Daydream / Scope ── */
     #daydreamBar {
       border-top: 1px solid var(--line);
@@ -426,44 +432,173 @@
     }
     .dd-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .dd-row + .dd-row { margin-top: 5px; }
-    .dd-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
-    .dd-dot.on { background: var(--text); animation: dd-pulse 2s ease infinite; }
+    .dd-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
+    .dd-dot.on { background: var(--s); animation: dd-pulse 2s ease infinite; }
     .dd-dot.err { background: var(--danger); }
     .dd-dot.connecting { background: var(--muted); animation: dd-pulse 0.8s ease infinite; }
-    @keyframes dd-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @keyframes dd-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
     #ddPrompt {
-      flex: 1; min-width: 150px; padding: 4px 6px;
-      border: 1px solid var(--line); border-radius: 3px;
-      background: var(--surface); color: var(--muted);
-      font-family: inherit; font-size: inherit; outline: none;
+      flex: 1; min-width: 150px; padding: 5px 8px;
+      border: 1px solid var(--line); border-radius: 2px;
+      background: var(--surface); color: var(--text);
+      font-family: inherit; font-size: var(--ts-md); font-weight: 400;
+      outline: none; transition: border-color 0.12s;
+    }
+    #ddPrompt:focus { border-color: var(--s-dim); }
+    #ddPrompt::placeholder { color: var(--dim); }
+    #daydreamBar select { font-size: inherit; }
+    #ddInfo { color: var(--dim); font-size: var(--ts-sm); }
+    .dd-label { color: var(--dim); white-space: nowrap; font-size: var(--ts-sm); font-weight: 500; }
+    #ddDebugToggle { cursor: pointer; color: var(--dim); text-decoration: none; opacity: 0.4; font-size: var(--ts-xs); transition: opacity 0.12s; }
+    #ddDebugToggle:hover { opacity: 0.8; }
+    /* SCOPE AUTO — purple palette, grid-aligned rows */
+    #scopeAuto { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+    #scopeAuto .sa-head {
+      font-family: var(--font-ui); font-size: var(--ts-hd); font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: #6040a0; margin-bottom: 6px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    #scopeAuto .sa-counter { font-family: var(--font-code); font-size: var(--ts-xs); color: #6040a0; }
+    /* Grid: toggle | name | min | step | max | bars | live-val | dot */
+    #scopeAuto .sa-row {
+      display: grid;
+      grid-template-columns: 32px 62px 46px 46px 46px 70px 46px 10px;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+      transition: opacity 0.15s;
+    }
+    #scopeAuto .sa-row.off { opacity: 0.22; pointer-events: none; }
+    #scopeAuto .sa-row.off .sa-toggle { pointer-events: auto; opacity: 1; }
+    #scopeAuto .sa-toggle {
+      font-family: var(--font-ui); font-size: 9px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 2px 4px; border: 1px solid var(--s-dim); color: var(--s);
+      background: transparent; cursor: pointer; white-space: nowrap;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+      text-align: center;
+    }
+    #scopeAuto .sa-toggle:hover { border-color: var(--s); background: var(--s-surface); }
+    #scopeAuto .sa-toggle.off { border-color: var(--line); color: var(--dim); background: transparent; }
+    #scopeAuto .sa-name {
+      font-family: var(--font-ui); font-size: var(--ts-sm); font-weight: 500;
+      color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      letter-spacing: 0.02em;
+    }
+    #scopeAuto .sa-step {
+      width: 100%; background: var(--bg); border: 1px solid var(--line);
+      color: var(--muted); font-family: var(--font-code); font-size: var(--ts-sm);
+      font-weight: 500; padding: 2px 4px; text-align: right; -moz-appearance: textfield;
       transition: border-color 0.12s;
     }
-    #ddPrompt:focus { border-color: #2a2a32; }
-    #daydreamBar select { font-size: inherit; }
-    #ddInfo { color: var(--dim); }
-    .dd-label { color: var(--dim); white-space: nowrap; }
-    #ddDebugToggle { cursor: pointer; color: var(--dim); text-decoration: none; opacity: 0.6; transition: opacity 0.12s; }
-    #ddDebugToggle:hover { opacity: 1; }
-    /* SCOPE AUTO */
-    #scopeAuto { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
-    #scopeAuto .sa-head { font-size: 9px; letter-spacing: 0.12em; color: #333; margin-bottom: 5px; }
-    #scopeAuto .sa-row { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; transition: opacity 0.15s; font-size: 10px; }
-    #scopeAuto .sa-row.off { opacity: 0.3; }
-    #scopeAuto .sa-toggle { font-size: 9px; letter-spacing: 0.08em; padding: 1px 5px; border: 1px solid #2a4a2a; color: #5a9a5a; background: transparent; cursor: pointer; font-family: monospace; white-space: nowrap; }
-    #scopeAuto .sa-toggle.off { border-color: #222; color: #333; }
-    #scopeAuto .sa-name { color: #666; min-width: 148px; white-space: nowrap; }
-    #scopeAuto .sa-num { width: 40px; background: #0d0d0d; border: 1px solid #1e1e1e; color: #888; font-family: monospace; font-size: 10px; padding: 1px 3px; text-align: right; -moz-appearance: textfield; }
-    #scopeAuto .sa-num::-webkit-inner-spin-button { opacity: 0.4; }
-    #scopeAuto .sa-num:focus { border-color: #333; outline: none; color: #bbb; }
-    #scopeAuto .sa-sep { color: #222; }
-    #scopeAuto .sa-bars { background: #0d0d0d; border: 1px solid #1e1e1e; color: #555; font-family: monospace; font-size: 10px; padding: 1px 2px; cursor: pointer; }
-    #scopeAuto .sa-val { color: #3a6a3a; min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
-    #scopeAuto .sa-mode { font-size: 8px; color: #2a4a2a; background: #0d1a0d; border: 1px solid #1a2e1a; padding: 1px 3px; font-family: monospace; letter-spacing: 0.05em; white-space: nowrap; }
+    #scopeAuto .sa-step::-webkit-inner-spin-button { opacity: 0.3; }
+    #scopeAuto .sa-step:focus { border-color: var(--s); outline: none; color: var(--text); }
+    #scopeAuto .sa-num {
+      width: 100%; background: var(--bg); border: 1px solid var(--line);
+      color: var(--muted); font-family: var(--font-code); font-size: var(--ts-sm);
+      font-weight: 500; padding: 2px 4px; text-align: right; -moz-appearance: textfield;
+      transition: border-color 0.12s;
+    }
+    #scopeAuto .sa-num::-webkit-inner-spin-button { opacity: 0.3; }
+    #scopeAuto .sa-num:focus { border-color: var(--s); outline: none; color: var(--text); }
+    #scopeAuto .sa-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: transparent; border: 1px solid var(--s-dim);
+      transition: background 0.05s; justify-self: center; align-self: center;
+    }
+    #scopeAuto .sa-dot.flash { background: var(--s); }
+    #scopeAuto .sa-bars {
+      width: 100%; background: var(--bg); border: 1px solid var(--line);
+      color: var(--dim); font-family: var(--font-ui); font-size: var(--ts-sm);
+      padding: 2px 2px; cursor: pointer; transition: border-color 0.12s;
+    }
+    #scopeAuto .sa-bars:hover { border-color: var(--s-dim); color: var(--muted); }
+
+    /* ── Scope iframe panel (UI + Docs side-by-side) ── */
+    #scopeIframePanel {
+      display: none;
+      flex-direction: row;
+      gap: 4px;
+      padding: 4px;
+      background: var(--s-surface);
+      border-top: 1px solid var(--s-dim);
+      border-bottom: 1px solid var(--s-dim);
+    }
+    #scopeIframePanel.open { display: flex; }
+    .sip-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .sip-col .sip-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 3px 6px;
+      font-family: var(--font-ui); font-size: var(--ts-hd); font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--s);
+    }
+    .sip-col .sip-head a {
+      color: var(--dim); font-size: var(--ts-xs); text-decoration: none;
+      font-weight: 400; letter-spacing: 0;
+    }
+    .sip-col .sip-head a:hover { color: var(--muted); }
+    .sip-col iframe {
+      flex: 1; width: 100%; min-height: 420px;
+      border: 1px solid var(--s-dim); border-radius: 2px;
+      background: #0a0a10;
+    }
+    #scopePanelToggle, #ddNotesToggle, #ddPromptsToggle {
+      cursor: pointer; transition: color 0.12s, border-color 0.12s, background 0.12s;
+    }
+    #scopePanelToggle:hover, #ddNotesToggle:hover, #ddPromptsToggle:hover { color: var(--s) !important; }
+    #scopePanelToggle.active, #ddNotesToggle.active, #ddPromptsToggle.active {
+      color: var(--s); border-color: var(--s); background: var(--s-surface);
+    }
+
+    /* ── Notes popout ── */
+    #ddNotesPopout {
+      display: none;
+      position: absolute;
+      z-index: 200;
+      width: 520px;
+      background: var(--panel);
+      border: 1px solid var(--s-dim);
+      border-radius: 4px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(100,60,160,0.15);
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #ddNotesPopout.open { display: flex; }
+    .notes-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px;
+      background: var(--s-surface);
+      border-bottom: 1px solid var(--s-dim);
+      font-family: var(--font-ui); font-size: var(--ts-hd); font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--s);
+      cursor: move;
+    }
+    #ddNotesArea {
+      width: 100%; min-height: 200px; max-height: 60vh;
+      resize: vertical; padding: 8px 10px;
+      background: var(--bg); color: var(--muted);
+      border: none; outline: none;
+      font-family: var(--font-code); font-size: var(--ts-sm);
+      line-height: 1.6;
+    }
+    #ddNotesArea::placeholder { color: var(--dim); }
+    #ddNotesArea:focus { color: var(--text); }
+    .notes-foot {
+      padding: 3px 10px; text-align: right;
+      font-size: var(--ts-xs); color: var(--s-dim);
+    }
+    #ddNotesSaved { transition: opacity 0.3s; }
+    #scopeAuto .sa-val {
+      color: var(--s); text-align: right;
+      font-family: var(--font-code); font-size: var(--ts-sm); font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
     #ddDebugLog {
       display: none;
       border-top: 1px solid var(--line);
       background: #08080a;
-      max-height: 200px; overflow-y: auto;
+      max-height: 350px; overflow-y: auto;
       padding: 6px 10px; line-height: 1.5;
       color: var(--dim);
     }
@@ -472,6 +607,19 @@
     #ddDebugLog .log-warn { color: var(--muted); }
     #ddDebugLog .log-info { color: var(--dim); }
     #ddDebugLog .log-time { color: var(--dim); margin-right: 6px; }
+
+    /* ── CA controls ── */
+    #caControls label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    #caControls label > span:first-child {
+      min-width: 64px; color: var(--dim);
+      font-size: var(--ts-sm); letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    #caControls span.val {
+      width: 36px; text-align: right;
+      font-family: var(--font-code); font-size: var(--ts-sm);
+      font-variant-numeric: tabular-nums; color: var(--muted);
+    }
+    #caControls input[type="range"] { flex: 1; min-width: 0; }
 
     /* ── Audio meter ── */
     #audioMeterPanel {
@@ -484,7 +632,15 @@
     /* ── Audience mode ── */
     #app.audience #panel { display: none; }
     #app.audience { gap: 0; padding: 0; }
-    #app.audience #stage { border: 0; border-radius: 0; width: 100%; height: 100%; }
+    #app.audience #stageBar,
+    #app.audience #belowStageBar,
+    #app.audience #globalControls,
+    #app.audience #sourcesBar,
+    #app.audience #audioMeterPanel,
+    #app.audience .h-splitter,
+    #app.audience #controls { display: none; }
+    #app.audience #stageWrap { flex: 1; }
+    #app.audience #stage { border: 0; border-radius: 0; width: 100% !important; height: 100% !important; }
     @media (max-width: 1200px) {
       #panel { min-width: 0; }
       #stage { min-height: 40vh; }
@@ -494,71 +650,63 @@
 <body>
   <div id="app">
     <div id="leftCol">
+      <div id="stageBar">
+        <div class="sb-left">
+          <button id="runAllBtn" class="btn main" title="Cmd/Ctrl+Shift+Enter">Run</button>
+          <button id="stopBtn" class="btn stop">Stop</button>
+          <div class="sb-sep"></div>
+          <button id="recordBtn" class="btn rec" title="Record canvas to MP4">Rec</button>
+          <button id="batchRecordBtn" class="btn rec" title="Record all presets automatically">Batch</button>
+          <div class="sb-sep"></div>
+          <span id="mapControls" style="display:flex;align-items:center;gap:3px;">
+            <button id="mapBtn" class="btn">Map</button>
+            <select id="mapPresetSelect">
+              <option value="">Clean</option>
+            </select>
+            <button id="mapOpenBtn" class="btn" style="display:none;">Open</button>
+            <button id="mapSaveBtn" class="btn" style="display:none;">Save</button>
+            <button id="mapResetBtn" class="btn" style="display:none;">Reset</button>
+            <button id="mapPreviewToggle" class="btn" style="display:none;">Preview</button>
+            <button id="mapCurvesBtn" class="btn" style="display:none;">Curves</button>
+            <span id="gridDensityControls" style="display:none;">
+              <button id="gridMinus" class="btn">-</button>
+              <span id="gridSizeLabel" style="color:var(--dim);">3x3</span>
+              <button id="gridPlus" class="btn">+</button>
+            </span>
+          </span>
+        </div>
+        <div class="sb-right">
+          <button id="openOutBtn" class="btn">Output</button>
+          <button id="fsOutBtn" class="btn" title="Fullscreen output window">FS</button>
+          <select id="screenSelect" title="Target screen for output">
+            <option value="auto">Screen: Auto</option>
+          </select>
+          <div class="sb-sep"></div>
+          <select id="resolutionCtrl">
+            <option value="auto">Auto</option>
+            <option value="1920x1200" selected>1920x1200</option>
+            <option value="1920x1080">1920x1080</option>
+            <option value="1280x720">1280x720</option>
+            <option value="3840x2160">3840x2160</option>
+            <option value="1080x1920">1080x1920</option>
+            <option value="1080x1350">1080x1350</option>
+            <option value="1080x1080">1080x1080</option>
+            <option value="custom">Custom</option>
+          </select>
+          <span id="resLabel" style="color:var(--dim);font-family:var(--font-code);font-size:var(--ts-xs);font-variant-numeric:tabular-nums;"></span>
+        </div>
+      </div>
       <div id="stageWrap">
-        <div id="stageOverlay">
-          <div class="so-group">
-            <div class="so-row">
-              <button id="runAllBtn" class="btn main" title="Cmd/Ctrl+Shift+Enter">Run</button>
-              <button id="stopBtn" class="btn stop">Stop</button>
-            </div>
-          </div>
-          <div class="so-group so-sources">
-            <div class="so-row">
-              <button id="startAudioBtn" class="btn">Audio</button>
-              <span class="src-label">s0</span><select class="src-select" data-src="0"><option value="none">—</option></select>
-              <span class="src-label">s1</span><select class="src-select" data-src="1"><option value="none">—</option></select>
-              <span class="src-label">s2</span><select class="src-select" data-src="2"><option value="none">—</option></select>
-              <span class="src-label">s3</span><select class="src-select" data-src="3"><option value="none">—</option></select>
-            </div>
-          </div>
-          <div class="so-group" style="align-items:flex-end;">
-            <div class="so-row">
-              <button id="openOutBtn" class="btn">Output</button>
-              <select id="resolutionCtrl">
-                <option value="auto">Auto</option>
-                <option value="1920x1200" selected>1920x1200</option>
-                <option value="1920x1080">1920x1080</option>
-                <option value="1280x720">1280x720</option>
-                <option value="3840x2160">3840x2160</option>
-                <option value="1080x1920">1080x1920</option>
-                <option value="1080x1350">1080x1350</option>
-                <option value="1080x1080">1080x1080</option>
-                <option value="custom">Custom</option>
-              </select>
-              <span id="resLabel"></span>
-            </div>
-            <div class="so-row">
-              <button id="recordBtn" class="btn rec" title="Record canvas to MP4">Rec</button>
-              <button id="batchRecordBtn" class="btn rec" title="Record all presets automatically">Batch</button>
-            </div>
-            <div class="so-row" id="mapControls">
-              <button id="mapBtn" class="btn">Map</button>
-              <select id="mapPresetSelect">
-                <option value="">Clean</option>
-              </select>
-              <button id="mapOpenBtn" class="btn" style="display:none;">Open</button>
-              <button id="mapSaveBtn" class="btn" style="display:none;">Save</button>
-              <button id="mapResetBtn" class="btn" style="display:none;">Reset</button>
-              <button id="mapPreviewToggle" class="btn" style="display:none;">Preview</button>
-              <button id="mapCurvesBtn" class="btn" style="display:none;">Curves</button>
-              <span id="gridDensityControls" style="display:none;">
-                <button id="gridMinus" class="btn">-</button>
-                <span id="gridSizeLabel" style="color:var(--dim);">3x3</span>
-                <button id="gridPlus" class="btn">+</button>
-              </span>
-            </div>
-          </div>
-        </div>
-        <div id="linkBar">
-          <button id="linkBtn" class="btn" style="display:none;">Link</button>
-          <span id="linkBpmDisplay" class="link-info" style="display:none;"></span>
-          <span id="linkPeers" class="link-info" style="display:none;"></span>
-          <button id="hueSweepBtn" class="btn">~ Hue</button>
-          <button id="hueBarsBtn" class="btn" style="min-width:52px;">32 bars</button>
-        </div>
         <div id="stage"></div>
         <canvas id="mapCheckerboard" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; z-index:5; object-fit:contain;"></canvas>
         <svg id="mapOverlay" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; z-index:10;"></svg>
+      </div>
+      <div id="belowStageBar">
+        <button id="linkBtn" class="btn" style="display:none;">Link</button>
+        <span id="linkBpmDisplay" class="link-info" style="display:none;"></span>
+        <span id="linkPeers" class="link-info" style="display:none;"></span>
+        <button id="hueSweepBtn" class="btn">~ Hue</button>
+        <button id="hueBarsBtn" class="btn" style="min-width:52px;">32 bars</button>
       </div>
       <div id="globalControls">
           <label><span>Speed</span><input type="range" id="speedCtrl" min="0" max="4" step="0.1" value="1"><span class="val" id="speedVal">1.0</span></label>
@@ -570,6 +718,14 @@
           <label><span>Sharpen</span><input type="range" id="sharpenCtrl" min="0" max="100" value="0"><span class="val" id="sharpenVal">0</span></label>
           <div style="display:flex;justify-content:flex-end;"><button id="resetFiltersBtn" class="btn gc-reset">R</button></div>
         </div>
+      <div id="sourcesBar">
+        <button id="startAudioBtn" class="btn">Audio</button>
+        <div class="sb-sep" style="width:1px;height:14px;background:var(--line);margin:0 2px;"></div>
+        <span class="src-label">s0</span><select class="src-select" data-src="0"><option value="none">—</option></select>
+        <span class="src-label">s1</span><select class="src-select" data-src="1"><option value="none">—</option></select>
+        <span class="src-label">s2</span><select class="src-select" data-src="2"><option value="none">—</option></select>
+        <span class="src-label">s3</span><select class="src-select" data-src="3"><option value="none">—</option></select>
+      </div>
       <div id="audioMeterPanel">
         <canvas id="audioMeterCanvas"></canvas>
         <div style="position:absolute;top:3px;left:4px;display:flex;align-items:center;gap:6px;z-index:1;">
@@ -591,14 +747,20 @@
             <button id="saveAsBtn" class="btn">Save As</button>
           </div>
           <button id="openNdiBtn" class="btn" style="display:none;">NDI Out: Off</button>
-          <button id="fsOutBtn" class="btn" style="display:none;">Fullscreen Output</button>
           <button id="toggleCodeBtn" class="btn" style="display:none;">Audience Mode</button>
         </div>
         <div id="status">Ready</div>
         <div id="presetsHeader" class="section-head" style="flex-wrap:wrap;">
           <span class="sh-title hydra">Hydra</span>
+          <button class="sh-help-btn" data-help="hydra" title="Help">?</button>
           <a href="https://hydra.ojack.xyz/api/" target="_blank" class="btn" style="text-decoration:none;">Docs</a>
           <div class="toolbar-sep"></div>
+          <button id="presetsRunBtn" class="btn main" title="Run current code (Cmd/Ctrl+Shift+Enter)">Run</button>
+          <button id="saveFrameBtn" class="btn" title="Save current canvas as PNG">Save Frame</button>
+          <button id="captureDirBtn" class="btn" title="Change capture folder" style="padding:3px 5px;line-height:1;">
+            <svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 2.5V10a1 1 0 001 1h10a1 1 0 001-1V4.5a1 1 0 00-1-1H7L5.5 2H2a1 1 0 00-1 1z"/></svg>
+          </button>
+          <button id="captureAllBtn" class="btn" title="Auto-advance through all presets and save a frame of each">Capture All</button>
           <button id="communityRandomBtn" class="btn" title="Load random community Hydra sketch">Shuffle</button>
           <button id="autoplayBtn" class="btn">Autoplay</button>
           <select id="autoplayMode">
@@ -627,7 +789,37 @@
         </div>
         <div class="section-head">
           <span class="sh-title scope">Daydream / Scope</span>
-          <a href="https://docs.daydream.live/scope" target="_blank" class="btn" style="text-decoration:none;">Docs</a>
+          <button class="sh-help-btn" data-help="scope" title="Help">?</button>
+          <button id="scopePanelToggle" class="btn">UI + Docs</button>
+          <a href="https://docs.daydream.live/scope" target="_blank" class="btn" style="text-decoration:none;">Docs ↗</a>
+          <button id="ddPromptsToggle" class="btn" style="display:none;">Prompts</button>
+          <button id="ddNotesToggle" class="btn">Notes</button>
+        </div>
+        <div id="ddNotesPopout">
+          <div class="notes-head">
+            <span>Scope Notes</span>
+            <button id="ddNotesClose" class="btn" style="padding:1px 6px;">✕</button>
+          </div>
+          <textarea id="ddNotesArea" spellcheck="false" placeholder="Paste LoRA URLs, pipeline configs, notes..."></textarea>
+          <div class="notes-foot">
+            <span id="ddNotesSaved" style="opacity:0;">saved</span>
+          </div>
+        </div>
+        <div id="scopeIframePanel">
+          <div class="sip-col">
+            <div class="sip-head">
+              <span>Scope UI</span>
+              <a href="http://localhost:8000" target="_blank">open in tab ↗</a>
+            </div>
+            <iframe id="scopeUiFrame" src="about:blank" allow="camera;microphone;autoplay"></iframe>
+          </div>
+          <div class="sip-col">
+            <div class="sip-head">
+              <span>Docs</span>
+              <a href="https://docs.daydream.live/scope" target="_blank">open in tab ↗</a>
+            </div>
+            <iframe id="scopeDocsFrame" src="about:blank"></iframe>
+          </div>
         </div>
         <div id="scopePresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
         <div id="daydreamBar">
@@ -640,21 +832,25 @@
           <select id="ddLoraSelect" style="display:none;"></select>
           <select id="ddPreprocessor" style="display:none;"></select>
           <select id="ddPostprocessor" style="display:none;"></select>
+          <label id="ddVaceLabel" style="display:none;font-family:var(--font-ui);font-size:var(--ts-sm);color:var(--muted);cursor:pointer;"><input type="checkbox" id="ddVaceToggle"> VACE</label>
           <button id="ddLoadPipeline" style="display:none;"></button>
           <div class="dd-row">
             <div class="dd-dot" id="ddDot"></div>
             <span class="dd-label">Scope</span>
             <button id="ddScopeStart" class="btn">Start</button>
+            <button id="ddScopeRestart" class="btn" style="display:none;">Restart</button>
             <button id="ddToggle" class="btn" style="display:none;">Connect Video</button>
             <span id="ddInfo"></span>
+            <span id="scopeTimer" style="display:none;font-family:var(--font-code);font-size:var(--ts-sm);font-variant-numeric:tabular-nums;color:var(--dim);margin-left:4px;"></span>
             <a href="http://localhost:8000" target="_blank" class="btn" style="text-decoration:none;display:none;" id="ddScopeOpenTab">Scope UI</a>
             <span id="ddDebugToggle" style="margin-left:auto;">Log</span>
           </div>
-          <div class="dd-row" id="ddPromptRow" style="display:none;">
+          <div id="ddPromptsWrap" style="display:none;">
+          <div class="dd-row" id="ddPromptRow">
             <input type="text" id="ddPrompt" placeholder="Prompt..." value="abstract fluid art, iridescent light" style="flex:1;min-width:180px;">
             <button id="ddSend" class="btn">Send</button>
           </div>
-          <div id="piPanel" style="display:none;padding:4px 0 2px;">
+          <div id="piPanel" style="padding:4px 0 2px;">
             <div class="dd-row" style="margin-bottom:4px;">
               <button id="piRunBtn" class="btn main">▶ Sequence</button>
               <select id="piBarsSelect" style="font-size:inherit;">
@@ -676,24 +872,26 @@
                 <button id="piSceneNewBtn" class="btn">+ New</button>
                 <button id="piSceneDelBtn" class="btn" style="color:var(--danger);">Del</button>
               </div>
-              <textarea id="piTextarea" spellcheck="false" placeholder="One prompt per line..." style="width:100%;resize:vertical;min-height:80px;background:var(--bg);color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:6px 8px;font-family:inherit;font-size:inherit;line-height:1.5;outline:none;"></textarea>
+              <textarea id="piTextarea" spellcheck="false" placeholder="One prompt per line..." style="width:100%;resize:vertical;min-height:100px;background:var(--bg);color:var(--muted);border:1px solid var(--line);border-radius:2px;padding:6px 8px;font-family:var(--font-ui);font-size:var(--ts-sm);font-weight:400;line-height:1.6;outline:none;"></textarea>
               <div style="padding:3px 2px 0;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="piStatus"></div>
             </div>
           </div>
+          </div><!-- /ddPromptsWrap -->
           <!-- scopePresets moved above Scope controls -->
         </div>
         <div id="ddDebugLog"></div>
         <div class="section-head">
           <span class="sh-title ca">Cellular Automata</span>
+          <button class="sh-help-btn" data-help="ca" title="Help">?</button>
         </div>
         <div id="caPresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
         <div id="caControls" style="display:none;border-top:1px solid var(--line);padding:4px 10px;">
-          <span style="color:var(--dim);font-size:9px;letter-spacing:0.1em;display:block;margin-bottom:2px;">CONTROLS</span>
+          <span style="color:#5a8040;font-size:var(--ts-xs);font-weight:700;letter-spacing:0.14em;font-family:var(--font-ui);display:block;margin-bottom:2px;">CONTROLS</span>
           <label><span>Hue</span><input type="range" id="caHue" min="0" max="1" step="0.01" value="0.5"><span class="val" id="caHueVal">0.50</span></label>
           <label><span>Brightness</span><input type="range" id="caBright" min="0.3" max="2.5" step="0.05" value="1.0"><span class="val" id="caBrightVal">1.00</span></label>
           <label><span>Speed</span><input type="range" id="caSpeed" min="0.1" max="4" step="0.1" value="1.0"><span class="val" id="caSpeedVal">1.0</span></label>
           <label><span>Thickness</span><input type="range" id="caThick" min="0" max="10" step="0.5" value="0"><span class="val" id="caThickVal">0</span></label>
-          <span style="color:var(--dim);font-size:9px;letter-spacing:0.1em;display:block;margin-top:4px;margin-bottom:2px;">SHAPE</span>
+          <span style="color:#5a8040;font-size:var(--ts-xs);font-weight:700;letter-spacing:0.14em;font-family:var(--font-ui);display:block;margin-top:4px;margin-bottom:2px;">SHAPE</span>
           <label><span>Growth</span><input type="range" id="caFeed" min="0.01" max="0.08" step="0.001" value="0.037"><span class="val" id="caFeedVal">0.037</span></label>
           <label><span>Tolerance</span><input type="range" id="caKill" min="0.04" max="0.07" step="0.001" value="0.06"><span class="val" id="caKillVal">0.060</span></label>
           <label><span>Smoothness</span><input type="range" id="caSmooth" min="5" max="30" step="1" value="10"><span class="val" id="caSmoothVal">10</span></label>
@@ -701,6 +899,55 @@
             <button id="caReseedBtn" class="btn" style="flex:1;">Reseed</button>
           </div>
         </div>
+      </div>
+    </div>
+    <!-- Section help popouts -->
+    <div id="helpPopout-hydra" class="sh-help-popout">
+      <div class="help-head"><span>Hydra</span><button class="btn help-close" style="padding:1px 6px;">✕</button></div>
+      <div class="help-body">
+        <div class="help-section">Presets</div>
+        <p>Click any preset to load it. Code appears in the editor on the right. Hit <strong>Run</strong> (or <code>Cmd+Shift+Enter</code>) to execute.</p>
+        <div class="help-section">Autoplay</div>
+        <p>Cycles through presets automatically. Set interval by <strong>time</strong> (seconds) or <strong>bars</strong> (synced to BPM). Great for ambient museum loops.</p>
+        <div class="help-section">Global Controls</div>
+        <p><strong>Speed</strong> scales animation time. <strong>Hue / Saturation / Brightness / Contrast</strong> are post-processing on the final output. <strong>Sharpen</strong> adds detail.</p>
+        <div class="help-section">Editor</div>
+        <p>Live code editor. Select a block and hit <code>Cmd+Enter</code> to run just that selection. Full Hydra API — <code>osc()</code>, <code>noise()</code>, <code>src()</code>, etc.</p>
+      </div>
+    </div>
+    <div id="helpPopout-scope" class="sh-help-popout">
+      <div class="help-head"><span>Daydream / Scope</span><button class="btn help-close" style="padding:1px 6px;">✕</button></div>
+      <div class="help-body">
+        <div class="help-section">What This Does</div>
+        <p>Connects to <strong>Scope</strong> (Daydream's AI video engine) via NDI. The AI feed comes in on <code>s3</code> and can be blended with Hydra visuals.</p>
+        <div class="help-section">NDI Virtual Input</div>
+        <p>If NDI Virtual Input doesn't show the Scope source in its dropdown:</p>
+        <ul>
+          <li>The NDI system extension can linger after quitting the app</li>
+          <li>Find it: <code>ps aux | grep -i ndi</code></li>
+          <li>Kill the <code>.systemextension</code> process: <code>sudo kill &lt;PID&gt;</code></li>
+          <li>Reopen NDI Virtual Input — it respawns fresh</li>
+        </ul>
+        <p><strong>Startup choppiness is normal</strong> — NDI needs a few seconds to negotiate bandwidth after a fresh connection.</p>
+        <div class="help-section">Notes Button</div>
+        <p>The <strong>Notes</strong> button opens a scratchpad for LoRA URLs, pipeline configs, or anything you want to remember between sessions. Saved to browser storage.</p>
+      </div>
+    </div>
+    <div id="helpPopout-ca" class="sh-help-popout">
+      <div class="help-head"><span>Cellular Automata</span><button class="btn help-close" style="padding:1px 6px;">✕</button></div>
+      <div class="help-body">
+        <div class="help-section">What This Is</div>
+        <p>GPU-accelerated reaction-diffusion simulation rendered on <code>s0</code>. Creates organic, evolving textures — coral, worms, mitosis patterns.</p>
+        <div class="help-section">Controls</div>
+        <ul>
+          <li><strong>Hue / Brightness</strong> — color the output</li>
+          <li><strong>Speed</strong> — simulation steps per frame</li>
+          <li><strong>Thickness</strong> — line weight of the structures</li>
+          <li><strong>Growth / Tolerance</strong> — reaction-diffusion feed/kill rates. Small changes = big visual shifts</li>
+          <li><strong>Smoothness</strong> — blur passes between steps</li>
+        </ul>
+        <div class="help-section">Tips</div>
+        <p>CA writes to <code>s0</code>, so Hydra presets that use <code>src(s0)</code> will pick it up automatically. Hit <strong>Reseed</strong> to restart the simulation with fresh noise.</p>
       </div>
     </div>
     <div class="v-splitter" id="vSplitter" title="Drag to resize"></div>
@@ -717,8 +964,8 @@
     .CodeMirror {
       background: transparent !important;
       color: #eef !important;
-      font-family: inherit !important;
-      font-size: 13px !important;
+      font-family: var(--font-code) !important;
+      font-size: 15px !important;
       line-height: 1.55 !important;
       height: 100% !important;
       padding: 8px 4px;
@@ -757,6 +1004,16 @@
     .cm-s-hydra .cm-error { color: #ff5370; }
     .cm-s-hydra .cm-builtin { color: #ffcb6b; }
     .cm-s-hydra .cm-glsl-block { background: rgba(60, 80, 120, 0.18); border-radius: 2px; }
+    /* GLSL syntax highlighting via overlay */
+    .cm-s-hydra .cm-glsl-type      { color: #ffcb6b !important; }
+    .cm-s-hydra .cm-glsl-keyword   { color: #c792ea !important; }
+    .cm-s-hydra .cm-glsl-func      { color: #82aaff !important; }
+    .cm-s-hydra .cm-glsl-number    { color: #f78c6c !important; }
+    .cm-s-hydra .cm-glsl-operator  { color: #89ddff !important; }
+    .cm-s-hydra .cm-glsl-bracket   { color: #89ddff !important; }
+    .cm-s-hydra .cm-glsl-variable  { color: #eeffff !important; }
+    .cm-s-hydra .cm-glsl-comment   { color: #546e7a !important; font-style: italic; }
+    .cm-s-hydra .cm-glsl-inner     { background: rgba(40, 55, 90, 0.22); }
     .CodeMirror-scrollbar-filler { background: transparent !important; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
@@ -766,6 +1023,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/selection/active-line.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/comment/comment.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/mode/multiplex.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/mode/overlay.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/glsl/glsl.min.js"></script>
   <script src="/dist/hydra-synth.js"></script>
   <script>if (typeof Hydra === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"><\/script>')</script>
@@ -1336,12 +1594,29 @@
         statusEl.style.color = isError ? 'var(--danger)' : 'var(--muted)'
       }
 
+      var runningPresetFile = null
+
       function highlightActivePreset () {
         var btns = presetsEl.querySelectorAll('.presetBtn')
-        btns.forEach(function (b) { b.classList.remove('active') })
+        btns.forEach(function (b) {
+          b.classList.remove('active')
+          // If this button is the running preset, keep it green — don't add active
+          if (b.dataset.file === runningPresetFile) return
+          // If loaded but not yet run, show as active (blue)
+          if (b.dataset.file === currentPresetFile) b.classList.add('active')
+        })
+      }
+
+      function markPresetRunning () {
+        var btns = presetsEl.querySelectorAll('.presetBtn')
+        // Clear running from all, mark current as running + played
+        btns.forEach(function (b) { b.classList.remove('running', 'active') })
+        runningPresetFile = currentPresetFile
         if (!currentPresetFile) return
         btns.forEach(function (b) {
-          if (b.title === currentPresetFile) b.classList.add('active')
+          if (b.dataset.file === currentPresetFile) {
+            b.classList.add('running', 'played')
+          }
         })
       }
 
@@ -1349,7 +1624,7 @@
         if (!currentPresetFile) return
         var btns = presetsEl.querySelectorAll('.presetBtn')
         btns.forEach(function (b) {
-          if (b.title === currentPresetFile) {
+          if (b.dataset.file === currentPresetFile) {
             b.style.animation = 'saveFlash 0.6s ease-out'
             b.addEventListener('animationend', function () {
               b.style.animation = ''
@@ -2005,24 +2280,36 @@
       function fitCanvas () {
         if (!hydraCanvas) return
         var res = parseResolution(resolutionMode)
+        var wrap = document.getElementById('stageWrap')
         if (res) {
-          // Fixed resolution — set canvas to exact pixel dimensions
-          hydraCanvas.width = res.w
-          hydraCanvas.height = res.h
+          // Fixed resolution — only set canvas dims if actually changed
+          // (setting canvas.width/height kills any active captureStream)
+          if (hydraCanvas.width !== res.w || hydraCanvas.height !== res.h) {
+            hydraCanvas.width = res.w
+            hydraCanvas.height = res.h
+          }
           currentResW = res.w
           currentResH = res.h
-          // Apply aspect ratio to stage so preview isn't stretched
-          stageEl.style.aspectRatio = res.w + '/' + res.h
-          stageEl.style.maxHeight = '100%'
+          // Size stage to fit within stageWrap preserving aspect ratio
+          var wrapRect = wrap.getBoundingClientRect()
+          var ww = wrapRect.width
+          var wh = wrapRect.height
+          var scale = Math.min(ww / res.w, wh / res.h)
+          stageEl.style.width = Math.floor(res.w * scale) + 'px'
+          stageEl.style.height = Math.floor(res.h * scale) + 'px'
         } else {
           // Auto — fill stage area
-          stageEl.style.aspectRatio = ''
-          stageEl.style.maxHeight = ''
+          stageEl.style.width = '100%'
+          stageEl.style.height = '100%'
           var rect = stageEl.getBoundingClientRect()
-          hydraCanvas.width = Math.max(640, Math.floor(rect.width))
-          hydraCanvas.height = Math.max(360, Math.floor(rect.height))
-          currentResW = hydraCanvas.width
-          currentResH = hydraCanvas.height
+          var newW = Math.max(640, Math.floor(rect.width))
+          var newH = Math.max(360, Math.floor(rect.height))
+          if (hydraCanvas.width !== newW || hydraCanvas.height !== newH) {
+            hydraCanvas.width = newW
+            hydraCanvas.height = newH
+          }
+          currentResW = newW
+          currentResH = newH
         }
         if (typeof setResolution === 'function') {
           setResolution(hydraCanvas.width, hydraCanvas.height)
@@ -2134,6 +2421,8 @@
           localStorage.setItem('hydra-live-code', JSON.stringify({ code: snippet, ts: Date.now() }))
           if (relayWs && relayWs.readyState === 1) relayWs.send(JSON.stringify({ code: snippet }))
           setStatus(`Ran ${label}.`, false)
+          // Mark current preset as running (green) and played (orange persists)
+          if (currentPresetFile) markPresetRunning()
           // Auto health-check after preset loads (delayed so textures settle)
           if (label === 'all code') setTimeout(function () { if (window.hydraHealth) window.hydraHealth() }, 500)
         } catch (error) {
@@ -2305,24 +2594,26 @@
       }
 
       function attachOutputStream (win) {
-        if (!win || win.closed) return false
+        if (!win || win.closed) { console.log('[output] win closed or null'); return false }
         // Try both video IDs for compat with output.html and audience.html
         var video = null
-        try { video = win.document.getElementById('v') || win.document.getElementById('audienceVideo') } catch (e) { return false }
-        if (!video) return false
+        try { video = win.document.getElementById('v') || win.document.getElementById('audienceVideo') } catch (e) { console.log('[output] cross-origin blocked:', e.message); return false }
+        if (!video) { console.log('[output] no video element found in output window'); return false }
 
         const stream = getOutputStream()
         if (!stream) {
+          console.log('[output] captureStream failed — hydraCanvas:', !!hydraCanvas, 'captureStream:', !!(hydraCanvas && hydraCanvas.captureStream))
           setStatus('captureStream not supported in this browser.', true)
           return false
         }
 
+        console.log('[output] attaching stream, tracks:', stream.getVideoTracks().length, 'track state:', stream.getVideoTracks().map(function(t){return t.readyState}))
         if (video.srcObject !== stream) {
           video.srcObject = stream
           video.muted = true
           video.autoplay = true
           video.playsInline = true
-          video.play().catch(function () {})
+          video.play().catch(function (e) { console.log('[output] play() rejected:', e.message) })
         }
         return true
       }
@@ -2343,6 +2634,19 @@
             outputAttachTimer = null
             return
           }
+          // Check if existing stream tracks died (canvas resize kills them)
+          try {
+            var video = audienceWindow.document.getElementById('v')
+            if (video && video.srcObject) {
+              var tracks = video.srcObject.getVideoTracks()
+              if (tracks.length === 0 || tracks[0].readyState === 'ended') {
+                // Force fresh stream
+                outputStream = null
+                video.srcObject = null
+                console.log('[output] track died, re-attaching fresh stream')
+              }
+            }
+          } catch (e) {}
           attachOpenOutputs()
         }, 300)
       }
@@ -2359,10 +2663,24 @@
         const url = new URL('/dist/output.html', window.location.href).toString()
         var outW = currentResW || 1280
         var outH = currentResH || 720
-        // Cap popup size to screen bounds
-        outW = Math.min(outW, screen.availWidth - 40)
-        outH = Math.min(outH, screen.availHeight - 80)
-        const win = window.open(url, 'hydra-output', 'width=' + outW + ',height=' + outH)
+        // Scale down to fit comfortably — 50% of output res, capped to screen
+        // Scale to ~60% of output res for a comfortable preview window
+        var scale = Math.min(0.6, (screen.availWidth - 100) / outW, (screen.availHeight - 100) / outH)
+        outW = Math.max(640, Math.round(outW * scale))
+        outH = Math.max(360, Math.round(outH * scale))
+        // Position on selected screen
+        var screenSel = document.getElementById('screenSelect')
+        var screenIdx = screenSel ? screenSel.value : 'auto'
+        var posLeft = Math.round((screen.availWidth - outW) / 2)
+        var posTop = Math.round((screen.availHeight - outH) / 2)
+        if (screenIdx !== 'auto' && window._detectedScreens && window._detectedScreens[screenIdx]) {
+          var s = window._detectedScreens[screenIdx]
+          posLeft = s.left + Math.round((s.width - outW) / 2)
+          posTop = s.top + Math.round((s.height - outH) / 2)
+        }
+        // Force a detached popup window in Chrome — must specify toolbar=no etc.
+        var features = 'popup=1,toolbar=no,menubar=no,location=no,status=no,scrollbars=no,resizable=yes,width=' + outW + ',height=' + outH + ',left=' + posLeft + ',top=' + posTop
+        const win = window.open(url, 'hydra_output', features)
         if (!win) {
           setStatus('Popup blocked. Allow popups for this site.', true)
           return
@@ -2390,12 +2708,23 @@
       function fullscreenOutput () {
         if (!audienceWindow || audienceWindow.closed) {
           openOutput()
+          // After open, wait for load then fullscreen
+          setTimeout(function () { fullscreenOutput() }, 1000)
           return
         }
-        const v = audienceWindow.document.getElementById('audienceVideo')
-        if (v && v.requestFullscreen) {
-          audienceWindow.focus()
-          v.requestFullscreen().catch(function () {})
+        // Move window to selected screen first
+        var screenSel = document.getElementById('screenSelect')
+        var screenIdx = screenSel ? screenSel.value : 'auto'
+        if (screenIdx !== 'auto' && window._detectedScreens && window._detectedScreens[screenIdx]) {
+          var s = window._detectedScreens[screenIdx]
+          audienceWindow.moveTo(s.left, s.top)
+          audienceWindow.resizeTo(s.width, s.height)
+        }
+        audienceWindow.focus()
+        // Try fullscreen on the document element (works for output.html)
+        var el = audienceWindow.document.documentElement
+        if (el && el.requestFullscreen) {
+          el.requestFullscreen().catch(function () {})
         }
       }
 
@@ -2824,17 +3153,61 @@
         })
       })()
 
+      // GLSL syntax overlay — full token classification for types, keywords, builtins
+      ;(function () {
+        var glslTypes = /^(?:void|bool|int|uint|float|double|vec[234]|dvec[234]|bvec[234]|ivec[234]|uvec[234]|mat[234]|mat[234]x[234]|sampler[123]D|samplerCube|sampler[12]DShadow|samplerCubeShadow|sampler[12]DArray|sampler[12]DArrayShadow|isampler[123]D|isamplerCube|isampler[12]DArray|usampler[123]D|usamplerCube|usampler[12]DArray)\b/
+        var glslKeywords = /^(?:attribute|const|uniform|varying|in|out|inout|flat|smooth|noperspective|layout|centroid|patch|sample|precision|highp|mediump|lowp|invariant|struct|if|else|for|while|do|switch|case|default|break|continue|return|discard)\b/
+        var glslBuiltins = /^(?:radians|degrees|sin|cos|tan|asin|acos|atan|sinh|cosh|tanh|asinh|acosh|atanh|pow|exp|log|exp2|log2|sqrt|inversesqrt|abs|sign|floor|ceil|round|trunc|fract|mod|modf|min|max|clamp|mix|step|smoothstep|isnan|isinf|length|distance|dot|cross|normalize|faceforward|reflect|refract|matrixCompMult|outerProduct|transpose|determinant|inverse|lessThan|lessThanEqual|greaterThan|greaterThanEqual|equal|notEqual|any|all|not|texture|texture2D|textureCube|textureProj|textureLod|textureGrad|texelFetch|dFdx|dFdy|fwidth|gl_FragCoord|gl_FragColor|gl_Position|gl_PointSize|gl_FrontFacing|_st|_c0|time|resolution|mouse)\b/
+
+        CodeMirror.defineMode('glsl-overlay', function () {
+          return {
+            token: function (stream) {
+              // skip whitespace
+              if (stream.eatSpace()) return null
+              // comments
+              if (stream.match('//')) { stream.skipToEnd(); return 'glsl-comment' }
+              if (stream.match('/*')) {
+                while (!stream.eol()) {
+                  if (stream.match('*/')) break
+                  stream.next()
+                }
+                return 'glsl-comment'
+              }
+              // numbers (float and int)
+              if (stream.match(/^[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?/) ||
+                  stream.match(/^[0-9]+\.[0-9]*([eE][-+]?[0-9]+)?/) ||
+                  stream.match(/^[0-9]+([eE][-+]?[0-9]+)?/)) return 'glsl-number'
+              // identifiers — check types, keywords, builtins
+              if (stream.match(glslTypes)) return 'glsl-type'
+              if (stream.match(glslKeywords)) return 'glsl-keyword'
+              if (stream.match(glslBuiltins)) return 'glsl-func'
+              // operators
+              if (stream.match(/^[+\-*/%=<>!&|^~?:;,]/)) return 'glsl-operator'
+              // brackets/parens
+              if (stream.match(/^[(){}\[\]]/)) return 'glsl-bracket'
+              // any other word (user variables)
+              if (stream.match(/^[a-zA-Z_]\w*/)) return 'glsl-variable'
+              // fallback
+              stream.next()
+              return null
+            }
+          }
+        })
+      })()
+
       // Mixed mode: JavaScript with GLSL inside backtick template literals
       CodeMirror.defineMode('hydra-js', function (config) {
-        return CodeMirror.multiplexingMode(
+        var base = CodeMirror.multiplexingMode(
           CodeMirror.getMode(config, 'javascript'),
           {
             open: '`',
             close: '`',
             mode: CodeMirror.getMode(config, 'glsl'),
-            delimStyle: 'string'
+            delimStyle: 'string',
+            innerStyle: 'glsl-inner'
           }
         )
+        return CodeMirror.overlayMode(base, CodeMirror.getMode(config, 'glsl-overlay'))
       })
 
       // Init CodeMirror
@@ -2947,6 +3320,92 @@
       }
 
       runAllBtn.addEventListener('click', cmRunAll)
+      document.getElementById('presetsRunBtn').addEventListener('click', cmRunAll)
+
+      // ---- Save Frame: capture canvas as PNG and upload to server ----
+      document.getElementById('saveFrameBtn').addEventListener('click', function () {
+        if (!hydraCanvas) { setStatus('No canvas to capture.', true); return }
+        hydraCanvas.toBlob(function (blob) {
+          if (!blob) { setStatus('Canvas capture failed.', true); return }
+          var name = (currentPresetName || 'frame').replace(/[^a-zA-Z0-9_-]/g, '_')
+          fetch('/api/frame?name=' + encodeURIComponent(name), {
+            method: 'POST', body: blob, headers: { 'Content-Type': 'image/png' }
+          }).then(function (r) { return r.json() }).then(function (data) {
+            setStatus('Frame saved: ' + data.saved, false)
+          }).catch(function (err) { setStatus('Frame save failed: ' + err.message, true) })
+        }, 'image/png')
+      })
+
+      // ---- Capture dir button ----
+      document.getElementById('captureDirBtn').addEventListener('click', function () {
+        fetch('/api/settings').then(function (r) { return r.json() }).then(function (settings) {
+          var current = settings.captureDir || '~/HydraVJ/frames'
+          var newDir = prompt('Capture folder (~ = home directory):', current)
+          if (newDir === null || newDir.trim() === '' || newDir.trim() === current) return
+          fetch('/api/settings', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ captureDir: newDir.trim() })
+          }).then(function (r) { return r.json() }).then(function (updated) {
+            setStatus('Capture folder: ' + updated.captureDir, false)
+          }).catch(function (err) { setStatus('Settings update failed: ' + err.message, true) })
+        }).catch(function (err) { setStatus('Could not load settings: ' + err.message, true) })
+      })
+
+      // ---- Capture All: auto-advance through presets, run each, save a frame ----
+      document.getElementById('captureAllBtn').addEventListener('click', async function () {
+        var btn = this
+        if (btn.dataset.running === '1') {
+          btn.dataset.running = '0'
+          btn.textContent = 'Capture All'
+          setStatus('Capture cancelled.', false)
+          return
+        }
+        btn.dataset.running = '1'
+        btn.textContent = 'Stop Capture'
+        try {
+          var res = await fetch('/api/presets', { cache: 'no-store' })
+          var list = await res.json()
+          var delay = 5000 // 5 seconds per preset for feedback to develop
+          for (var i = 0; i < list.length; i++) {
+            if (btn.dataset.running !== '1') break
+            var entry = list[i]
+            setStatus('Capturing ' + (i + 1) + '/' + list.length + ': ' + (entry.name || entry.file) + '...', false)
+            try {
+              var p = await fetch('/api/presets/' + entry.file, { cache: 'no-store' })
+              var data = await p.json()
+              var code = parsePresetMarkdown(data.content)
+              pendingFilters = parsePresetFilters(data.content)
+              editorEl.value = code
+              currentPresetName = entry.name || entry.file.replace(/\.md$/, '')
+              currentPresetFile = entry.file
+              runCode(code, 'capture: ' + currentPresetName)
+              highlightActivePreset()
+              // Wait for visual to develop
+              await new Promise(function (resolve) { setTimeout(resolve, delay) })
+              if (btn.dataset.running !== '1') break
+              // Capture frame
+              await new Promise(function (resolve, reject) {
+                hydraCanvas.toBlob(function (blob) {
+                  if (!blob) { resolve(); return }
+                  var name = currentPresetName.replace(/[^a-zA-Z0-9_-]/g, '_')
+                  fetch('/api/frame?name=' + encodeURIComponent(name), {
+                    method: 'POST', body: blob, headers: { 'Content-Type': 'image/png' }
+                  }).then(function () { resolve() }).catch(function () { resolve() })
+                }, 'image/png')
+              })
+            } catch (err) {
+              console.warn('Capture failed for', entry.file, err)
+            }
+          }
+          setStatus('Capture complete: ' + list.length + ' frames saved to dist/frames/', false)
+        } catch (err) {
+          setStatus('Capture All failed: ' + err.message, true)
+        }
+        btn.dataset.running = '0'
+        btn.textContent = 'Capture All'
+      })
+
       saveBtn.addEventListener('click', savePreset)
       saveAsBtn.addEventListener('click', savePresetAs)
       startAudioBtn.addEventListener('click', function () { startAudio(true) })
@@ -2957,6 +3416,67 @@
       })
       fsOutBtn.addEventListener('click', fullscreenOutput)
       toggleCodeBtn.addEventListener('click', toggleAudienceMode)
+
+      // ── Screen detection for output targeting ──
+      // ── Screen detection for output targeting ──
+      ;(function detectScreens () {
+        var sel = document.getElementById('screenSelect')
+        window._detectedScreens = {}
+        var screensLoaded = false
+
+        function populateFromDetails (details) {
+          sel.innerHTML = ''
+          window._detectedScreens = {}
+          var opt = document.createElement('option')
+          opt.value = 'auto'
+          opt.textContent = 'Auto'
+          sel.appendChild(opt)
+          details.screens.forEach(function (s, i) {
+            window._detectedScreens[i] = { left: s.left, top: s.top, width: s.availWidth, height: s.availHeight }
+            var o = document.createElement('option')
+            o.value = i
+            o.textContent = s.label || ('Screen ' + (i + 1) + ' (' + s.width + 'x' + s.height + ')')
+            if (s.isPrimary) o.textContent += ' *'
+            sel.appendChild(o)
+          })
+          screensLoaded = true
+          // Listen for screen changes (plug/unplug monitor)
+          details.addEventListener('screenschange', function () {
+            populateFromDetails(details)
+          })
+        }
+
+        function populateBasic () {
+          sel.innerHTML = ''
+          window._detectedScreens = {}
+          var opt = document.createElement('option')
+          opt.value = 'auto'
+          opt.textContent = 'Auto'
+          sel.appendChild(opt)
+          window._detectedScreens[0] = { left: screen.availLeft || 0, top: screen.availTop || 0, width: screen.availWidth, height: screen.availHeight }
+          var o = document.createElement('option')
+          o.value = 0
+          o.textContent = 'Screen 1 (' + screen.width + 'x' + screen.height + ')'
+          sel.appendChild(o)
+        }
+
+        // Try to load screens (works if permission already granted)
+        if (window.getScreenDetails) {
+          window.getScreenDetails().then(populateFromDetails).catch(function () {
+            populateBasic()
+          })
+        } else {
+          populateBasic()
+        }
+
+        // On click/focus, request permission if not yet granted (needs user gesture)
+        sel.addEventListener('mousedown', function () {
+          if (screensLoaded || !window.getScreenDetails) return
+          window.getScreenDetails().then(populateFromDetails).catch(function () {
+            populateBasic()
+          })
+        })
+      })()
       document.getElementById('stopBtn').addEventListener('click', function () {
         if (!hydra) return
         // Tear down any active CA before clearing
@@ -3412,6 +3932,13 @@
       })
 
       window.addEventListener('resize', fitCanvas)
+      // Re-fit preview when stageWrap resizes (splitter drag, etc.)
+      ;(function () {
+        var sw = document.getElementById('stageWrap')
+        if (sw && typeof ResizeObserver !== 'undefined') {
+          new ResizeObserver(function () { fitCanvas() }).observe(sw)
+        }
+      })()
       window.__hydraAttachToOutputWindow = function (targetWindow) {
         return attachOutputStream(targetWindow, { cleanStatus: false })
       }
@@ -3763,6 +4290,8 @@
       var ddPreprocessorSelect = document.getElementById('ddPreprocessor')
       var ddPostprocessorSelect = document.getElementById('ddPostprocessor')
       var ddLoadPipelineBtn = document.getElementById('ddLoadPipeline')
+      var ddVaceToggle = document.getElementById('ddVaceToggle')
+      var ddVaceLabel = document.getElementById('ddVaceLabel')
 
       function ddFetchPipelinesAndLoras () {
         // Known Scope pipelines — the API only returns locally-installed ones,
@@ -3845,6 +4374,7 @@
         }).catch(function () {})
 
         ddLoadPipelineBtn.style.display = ''
+        ddVaceLabel.style.display = ''
       }
 
       // Build pipeline load payload from current dropdown selections
@@ -3857,7 +4387,8 @@
         if (preProc) pipelineIds.push(preProc)
         pipelineIds.push(pipelineId)
         if (postProc) pipelineIds.push(postProc)
-        var loadParams = { width: 576, height: 320, vace_enabled: true, vace_context_scale: 1 }
+        var vaceOn = ddVaceToggle ? ddVaceToggle.checked : false
+        var loadParams = { width: 576, height: 320, vace_enabled: vaceOn, vace_context_scale: vaceOn ? 1 : 0 }
         if (loraPath) {
           loadParams.loras = [{ path: loraPath, scale: 1.0 }]
         } else {
@@ -4004,14 +4535,31 @@
         })
       })
 
+      var ddRestartBtn = document.getElementById('ddScopeRestart')
+
       function ddShowScope () {
         ddStartBtn.textContent = 'Running'
         ddStartBtn.className = 'btn main'
         ddStartBtn.disabled = true
+        ddRestartBtn.style.display = ''
         document.getElementById('ddScopeOpenTab').style.display = ''
         ddToggle.style.display = ''
-        document.getElementById('ddPromptRow').style.display = ''
-        document.getElementById('piPanel').style.display = ''
+        // Show Prompts toggle button (prompts stay hidden until user clicks it)
+        document.getElementById('ddPromptsToggle').style.display = ''
+        // Auto-open prompts panel
+        var _pBtn = document.getElementById('ddPromptsToggle')
+        var _pWrap = document.getElementById('ddPromptsWrap')
+        if (_pWrap.style.display === 'none') {
+          _pWrap.style.display = ''
+          _pBtn.classList.add('active')
+        }
+        // Auto-start sequencer (delay to let OSC route settle)
+        setTimeout(function () {
+          var _piRunBtn = document.getElementById('piRunBtn')
+          if (_piRunBtn && _piRunBtn.textContent.indexOf('▶') === 0) {
+            _piRunBtn.click()
+          }
+        }, 2000)
         // Auto-connect WebRTC to get AI video into s0
         if (!ddActive) {
           ddLog('Scope healthy — auto-connecting WebRTC', 'ok')
@@ -4069,8 +4617,146 @@
         })
       })
 
+      ddRestartBtn.addEventListener('click', function () {
+        ddRestartBtn.textContent = 'Restarting...'
+        ddRestartBtn.disabled = true
+        ddStartBtn.textContent = 'Restarting...'
+        ddStartBtn.className = 'btn'
+        ddDisconnect()
+        ddSetState('connecting', 'Restarting Scope...')
+        ddLog('Restarting Scope...')
+        fetch('/api/scope/restart', { method: 'POST' }).then(function (r) { return r.json() }).then(function (d) {
+          if (d.error) {
+            ddSetState('err', d.error)
+            ddRestartBtn.textContent = 'Restart'
+            ddRestartBtn.disabled = false
+            ddStartBtn.textContent = 'Start'
+            ddStartBtn.disabled = false
+          } else {
+            ddLog('Scope restarted', 'ok')
+            ddShowScope()
+            ddRestartBtn.textContent = 'Restart'
+            ddRestartBtn.disabled = false
+          }
+        }).catch(function (err) {
+          ddSetState('err', err.message)
+          ddRestartBtn.textContent = 'Restart'
+          ddRestartBtn.disabled = false
+          ddStartBtn.textContent = 'Start'
+          ddStartBtn.disabled = false
+        })
+      })
+
       // On load: check if Scope is already running
       ddCheckAndShowScope()
+
+      // ---- Scope iframe panel toggle (UI + Docs) ----
+      ;(function () {
+        var panelToggle = document.getElementById('scopePanelToggle')
+        var panel = document.getElementById('scopeIframePanel')
+        var uiFrame = document.getElementById('scopeUiFrame')
+        var docsFrame = document.getElementById('scopeDocsFrame')
+        var loaded = false
+        panelToggle.addEventListener('click', function () {
+          var isOpen = panel.classList.toggle('open')
+          panelToggle.classList.toggle('active', isOpen)
+          if (isOpen && !loaded) {
+            uiFrame.src = 'http://localhost:8000'
+            docsFrame.src = 'https://docs.daydream.live/scope'
+            loaded = true
+          }
+        })
+      })()
+
+      // ---- Prompts toggle ----
+      ;(function () {
+        var btn = document.getElementById('ddPromptsToggle')
+        var wrap = document.getElementById('ddPromptsWrap')
+        btn.addEventListener('click', function () {
+          var show = wrap.style.display === 'none'
+          wrap.style.display = show ? '' : 'none'
+          btn.classList.toggle('active', show)
+        })
+        // Show Prompts button once Scope connects
+        var obs = new MutationObserver(function () {
+          if (document.getElementById('ddDot').classList.contains('on')) {
+            btn.style.display = ''
+          }
+        })
+        obs.observe(document.getElementById('ddDot'), { attributes: true })
+      })()
+
+      // ---- Notes popout (localStorage-persisted) ----
+      ;(function () {
+        var toggleBtn = document.getElementById('ddNotesToggle')
+        var popout = document.getElementById('ddNotesPopout')
+        var closeBtn = document.getElementById('ddNotesClose')
+        var textarea = document.getElementById('ddNotesArea')
+        var savedEl = document.getElementById('ddNotesSaved')
+        var saveTimer = null
+
+        // Load saved notes from server (falls back to localStorage)
+        fetch('/api/notes').then(function (r) { return r.json() }).then(function (data) {
+          if (data.notes) textarea.value = data.notes
+          else try { textarea.value = localStorage.getItem('hydra-scope-notes') || '' } catch (e) {}
+        }).catch(function () {
+          try { textarea.value = localStorage.getItem('hydra-scope-notes') || '' } catch (e) {}
+        })
+
+        // Position near the toggle button
+        function positionPopout () {
+          var rect = toggleBtn.getBoundingClientRect()
+          popout.style.top = (rect.bottom + 4) + 'px'
+          popout.style.left = Math.max(4, rect.left - 160) + 'px'
+        }
+
+        toggleBtn.addEventListener('click', function () {
+          var isOpen = popout.classList.toggle('open')
+          toggleBtn.classList.toggle('active', isOpen)
+          if (isOpen) {
+            positionPopout()
+            textarea.focus()
+          }
+        })
+
+        closeBtn.addEventListener('click', function () {
+          popout.classList.remove('open')
+          toggleBtn.classList.remove('active')
+        })
+
+        // Auto-save on typing (debounced 500ms) — saves to server + localStorage
+        textarea.addEventListener('input', function () {
+          clearTimeout(saveTimer)
+          saveTimer = setTimeout(function () {
+            var val = textarea.value
+            try { localStorage.setItem('hydra-scope-notes', val) } catch (e) {}
+            fetch('/api/notes', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ notes: val })
+            }).catch(function () {})
+            savedEl.style.opacity = '1'
+            setTimeout(function () { savedEl.style.opacity = '0' }, 1200)
+          }, 500)
+        })
+
+        // Draggable header
+        var head = popout.querySelector('.notes-head')
+        var dragging = false, dx = 0, dy = 0
+        head.addEventListener('mousedown', function (e) {
+          if (e.target.tagName === 'BUTTON') return
+          dragging = true
+          dx = e.clientX - popout.offsetLeft
+          dy = e.clientY - popout.offsetTop
+          e.preventDefault()
+        })
+        document.addEventListener('mousemove', function (e) {
+          if (!dragging) return
+          popout.style.left = (e.clientX - dx) + 'px'
+          popout.style.top = (e.clientY - dy) + 'px'
+        })
+        document.addEventListener('mouseup', function () { dragging = false })
+      })()
 
       function ddSetState (state, msg) {
         ddDot.className = 'dd-dot' + (state === 'on' ? ' on' : state === 'err' ? ' err' : state === 'connecting' ? ' connecting' : '')
@@ -4078,9 +4764,87 @@
         if (state === 'on') {
           ddToggle.textContent = 'Disconnect'
           ddToggle.className = 'btn stop'
+          // Start session timer if not already running
+          if (!scopeSessionStart) scopeTimerStart()
+        } else if (state === 'err' || (!state && !msg)) {
+          ddToggle.textContent = 'Connect Video'
+          ddToggle.className = 'btn'
+          scopeTimerStop()
         } else {
           ddToggle.textContent = 'Connect Video'
           ddToggle.className = 'btn'
+        }
+      }
+
+      // ---- Scope session timer (60-min inference limit) ----
+      var scopeTimerEl = document.getElementById('scopeTimer')
+      var scopeTimerInterval = null
+      var scopeSessionStart = null
+      var SCOPE_SESSION_LIMIT = 60 * 60 // 60 minutes in seconds
+      var scopeTimerWarned = {}
+      var SCOPE_TIMER_KEY = 'hydra-scope-session-start'
+
+      function scopeTimerStart () {
+        scopeTimerStop()
+        // Resume persisted session if still within window
+        var persisted = parseInt(localStorage.getItem(SCOPE_TIMER_KEY), 10)
+        if (persisted && (Date.now() - persisted) < SCOPE_SESSION_LIMIT * 1000) {
+          scopeSessionStart = persisted
+        } else {
+          scopeSessionStart = Date.now()
+          localStorage.setItem(SCOPE_TIMER_KEY, String(scopeSessionStart))
+        }
+        scopeTimerWarned = {}
+        scopeTimerEl.style.display = ''
+        scopeTimerInterval = setInterval(scopeTimerTick, 1000)
+        scopeTimerTick()
+      }
+
+      function scopeTimerStop () {
+        if (scopeTimerInterval) clearInterval(scopeTimerInterval)
+        scopeTimerInterval = null
+        scopeSessionStart = null
+        scopeTimerEl.style.display = 'none'
+        scopeTimerEl.textContent = ''
+        scopeTimerWarned = {}
+        try { localStorage.removeItem(SCOPE_TIMER_KEY) } catch (e) {}
+      }
+
+      function scopeTimerTick () {
+        if (!scopeSessionStart) return
+        var elapsed = Math.floor((Date.now() - scopeSessionStart) / 1000)
+        var remaining = Math.max(0, SCOPE_SESSION_LIMIT - elapsed)
+        var min = Math.floor(remaining / 60)
+        var sec = remaining % 60
+        scopeTimerEl.textContent = min + ':' + String(sec).padStart(2, '0')
+
+        // Color: normal → yellow at 10min → orange at 5min → red at 2min
+        if (remaining <= 120) {
+          scopeTimerEl.style.color = '#e53e3e'
+        } else if (remaining <= 300) {
+          scopeTimerEl.style.color = '#ed8936'
+        } else if (remaining <= 600) {
+          scopeTimerEl.style.color = '#ecc94b'
+        } else {
+          scopeTimerEl.style.color = 'var(--dim)'
+        }
+
+        // Warnings
+        if (remaining === 600 && !scopeTimerWarned['10m']) {
+          scopeTimerWarned['10m'] = true
+          setStatus('Scope session: 10 minutes remaining', true)
+        }
+        if (remaining === 300 && !scopeTimerWarned['5m']) {
+          scopeTimerWarned['5m'] = true
+          setStatus('Scope session: 5 minutes remaining — restart soon', true)
+        }
+        if (remaining === 60 && !scopeTimerWarned['1m']) {
+          scopeTimerWarned['1m'] = true
+          setStatus('Scope session: 1 minute remaining — will stop!', true)
+        }
+        if (remaining === 0 && !scopeTimerWarned['0']) {
+          scopeTimerWarned['0'] = true
+          setStatus('Scope session expired — restart Scope to continue', true)
         }
       }
 
@@ -5165,7 +5929,7 @@
         piListToggle.addEventListener('click', function () {
           piListVisible = !piListVisible
           piListBody.style.display = piListVisible ? '' : 'none'
-          piListToggle.textContent = 'Prompts'
+          piListToggle.textContent = piListVisible ? 'Prompts' : 'Prompts'
         })
 
         var piSync  = false
@@ -5358,112 +6122,191 @@
         piLoadScene('Datamosh')
       })()
 
-      // ---- Scope Parameter Automation ----
-      // Always-on oscillators for Scope params. Link-synced when available.
+      // ---- Scope Beat Sequencer ----
+      // Beat-quantized step sequencer driven exclusively by Ableton Link.
+      // window.__breathOnBeat(beat) is the sole entry point (~20Hz from Link WS).
+      // No setInterval. No Date.now(). Params freeze at last value if Link disconnects.
       ;(function () {
-        var TWO_PI = 2 * Math.PI
-        var SEND_EVERY = 2
-        var lastSentBeat = -999
-        var BAR_OPTIONS  = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128]
+        var BAR_OPTIONS = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128]
+        var seqLogCount = 0
+        function seqLog (msg) {
+          // Throttle: only log first 20 + every 50th after that
+          seqLogCount++
+          if (seqLogCount > 20 && seqLogCount % 50 !== 0) return
+          console.log('[SCOPE SEQ] ' + msg)
+        }
 
-        // mode:'sine' = smooth oscillation  |  mode:'step' = square wave snap
+        // Ping-pong sequence: [min, ..., max, ..., min+step] (no endpoint repetition)
+        function buildSequence (min, max, stepSize) {
+          stepSize = Math.abs(stepSize)
+          if (stepSize === 0 || min === max || stepSize > (max - min)) return [min]
+          var ascending = []
+          var n = Math.round((max - min) / stepSize)
+          for (var i = 0; i <= n; i++) {
+            ascending.push(Math.round((min + i * stepSize) * 1e6) / 1e6)
+          }
+          if (ascending.length <= 2) return ascending
+          var descending = ascending.slice(1, ascending.length - 1).reverse()
+          return ascending.concat(descending)
+        }
+
         var PARAMS = [
-          { id: 'noise', label: 'noise_scale',             key: 'noise_scale',             bars: 1, min: 0.10, max: 0.20, mode: 'sine' },
-          { id: 'vace',  label: 'vace_context_scale',      key: 'vace_context_scale',      bars: 2, min: 0.88, max: 1.12, mode: 'step' },
-          { id: 'kv',    label: 'kv_cache_attention_bias', key: 'kv_cache_attention_bias', bars: 4, min: 0.52, max: 0.68, mode: 'step' }
+          { id: 'noise', label: 'Noise',   key: 'noise_scale',             defMin: 0.10, defMax: 0.20, defStep: 0.025, defBars: 1,  type: 'float' },
+          { id: 'vace',  label: 'VACE',    key: 'vace_context_scale',      defMin: 0.88, defMax: 1.12, defStep: 0.06,  defBars: 2,  type: 'float' },
+          { id: 'kv',    label: 'KV Bias', key: 'kv_cache_attention_bias', defMin: 0.52, defMax: 0.68, defStep: 0.04,  defBars: 4,  type: 'float' }
         ]
 
-        // 3 independent oscillators — sent together as denoising_step_list
         var STEP_PARAMS = [
-          { id: 's1', label: 'step 1', bars: 1, min: 850, max: 1000 },
-          { id: 's2', label: 'step 2', bars: 2, min: 500, max: 800  },
-          { id: 's3', label: 'step 3', bars: 4, min: 100, max: 500  }
+          { id: 's1', label: 'Step 1', defMin: 850,  defMax: 1000, defStep: 25, defBars: 1 },
+          { id: 's2', label: 'Step 2', defMin: 500,  defMax: 800,  defStep: 25, defBars: 2 },
+          { id: 's3', label: 'Step 3', defMin: 100,  defMax: 500,  defStep: 25, defBars: 4 }
         ]
 
-        // State — populated after UI build
+        // State
         var state = {}
         PARAMS.forEach(function (p) {
-          state[p.id] = { enabled: true, min: p.min, max: p.max, bars: p.bars, mode: p.mode, lastVal: null, valSpan: null }
+          state[p.id] = {
+            enabled: true,
+            min: p.defMin, max: p.defMax, step: p.defStep,
+            bars: p.defBars,
+            seq: buildSequence(p.defMin, p.defMax, p.defStep),
+            seqIdx: 0,
+            lastSteppedBeat: -1,
+            lastVal: null,
+            valSpan: null, dotEl: null
+          }
         })
         var stepStates = {}
         STEP_PARAMS.forEach(function (p) {
-          stepStates[p.id] = { enabled: true, min: p.min, max: p.max, bars: p.bars, lastVal: -1, valSpan: null }
+          stepStates[p.id] = {
+            enabled: true,
+            min: p.defMin, max: p.defMax, step: p.defStep,
+            bars: p.defBars,
+            seq: buildSequence(p.defMin, p.defMax, p.defStep),
+            seqIdx: 0,
+            lastSteppedBeat: -1,
+            lastVal: null,
+            valSpan: null, dotEl: null
+          }
         })
 
+        // OSC send
+        var sendCount = 0
+        var sendCountEl = null
+
         function oscSend (key, value, type) {
+          var payload = { key: key, value: value, type: type || 'float' }
+          seqLog('OSC SEND: ' + key + ' = ' + JSON.stringify(value) + ' (' + (type || 'float') + ')')
           fetch('/api/scope-osc', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: key, value: value, type: type || 'float' })
-          }).catch(function () {})
+            body: JSON.stringify(payload)
+          }).then(function (r) {
+            if (!r.ok) seqLog('OSC FAIL: ' + key + ' HTTP ' + r.status)
+          }).catch(function (err) {
+            seqLog('OSC ERROR: ' + key + ' ' + (err.message || 'fetch failed'))
+          })
+          sendCount++
+          if (sendCountEl) sendCountEl.textContent = sendCount
         }
 
-        function doSend (beat) {
-          // Wall-clock phase — link.beat=0 when Ableton disconnected, causes stuck midpoint
-          var phase = Date.now() / 500
+        function flashDot (dotEl) {
+          if (!dotEl) return
+          dotEl.classList.add('flash')
+          setTimeout(function () { dotEl.classList.remove('flash') }, 80)
+        }
 
-          // Float params (noise sine, vace/kv square-wave)
+        function rebuildSeq (s) {
+          s.seq = buildSequence(s.min, s.max, s.step)
+          s.seqIdx = s.seqIdx % s.seq.length
+        }
+
+        // ---- Beat engine (sole entry point) ----
+        window.__breathOnBeat = function (beat) {
+          var currentBeat = Math.floor(beat)
+          seqLog('beat=' + currentBeat + ' (raw=' + beat.toFixed(3) + ')')
+
+          // Float params
           PARAMS.forEach(function (p) {
             var s = state[p.id]
             if (!s.enabled) return
-            var period = s.bars * 4
-            var val
-            if (s.mode === 'step') {
-              // Square wave: snap to max when sin>0, min when sin<=0
-              val = Math.sin(phase / period * TWO_PI) >= 0 ? s.max : s.min
-              val = Math.round(val * 1000) / 1000
-              if (val === s.lastVal) return   // no change, skip send
+            var holdBeats = s.bars * 4
+
+            // First call after enable: send immediately
+            if (s.lastSteppedBeat === -1) {
+              s.lastSteppedBeat = currentBeat
+              s.seqIdx = 0
+              var val = s.seq[0]
               s.lastVal = val
-            } else {
-              val = (s.min + s.max) / 2 + (s.max - s.min) / 2 * Math.sin(phase / period * TWO_PI)
-              val = Math.round(val * 1000) / 1000
+              oscSend(p.key, val, p.type)
+              if (s.valSpan) s.valSpan.textContent = val.toFixed(3)
+              flashDot(s.dotEl)
+              return
             }
-            oscSend(p.key, val, 'float')
+
+            // Backwards jump (Link reconnect) — reset
+            var delta = currentBeat - s.lastSteppedBeat
+            if (delta < 0) {
+              s.lastSteppedBeat = currentBeat
+              return
+            }
+
+            // Not yet time
+            if (delta < holdBeats) return
+
+            // Advance
+            s.seqIdx = (s.seqIdx + 1) % s.seq.length
+            s.lastSteppedBeat = currentBeat
+            var val = s.seq[s.seqIdx]
+            s.lastVal = val
+            oscSend(p.key, val, p.type)
             if (s.valSpan) s.valSpan.textContent = val.toFixed(3)
+            flashDot(s.dotEl)
           })
 
-          // Denoising steps — 3 independent oscillators, sent as one int_list
-          var pending = []
+          // Denoising step channels
           var anyChanged = false
-          STEP_PARAMS.forEach(function (p) {
-            var ss = stepStates[p.id]
+          var ids = ['s1', 's2', 's3']
+
+          ids.forEach(function (id) {
+            var ss = stepStates[id]
             if (!ss.enabled) return
-            var period = ss.bars * 4
-            var t = 0.5 + 0.5 * Math.sin(phase / period * TWO_PI)
-            var x = Math.round((ss.min + (ss.max - ss.min) * t) / 25) * 25
-            pending.push({ x: x, ss: ss })
-            if (Math.abs(x - ss.lastVal) >= 25) anyChanged = true
+            var holdBeats = ss.bars * 4
+
+            if (ss.lastSteppedBeat === -1) {
+              ss.lastSteppedBeat = currentBeat
+              ss.seqIdx = 0
+              ss.lastVal = ss.seq[0]
+              anyChanged = true
+              if (ss.valSpan) ss.valSpan.textContent = ss.lastVal
+              flashDot(ss.dotEl)
+            } else {
+              var delta = currentBeat - ss.lastSteppedBeat
+              if (delta < 0) {
+                ss.lastSteppedBeat = currentBeat
+              } else if (delta >= holdBeats && ss.enabled) {
+                ss.seqIdx = (ss.seqIdx + 1) % ss.seq.length
+                ss.lastSteppedBeat = currentBeat
+                ss.lastVal = ss.seq[ss.seqIdx]
+                anyChanged = true
+                if (ss.valSpan) ss.valSpan.textContent = ss.lastVal
+                flashDot(ss.dotEl)
+              }
+            }
           })
-          if (pending.length > 0 && anyChanged) {
-            pending.forEach(function (e) {
-              e.ss.lastVal = e.x
-              if (e.ss.valSpan) e.ss.valSpan.textContent = e.x
+
+          if (anyChanged) {
+            // Always 3 elements — disabled channels contribute frozen lastVal
+            var vals = ids.map(function (id) {
+              var ss = stepStates[id]
+              return Math.round(ss.lastVal !== null ? ss.lastVal : ss.seq[0])
             })
-            // Sort descending — denoising schedule must be high→low
-            var vals = pending.map(function (e) { return e.x }).sort(function (a, b) { return b - a })
+            vals.sort(function (a, b) { return b - a })
             oscSend('denoising_step_list', vals, 'int_list')
           }
         }
 
-        var sendCount = 0
-        var sendCountEl = null
-
-        // Link hook
-        window.__breathOnBeat = function (beat) {
-          doSend(beat)
-          sendCount++
-          if (sendCountEl) sendCountEl.textContent = sendCount
-        }
-
-        // Fallback: always run every 1s, Link hook deduplicates via beat phase
-        setInterval(function () {
-          var beat = Date.now() / 500
-          doSend(beat)
-          sendCount++
-          if (sendCountEl) sendCountEl.textContent = sendCount
-        }, 1000)
-
-        // ---- UI ----
+        // ---- UI helpers ----
         function makeBarsSelect (currentBars, onChange) {
           var sel = document.createElement('select')
           sel.className = 'sa-bars'
@@ -5477,28 +6320,45 @@
           return sel
         }
 
+        function makeNumInput (val, step, title, cls, onChange) {
+          var inp = document.createElement('input')
+          inp.type = 'number'; inp.className = cls
+          inp.value = val; inp.step = step; inp.title = title
+          inp.addEventListener('input', function () {
+            var v = parseFloat(inp.value)
+            if (!isNaN(v)) onChange(v)
+          })
+          return inp
+        }
+
+        function makeDot () {
+          var d = document.createElement('span')
+          d.className = 'sa-dot'
+          return d
+        }
+
+        // ---- Build UI ----
         function buildUI () {
           var wrap = document.createElement('div')
           wrap.id = 'scopeAuto'
 
           var hdr = document.createElement('div')
           hdr.className = 'sa-head'
-          hdr.style.cssText = 'display:flex;justify-content:space-between;'
           var hdrLabel = document.createElement('span')
-          hdrLabel.textContent = 'SCOPE AUTO'
+          hdrLabel.textContent = 'SCOPE SEQ'
           var counter = document.createElement('span')
-          counter.style.cssText = 'color:#1a4a1a;'
+          counter.className = 'sa-counter'
           counter.textContent = '0'
           sendCountEl = counter
           hdr.appendChild(hdrLabel); hdr.appendChild(counter)
           wrap.appendChild(hdr)
 
+          // Float param rows
           PARAMS.forEach(function (p) {
             var s = state[p.id]
             var row = document.createElement('div')
             row.className = 'sa-row'
 
-            // Toggle
             var tog = document.createElement('span')
             tog.className = 'sa-toggle'
             tog.textContent = 'ON'
@@ -5507,52 +6367,40 @@
               tog.textContent = s.enabled ? 'ON' : 'OFF'
               tog.classList.toggle('off', !s.enabled)
               row.classList.toggle('off', !s.enabled)
+              if (s.enabled) { s.lastSteppedBeat = -1; s.seqIdx = 0 }
             })
 
-            // Name
-            var name = document.createElement('span')
-            name.className = 'sa-name'
-            name.textContent = p.label
+            var nameEl = document.createElement('span')
+            nameEl.className = 'sa-name'
+            nameEl.textContent = p.label
 
-            // Mode badge (STEP / SINE)
-            var modeBadge = document.createElement('span')
-            modeBadge.className = 'sa-mode'
-            modeBadge.textContent = p.mode === 'step' ? 'SQ' : '~'
-            modeBadge.title = p.mode === 'step' ? 'Square wave' : 'Sine wave'
+            var minIn = makeNumInput(p.defMin, p.defStep, 'Min', 'sa-num', function (v) {
+              s.min = v; rebuildSeq(s)
+            })
+            var stepIn = makeNumInput(p.defStep, p.defStep, 'Step', 'sa-step', function (v) {
+              s.step = v; rebuildSeq(s)
+            })
+            var maxIn = makeNumInput(p.defMax, p.defStep, 'Max', 'sa-num', function (v) {
+              s.max = v; rebuildSeq(s)
+            })
 
-            // Min
-            var minIn = document.createElement('input')
-            minIn.type = 'number'; minIn.className = 'sa-num'
-            minIn.value = p.min; minIn.step = 0.01
-            minIn.title = 'Min'
-            minIn.addEventListener('input', function () { s.min = parseFloat(minIn.value) || p.min })
+            var barsEl = makeBarsSelect(p.defBars, function (b) { s.bars = b })
 
-            var sep = document.createElement('span')
-            sep.className = 'sa-sep'; sep.textContent = '↔'
+            var valEl = document.createElement('span')
+            valEl.className = 'sa-val'
+            valEl.textContent = '—'
+            s.valSpan = valEl
 
-            // Max
-            var maxIn = document.createElement('input')
-            maxIn.type = 'number'; maxIn.className = 'sa-num'
-            maxIn.value = p.max; maxIn.step = 0.01
-            maxIn.title = 'Max'
-            maxIn.addEventListener('input', function () { s.max = parseFloat(maxIn.value) || p.max })
+            var dot = makeDot()
+            s.dotEl = dot
 
-            // Bars
-            var barsEl = makeBarsSelect(p.bars, function (b) { s.bars = b })
-
-            // Current value
-            var val = document.createElement('span')
-            val.className = 'sa-val'
-            val.textContent = ((p.min + p.max) / 2).toFixed(3)
-            s.valSpan = val
-
-            row.appendChild(tog); row.appendChild(name); row.appendChild(modeBadge)
-            row.appendChild(minIn); row.appendChild(sep); row.appendChild(maxIn)
-            row.appendChild(barsEl); row.appendChild(val)
+            row.appendChild(tog); row.appendChild(nameEl)
+            row.appendChild(minIn); row.appendChild(stepIn); row.appendChild(maxIn)
+            row.appendChild(barsEl); row.appendChild(valEl); row.appendChild(dot)
             wrap.appendChild(row)
           })
 
-          // Denoising step rows (3 independent oscillators)
+          // Denoising step rows
           STEP_PARAMS.forEach(function (p) {
             var ss = stepStates[p.id]
             var row = document.createElement('div')
@@ -5566,42 +6414,36 @@
               tog.textContent = ss.enabled ? 'ON' : 'OFF'
               tog.classList.toggle('off', !ss.enabled)
               row.classList.toggle('off', !ss.enabled)
+              if (ss.enabled) { ss.lastSteppedBeat = -1; ss.seqIdx = 0 }
             })
 
-            var name = document.createElement('span')
-            name.className = 'sa-name'
-            name.textContent = p.label
+            var nameEl = document.createElement('span')
+            nameEl.className = 'sa-name'
+            nameEl.textContent = p.label
 
-            var modeBadge = document.createElement('span')
-            modeBadge.className = 'sa-mode'
-            modeBadge.textContent = '~'
-            modeBadge.title = 'Sine wave'
+            var minIn = makeNumInput(p.defMin, p.defStep, 'Min', 'sa-num', function (v) {
+              ss.min = v; rebuildSeq(ss)
+            })
+            var stepIn = makeNumInput(p.defStep, p.defStep, 'Step', 'sa-step', function (v) {
+              ss.step = v; rebuildSeq(ss)
+            })
+            var maxIn = makeNumInput(p.defMax, p.defStep, 'Max', 'sa-num', function (v) {
+              ss.max = v; rebuildSeq(ss)
+            })
 
-            var minIn = document.createElement('input')
-            minIn.type = 'number'; minIn.className = 'sa-num'
-            minIn.value = p.min; minIn.step = 25
-            minIn.title = 'Min'
-            minIn.addEventListener('input', function () { ss.min = parseInt(minIn.value) || p.min })
+            var barsEl = makeBarsSelect(p.defBars, function (b) { ss.bars = b })
 
-            var sep = document.createElement('span')
-            sep.className = 'sa-sep'; sep.textContent = '↔'
+            var valEl = document.createElement('span')
+            valEl.className = 'sa-val'
+            valEl.textContent = '—'
+            ss.valSpan = valEl
 
-            var maxIn = document.createElement('input')
-            maxIn.type = 'number'; maxIn.className = 'sa-num'
-            maxIn.value = p.max; maxIn.step = 25
-            maxIn.title = 'Max'
-            maxIn.addEventListener('input', function () { ss.max = parseInt(maxIn.value) || p.max })
+            var dot = makeDot()
+            ss.dotEl = dot
 
-            var barsEl = makeBarsSelect(p.bars, function (b) { ss.bars = b })
-
-            var val = document.createElement('span')
-            val.className = 'sa-val'
-            val.textContent = '—'
-            ss.valSpan = val
-
-            row.appendChild(tog); row.appendChild(name); row.appendChild(modeBadge)
-            row.appendChild(minIn); row.appendChild(sep); row.appendChild(maxIn)
-            row.appendChild(barsEl); row.appendChild(val)
+            row.appendChild(tog); row.appendChild(nameEl)
+            row.appendChild(minIn); row.appendChild(stepIn); row.appendChild(maxIn)
+            row.appendChild(barsEl); row.appendChild(valEl); row.appendChild(dot)
             wrap.appendChild(row)
           })
 
@@ -5613,7 +6455,6 @@
         if (piPanel && piPanel.parentNode) {
           piPanel.parentNode.insertBefore(buildUI(), piPanel.nextSibling)
         } else {
-          // Fallback: append to daydreamBar
           var bar = document.getElementById('daydreamBar')
           if (bar) bar.appendChild(buildUI())
         }
@@ -5801,9 +6642,10 @@
         var LAYOUT_KEY = 'hydra-layout'
         function saveLayout () {
           try {
+            var sw = document.getElementById('stageWrap')
             localStorage.setItem(LAYOUT_KEY, JSON.stringify({
               leftW: leftCol.offsetWidth,
-              stageH: stage.offsetHeight
+              stageH: sw ? sw.offsetHeight : 0
             }))
           } catch (e) {}
         }
@@ -5812,7 +6654,10 @@
             var saved = JSON.parse(localStorage.getItem(LAYOUT_KEY))
             if (!saved) return
             if (saved.leftW) { leftCol.style.width = saved.leftW + 'px' }
-            if (saved.stageH) { stage.style.height = saved.stageH + 'px'; stage.style.flex = 'none' }
+            if (saved.stageH) {
+              var sw = document.getElementById('stageWrap')
+              if (sw) { sw.style.height = saved.stageH + 'px'; sw.style.flex = 'none' }
+            }
           } catch (e) {}
         }
 
@@ -5828,13 +6673,14 @@
           function () { saveLayout() }
         )
 
-        // Horizontal splitter: stage / controls
-        var stage = document.getElementById('stage')
+        // Horizontal splitter: stageWrap / controls
+        var stageWrapEl = document.getElementById('stageWrap')
         makeDrag(document.getElementById('hSplitter'),
           function (dx, dy) {
-            var h = Math.max(120, stage.offsetHeight + dy)
-            stage.style.height = h + 'px'
-            stage.style.flex = 'none'
+            var h = Math.max(120, stageWrapEl.offsetHeight + dy)
+            stageWrapEl.style.height = h + 'px'
+            stageWrapEl.style.flex = 'none'
+            fitCanvas()
             if (mapModeActive) updateMapOverlay()
           },
           null,
@@ -5969,6 +6815,78 @@
       if (hydra) {
         setStatus('Live coding ready. Ctrl/Cmd+Enter line, Alt+Enter block, Ctrl/Cmd+Shift+Enter all.', false)
       }
+
+      // ---- Section help popouts ----
+      ;(function () {
+        var openHelp = null
+        document.querySelectorAll('.sh-help-btn').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation()
+            var key = btn.getAttribute('data-help')
+            var popout = document.getElementById('helpPopout-' + key)
+            if (!popout) return
+            // Close any open help
+            if (openHelp && openHelp !== popout) {
+              openHelp.classList.remove('open')
+              var prevBtn = document.querySelector('.sh-help-btn.active')
+              if (prevBtn) prevBtn.classList.remove('active')
+            }
+            var isOpen = popout.classList.contains('open')
+            if (isOpen) {
+              popout.classList.remove('open')
+              btn.classList.remove('active')
+              openHelp = null
+            } else {
+              // Position near the button
+              var rect = btn.getBoundingClientRect()
+              popout.style.top = (rect.bottom + 4) + 'px'
+              popout.style.left = Math.max(4, rect.left - 160) + 'px'
+              popout.classList.add('open')
+              btn.classList.add('active')
+              openHelp = popout
+            }
+          })
+        })
+        // Close buttons
+        document.querySelectorAll('.sh-help-popout .help-close').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var popout = btn.closest('.sh-help-popout')
+            popout.classList.remove('open')
+            var key = popout.id.replace('helpPopout-', '')
+            var triggerBtn = document.querySelector('.sh-help-btn[data-help="' + key + '"]')
+            if (triggerBtn) triggerBtn.classList.remove('active')
+            openHelp = null
+          })
+        })
+        // Click outside to close
+        document.addEventListener('click', function (e) {
+          if (openHelp && !openHelp.contains(e.target) && !e.target.classList.contains('sh-help-btn')) {
+            openHelp.classList.remove('open')
+            var prevBtn = document.querySelector('.sh-help-btn.active')
+            if (prevBtn) prevBtn.classList.remove('active')
+            openHelp = null
+          }
+        })
+        // Draggable help popouts
+        document.querySelectorAll('.sh-help-popout .help-head').forEach(function (head) {
+          var popout = head.closest('.sh-help-popout')
+          var dragging = false, startX, startY, origLeft, origTop
+          head.addEventListener('mousedown', function (e) {
+            if (e.target.tagName === 'BUTTON') return
+            dragging = true
+            startX = e.clientX; startY = e.clientY
+            origLeft = popout.offsetLeft; origTop = popout.offsetTop
+            e.preventDefault()
+          })
+          document.addEventListener('mousemove', function (e) {
+            if (!dragging) return
+            popout.style.left = (origLeft + e.clientX - startX) + 'px'
+            popout.style.top = (origTop + e.clientY - startY) + 'px'
+          })
+          document.addEventListener('mouseup', function () { dragging = false })
+        })
+      })()
+
     })()
   </script>
 </body>

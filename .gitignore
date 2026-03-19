@@ -74,9 +74,23 @@ dist/media/
 .tmp-*
 
 # Recordings (large video files)
-recordings/**/*.mp4
-recordings/**/*.webm
-recordings/**/*.mov
+recordings/
+
+# LoRA training data (multi-GB)
+lora/
+
+# Blog assets (large gifs/media)
+blog/
 
 # Daydream API key
 daydream.config.json
+
+# User settings (overrides settings.defaults.json)
+settings.json
+
+# Claude Code internals
+.claude/
+.mcp.json
+
+# Embedded repos
+tomato/

@@ -3096,7 +3096,10 @@ class HydraRenderer {
     this.regl = (0, _regl.default)({
       //  profile: true,
       canvas: this.canvas,
-      pixelRatio: 1 //,
+      pixelRatio: 1,
+      attributes: {
+        preserveDrawingBuffer: true
+      } //,
       // extensions: [
       //   'oes_texture_half_float',
       //   'oes_texture_half_float_linear'
@@ -3511,30 +3514,72 @@ class Audio {
           autoGainControl: false
         }
       }).then(stream => {
-        this.stream = stream;
-        this.context = new AudioContext();
-        this._sourceNode = this.context.createMediaStreamSource(stream); // gain node for input boost
-
-        this.gainNode = this.context.createGain();
-        this.gainNode.gain.value = this.inputGain;
-
-        this._sourceNode.connect(this.gainNode); // AnalyserNode for detailed spectrum
+        this._initFromStream(stream); // after permission is granted, check if we landed on a virtual device
+        // and switch to a physical mic if available
 
 
-        this.analyser = this.context.createAnalyser();
-        this.analyser.fftSize = 2048;
-        this.analyser.smoothingTimeConstant = 0.8;
-        this.analyser.minDecibels = -90;
-        this.analyser.maxDecibels = -10;
-        this.gainNode.connect(this.analyser);
-        this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
-        this.meyda = _meyda.default.createMeydaAnalyzer({
-          audioContext: this.context,
-          source: this.gainNode,
-          featureExtractors: ['loudness']
-        });
+        this._preferPhysicalMic();
       }).catch(err => console.log('ERROR', err));
     }
+  }
+
+  _initFromStream(stream) {
+    this.stream = stream;
+    this.context = this.context || new AudioContext(); // disconnect previous source if switching
+
+    if (this._sourceNode) this._sourceNode.disconnect();
+    this._sourceNode = this.context.createMediaStreamSource(stream); // gain node for input boost
+
+    if (!this.gainNode) {
+      this.gainNode = this.context.createGain();
+      this.gainNode.gain.value = this.inputGain;
+    }
+
+    this._sourceNode.connect(this.gainNode); // AnalyserNode for detailed spectrum
+
+
+    if (!this.analyser) {
+      this.analyser = this.context.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.analyser.smoothingTimeConstant = 0.8;
+      this.analyser.minDecibels = -90;
+      this.analyser.maxDecibels = -10;
+      this.gainNode.connect(this.analyser);
+      this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
+    }
+
+    this.meyda = _meyda.default.createMeydaAnalyzer({
+      audioContext: this.context,
+      source: this.gainNode,
+      featureExtractors: ['loudness']
+    });
+  }
+
+  _preferPhysicalMic() {
+    if (!window.navigator.mediaDevices.enumerateDevices) return;
+    window.navigator.mediaDevices.enumerateDevices().then(devices => {
+      var audioInputs = devices.filter(d => d.kind === 'audioinput');
+      if (audioInputs.length <= 1) return; // nothing to choose from
+      // check what we currently have
+
+      var currentLabel = '';
+
+      if (this.stream) {
+        var tracks = this.stream.getAudioTracks();
+        if (tracks.length > 0) currentLabel = (tracks[0].label || '').toLowerCase();
+      } // if current device looks physical, keep it
+
+
+      var virtualPatterns = /ndi|virtual|obs|loopback|blackhole|soundflower|aggregate/i;
+      if (!virtualPatterns.test(currentLabel)) return; // find a physical mic — prefer "macbook" or "built-in", else first non-virtual
+
+      var physicalMic = audioInputs.find(d => /macbook|built.in/i.test(d.label)) || audioInputs.find(d => !virtualPatterns.test(d.label) && d.label !== 'Default');
+
+      if (physicalMic && physicalMic.deviceId) {
+        console.log('[audio] switching from virtual device to physical mic:', physicalMic.label);
+        this.switchInput(physicalMic.deviceId);
+      }
+    });
   }
 
   detectBeat(level) {

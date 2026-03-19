@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <link rel="manifest" href="output-manifest.json">
   <title>Hydra Output</title>
   <style>
     * { margin: 0; padding: 0; }
@@ -154,6 +155,33 @@
     // Render loop
     var video = document.getElementById('v')
 
+    // Direct canvas source — grabs frames from opener's Hydra canvas (no captureStream needed)
+    var sourceCanvas = null
+    var sourceCheckCount = 0
+    function getSourceCanvas () {
+      // Re-query every ~120 frames (~2s) to catch canvas recreation on resolution change
+      sourceCheckCount++
+      if (sourceCanvas && sourceCanvas.width > 0 && sourceCanvas.isConnected !== false && sourceCheckCount % 120 !== 0) {
+        return sourceCanvas
+      }
+      sourceCanvas = null
+      // Try window.opener (popup case)
+      try {
+        if (window.opener && !window.opener.closed) {
+          var c = window.opener.document.querySelector('#stage canvas')
+          if (c && c.width > 0) { sourceCanvas = c; return c }
+        }
+      } catch (e) { if (sourceCheckCount < 5) console.log('[output] opener access error:', e.message) }
+      // Try parent (iframe case)
+      try {
+        if (window.parent && window.parent !== window) {
+          var c = window.parent.document.querySelector('#stage canvas')
+          if (c && c.width > 0) { sourceCanvas = c; return c }
+        }
+      } catch (e) {}
+      return null
+    }
+
     function resizeCanvas () {
       canvas.width = window.innerWidth * (window.devicePixelRatio || 1)
       canvas.height = window.innerHeight * (window.devicePixelRatio || 1)
@@ -165,14 +193,24 @@
     function render() {
       requestAnimationFrame(render)
 
-      // Pick texture source: checkerboard or video
+      // Pick texture source: checkerboard, direct canvas, or video stream fallback
       var src = null
       if (mapModeOn) {
         if (checkerCanvas.width < 2) drawChecker(canvas.width, canvas.height)
         src = checkerCanvas
       } else {
-        if (video.readyState < 2) return
-        src = video
+        // Prefer direct canvas read (robust, no captureStream)
+        var directCanvas = getSourceCanvas()
+        if (directCanvas) {
+          src = directCanvas
+        } else if (video.readyState >= 2) {
+          // Fallback to video stream (captureStream path)
+          src = video
+        } else {
+          // No source yet — clear to black and keep looping (don't bail)
+          gl.clear(gl.COLOR_BUFFER_BIT)
+          return
+        }
       }
 
       gl.bindTexture(gl.TEXTURE_2D, videoTex)
@@ -193,7 +231,10 @@
     }
     render()
 
-    // Fullscreen shortcut
+    // Click anywhere or press F to go fullscreen (hides Chrome address bar)
+    canvas.addEventListener('click', function () {
+      document.documentElement.requestFullscreen().catch(function () {})
+    })
     window.addEventListener('keydown', function (e) {
       if (e.key.toLowerCase() === 'f') {
         document.documentElement.requestFullscreen().catch(function () {})

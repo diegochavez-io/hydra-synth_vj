@@ -1,0 +1,8 @@
+{
+  "name": "Hydra Output",
+  "short_name": "Hydra Out",
+  "start_url": "/dist/output.html",
+  "display": "fullscreen",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}

@@ -1,0 +1,10 @@
+{
+  "captureDir": "~/HydraVJ/frames",
+  "recordingsDir": "~/HydraVJ/recordings",
+  "autoplay": {
+    "mode": "bars",
+    "bars": 8,
+    "seconds": 120
+  },
+  "bpm": 120
+}

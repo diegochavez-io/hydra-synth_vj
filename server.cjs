@@ -5,6 +5,13 @@
 // Usage: node server.cjs [port]
 // Default port: 8080
 
+process.on('uncaughtException', function (err) {
+  console.error('UNCAUGHT:', err)
+})
+process.on('unhandledRejection', function (err) {
+  console.error('UNHANDLED REJECTION:', err)
+})
+
 const http = require('http')
 const https = require('https')
 const fs = require('fs')
@@ -23,6 +30,7 @@ try {
   link = new AbletonLink()
   link.bpm = 120
   link.quantum = 4
+  link.startUpdate(20, function () {})  // Required: poll Link timeline at 20ms
   console.log('  Ableton Link loaded.')
 } catch (e) {
   console.log('  Ableton Link not available (install abletonlink for Link support)')
@@ -32,6 +40,41 @@ const PORT = parseInt(process.argv[2], 10) || 8080
 const ROOT = __dirname
 const PRESETS_DIR = path.join(ROOT, 'presets')
 const RECORDINGS_DIR = path.join(ROOT, 'recordings')
+
+// ---- Settings system ----
+const SETTINGS_DEFAULTS_PATH = path.join(ROOT, 'settings.defaults.json')
+const SETTINGS_PATH = path.join(ROOT, 'settings.json')
+
+function expandHome (p) {
+  if (typeof p === 'string' && p.startsWith('~/')) {
+    return path.join(require('os').homedir(), p.slice(2))
+  }
+  return p
+}
+
+function loadSettings () {
+  var defaults = {}
+  try { defaults = JSON.parse(fs.readFileSync(SETTINGS_DEFAULTS_PATH, 'utf8')) } catch (e) {}
+  var user = {}
+  try { user = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')) } catch (e) {}
+  // Shallow merge — user overrides win
+  return Object.assign({}, defaults, user)
+}
+
+function saveSettings (patch) {
+  var current = {}
+  try { current = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')) } catch (e) {}
+  var merged = Object.assign({}, current, patch)
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2) + '\n', 'utf8')
+  return loadSettings()
+}
+
+function getCaptureDir () {
+  var settings = loadSettings()
+  var dir = expandHome(settings.captureDir || '~/HydraVJ/frames')
+  try { fs.mkdirSync(dir, { recursive: true }) } catch (e) {}
+  return dir
+}
 
 // Daydream API config
 function getDaydreamConfig () {
@@ -117,6 +160,27 @@ function startScope (cb) {
         }
       })
     }, 1000)
+  })
+}
+
+function stopScope (cb) {
+  if (scopeProcess) {
+    console.log('  Scope: killing process (pid ' + scopeProcess.pid + ')...')
+    try { process.kill(-scopeProcess.pid, 'SIGTERM') } catch (e) {
+      try { scopeProcess.kill('SIGTERM') } catch (e2) {}
+    }
+    scopeProcess = null
+  }
+  // Also kill anything on the port (zombie processes)
+  var exec = require('child_process').exec
+  exec('lsof -ti :' + SCOPE_PORT + ' | xargs kill -9 2>/dev/null', function () {
+    setTimeout(function () { cb(null) }, 1500)
+  })
+}
+
+function restartScope (cb) {
+  stopScope(function () {
+    startScope(cb)
   })
 }
 
@@ -372,6 +436,23 @@ const server = http.createServer(function (req, res) {
     return
   }
 
+  // ---- API: Scope restart ----
+  if (req.method === 'POST' && urlPath === '/api/scope/restart') {
+    restartScope(function (err, result) {
+      if (err) return jsonResponse(res, 500, { error: err.message })
+      jsonResponse(res, 200, result)
+    })
+    return
+  }
+
+  // ---- API: Scope stop ----
+  if (req.method === 'POST' && urlPath === '/api/scope/stop') {
+    stopScope(function () {
+      jsonResponse(res, 200, { status: 'stopped' })
+    })
+    return
+  }
+
   // ---- API: Scope health ----
   if (req.method === 'GET' && urlPath === '/api/scope/health') {
     isScopeRunning(function (healthy) {
@@ -539,9 +620,10 @@ const server = http.createServer(function (req, res) {
           res.end(responseBody)
         })
       })
+      scopeReq.setTimeout(10000, function () { scopeReq.destroy(); jsonResponse(res, 504, { error: 'Scope timeout' }) })
       scopeReq.on('error', function (err) {
         console.log('  Scope proxy: ERROR ' + err.message)
-        jsonResponse(res, 502, { error: err.message })
+        if (!res.headersSent) jsonResponse(res, 502, { error: err.message })
       })
       scopeReq.end()
     } else {
@@ -560,9 +642,10 @@ const server = http.createServer(function (req, res) {
             res.end(responseBody)
           })
         })
+        scopeReq.setTimeout(10000, function () { scopeReq.destroy(); jsonResponse(res, 504, { error: 'Scope timeout' }) })
         scopeReq.on('error', function (err) {
           console.log('  Scope proxy: ERROR ' + err.message)
-          jsonResponse(res, 502, { error: err.message })
+          if (!res.headersSent) jsonResponse(res, 502, { error: err.message })
         })
         if (body) scopeReq.write(body)
         scopeReq.end()
@@ -799,6 +882,86 @@ const server = http.createServer(function (req, res) {
     return
   }
 
+  // ---- API: settings ----
+  if (req.method === 'GET' && urlPath === '/api/settings') {
+    jsonResponse(res, 200, loadSettings())
+    return
+  }
+  if (req.method === 'PATCH' && urlPath === '/api/settings') {
+    var sChunks = []
+    req.on('data', function (c) { sChunks.push(c) })
+    req.on('end', function () {
+      try {
+        var patch = JSON.parse(Buffer.concat(sChunks).toString())
+        var updated = saveSettings(patch)
+        console.log('  Settings updated:', Object.keys(patch).join(', '))
+        jsonResponse(res, 200, updated)
+      } catch (e) {
+        jsonResponse(res, 400, { error: 'Invalid JSON: ' + e.message })
+      }
+    })
+    return
+  }
+
+  // ---- API: notes (scope notes + prompt scenes persisted to disk) ----
+  var NOTES_FILE = path.join(__dirname, 'scope-notes.json')
+  if (req.method === 'GET' && urlPath === '/api/notes') {
+    try {
+      var data = fs.existsSync(NOTES_FILE) ? JSON.parse(fs.readFileSync(NOTES_FILE, 'utf8')) : {}
+      jsonResponse(res, 200, data)
+    } catch (e) {
+      jsonResponse(res, 200, {})
+    }
+    return
+  }
+  if (req.method === 'PUT' && urlPath === '/api/notes') {
+    var nChunks = []
+    req.on('data', function (c) { nChunks.push(c) })
+    req.on('end', function () {
+      try {
+        var body = JSON.parse(Buffer.concat(nChunks).toString())
+        fs.writeFileSync(NOTES_FILE, JSON.stringify(body, null, 2))
+        jsonResponse(res, 200, { ok: true })
+      } catch (e) {
+        jsonResponse(res, 400, { error: 'Invalid JSON: ' + e.message })
+      }
+    })
+    return
+  }
+
+  // ---- API: save frame (canvas screenshot as PNG) ----
+  if (req.method === 'POST' && urlPath === '/api/frame') {
+    var frameDir = getCaptureDir()
+    // Optional ?name=xxx query param for custom filename
+    var fqp = req.url.split('?')[1] || ''
+    var frameName = ''
+    fqp.split('&').forEach(function (p) {
+      var kv = p.split('=')
+      if (kv[0] === 'name') frameName = decodeURIComponent(kv[1] || '')
+    })
+    frameName = frameName.replace(/[^a-zA-Z0-9_-]/g, '')
+    var fChunks = []
+    req.on('data', function (c) { fChunks.push(c) })
+    req.on('end', function () {
+      var imgBuf = Buffer.concat(fChunks)
+      var d = new Date()
+      var fTs = d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0') + '_' +
+        String(d.getHours()).padStart(2, '0') + '.' +
+        String(d.getMinutes()).padStart(2, '0') + '.' +
+        String(d.getSeconds()).padStart(2, '0')
+      var fFilename = (frameName || 'frame-' + fTs) + '.png'
+      var fPath = path.join(frameDir, fFilename)
+      fs.writeFile(fPath, imgBuf, function (err) {
+        if (err) return jsonResponse(res, 500, { error: 'Write failed: ' + err.message })
+        console.log('  Frame saved: ' + fPath + ' (' + (imgBuf.length / 1024).toFixed(0) + ' KB)')
+        jsonResponse(res, 200, { saved: fFilename, path: fPath })
+      })
+    })
+    return
+  }
+
   // ---- API: save recording (legacy H.264 upload) ----
   if (req.method === 'POST' && urlPath === '/api/recordings') {
     // Optional ?folder=batch-xxx subfolder for batch recordings
@@ -956,16 +1119,20 @@ function startLinkBroadcast () {
   if (linkBroadcastTimer || !link) return
   linkBroadcastTimer = setInterval(function () {
     if (!linkEnabled) return
-    var msg = JSON.stringify({
-      type: 'link',
-      bpm: Math.round(link.bpm * 100) / 100,
-      beat: Math.round(link.beat * 1000) / 1000,
-      phase: Math.round(link.phase * 1000) / 1000,
-      numPeers: link.numPeers
-    })
-    wss.clients.forEach(function (client) {
-      if (client.readyState === 1) client.send(msg)
-    })
+    try {
+      var msg = JSON.stringify({
+        type: 'link',
+        bpm: Math.round(link.bpm * 100) / 100,
+        beat: Math.round(link.beat * 1000) / 1000,
+        phase: Math.round(link.phase * 1000) / 1000,
+        numPeers: link.numPeers
+      })
+      wss.clients.forEach(function (client) {
+        if (client.readyState === 1) client.send(msg)
+      })
+    } catch (err) {
+      console.error('Link broadcast error:', err.message)
+    }
   }, 50) // ~20Hz updates
 }
 
@@ -982,13 +1149,15 @@ wss.on('connection', function (ws) {
 
   // Send current link status on connect
   if (link) {
-    ws.send(JSON.stringify({
-      type: 'link-status',
-      available: true,
-      enabled: linkEnabled,
-      bpm: Math.round(link.bpm * 100) / 100,
-      numPeers: link.numPeers
-    }))
+    try {
+      ws.send(JSON.stringify({
+        type: 'link-status',
+        available: true,
+        enabled: linkEnabled,
+        bpm: Math.round(link.bpm * 100) / 100,
+        numPeers: link.numPeers
+      }))
+    } catch (err) { console.error('Link status send error:', err.message) }
   } else {
     ws.send(JSON.stringify({ type: 'link-status', available: false }))
   }
@@ -1000,13 +1169,13 @@ wss.on('connection', function (ws) {
       // Handle Link control messages
       if (data.type === 'link-enable' && link) {
         linkEnabled = true
-        link.enable()
+        try { link.enable() } catch (err) { console.error('Link enable error:', err.message) }
         startLinkBroadcast()
         return
       }
       if (data.type === 'link-disable' && link) {
         linkEnabled = false
-        link.disable()
+        try { link.disable() } catch (err) { console.error('Link disable error:', err.message) }
         stopLinkBroadcast()
         wss.clients.forEach(function (client) {
           if (client.readyState === 1) {
@@ -1016,7 +1185,7 @@ wss.on('connection', function (ws) {
         return
       }
       if (data.type === 'link-set-bpm' && link && linkEnabled) {
-        link.bpm = Math.max(20, Math.min(999, data.bpm))
+        try { link.bpm = Math.max(20, Math.min(999, data.bpm)) } catch (err) { console.error('Link set-bpm error:', err.message) }
         return
       }
     } catch (e) {}
@@ -1050,7 +1219,13 @@ server.listen(PORT, function () {
   console.log('  Output:    http://localhost:' + PORT + '/dist/output.html')
   console.log('  TD output: http://localhost:' + PORT + '/dist/td-output.html')
   console.log('')
+  var startSettings = loadSettings()
+  console.log('  Settings: ' + (fs.existsSync(SETTINGS_PATH) ? SETTINGS_PATH : 'using defaults'))
+  console.log('  Captures: ' + expandHome(startSettings.captureDir || '~/HydraVJ/frames'))
+  console.log('')
   console.log('  API:')
+  console.log('    GET    /api/settings          — read settings')
+  console.log('    PATCH  /api/settings          — update settings')
   console.log('    GET    /api/presets          — list saved presets')
   console.log('    GET    /api/presets/:file     — load a preset')
   console.log('    POST   /api/presets           — save {name, code}')
