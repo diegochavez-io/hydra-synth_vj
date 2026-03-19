@@ -6127,7 +6127,7 @@
       // window.__breathOnBeat(beat) is the sole entry point (~20Hz from Link WS).
       // No setInterval. No Date.now(). Params freeze at last value if Link disconnects.
       ;(function () {
-        var BAR_OPTIONS = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128]
+        var BAR_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 16, 24, 32, 48, 64, 96, 128]
         var seqLogCount = 0
         function seqLog (msg) {
           // Throttle: only log first 20 + every 50th after that
@@ -6150,27 +6150,29 @@
           return ascending.concat(descending)
         }
 
+        // Bar counts use non-aligning values so params rarely land on the same combo
         var PARAMS = [
-          { id: 'noise', label: 'Noise',   key: 'noise_scale',             defMin: 0.10, defMax: 0.20, defStep: 0.025, defBars: 1,  type: 'float' },
-          { id: 'vace',  label: 'VACE',    key: 'vace_context_scale',      defMin: 0.88, defMax: 1.12, defStep: 0.06,  defBars: 2,  type: 'float' },
-          { id: 'kv',    label: 'KV Bias', key: 'kv_cache_attention_bias', defMin: 0.52, defMax: 0.68, defStep: 0.04,  defBars: 4,  type: 'float' }
+          { id: 'noise', label: 'Noise',   key: 'noise_scale',             defMin: 0.10, defMax: 0.20, defStep: 0.025, defBars: 2,  type: 'float' },
+          { id: 'vace',  label: 'VACE',    key: 'vace_context_scale',      defMin: 0.88, defMax: 1.12, defStep: 0.06,  defBars: 3,  type: 'float' },
+          { id: 'kv',    label: 'KV Bias', key: 'kv_cache_attention_bias', defMin: 0.52, defMax: 0.68, defStep: 0.04,  defBars: 5,  type: 'float' }
         ]
 
         var STEP_PARAMS = [
-          { id: 's1', label: 'Step 1', defMin: 850,  defMax: 1000, defStep: 25, defBars: 1 },
-          { id: 's2', label: 'Step 2', defMin: 500,  defMax: 800,  defStep: 25, defBars: 2 },
-          { id: 's3', label: 'Step 3', defMin: 100,  defMax: 500,  defStep: 25, defBars: 4 }
+          { id: 's1', label: 'Step 1', defMin: 850,  defMax: 1000, defStep: 25, defBars: 3 },
+          { id: 's2', label: 'Step 2', defMin: 500,  defMax: 800,  defStep: 25, defBars: 5 },
+          { id: 's3', label: 'Step 3', defMin: 100,  defMax: 500,  defStep: 25, defBars: 7 }
         ]
 
-        // State
+        // State — each param starts at a random point in its sequence
         var state = {}
         PARAMS.forEach(function (p) {
+          var seq = buildSequence(p.defMin, p.defMax, p.defStep)
           state[p.id] = {
             enabled: true,
             min: p.defMin, max: p.defMax, step: p.defStep,
             bars: p.defBars,
-            seq: buildSequence(p.defMin, p.defMax, p.defStep),
-            seqIdx: 0,
+            seq: seq,
+            seqIdx: Math.floor(Math.random() * seq.length),
             lastSteppedBeat: -1,
             lastVal: null,
             valSpan: null, dotEl: null
@@ -6178,12 +6180,13 @@
         })
         var stepStates = {}
         STEP_PARAMS.forEach(function (p) {
+          var seq = buildSequence(p.defMin, p.defMax, p.defStep)
           stepStates[p.id] = {
             enabled: true,
             min: p.defMin, max: p.defMax, step: p.defStep,
             bars: p.defBars,
-            seq: buildSequence(p.defMin, p.defMax, p.defStep),
-            seqIdx: 0,
+            seq: seq,
+            seqIdx: Math.floor(Math.random() * seq.length),
             lastSteppedBeat: -1,
             lastVal: null,
             valSpan: null, dotEl: null
