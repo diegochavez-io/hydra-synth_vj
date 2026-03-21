@@ -6,11 +6,12 @@
     "height": 320,
     "vace_enabled": true,
     "vace_context_scale": 1,
+    "noise_controller": false,
     "loras": [
       {"path": "tdcrtv_000001000.safetensors", "scale": 1, "merge_mode": "permanent_merge"}
     ],
     "prompt": "POV, looking down at Earth from space, single object",
-    "denoising_step_list": [949, 779, 632, 461],
+    "denoising_step_list": [779, 632, 461],
     "output_sinks": {
       "syphon": {"enabled": true, "name": "Scope"},
       "ndi": {"enabled": true, "name": "Scope"}
@@ -23,11 +24,12 @@
     "height": 320,
     "vace_enabled": true,
     "vace_context_scale": 1,
+    "noise_controller": false,
     "loras": [
       {"path": "tdcrtv_000001000.safetensors", "scale": 1, "merge_mode": "permanent_merge"}
     ],
     "prompt": "soft luminous fog drifting through ancient stone corridors",
-    "denoising_step_list": [949, 779, 632, 461],
+    "denoising_step_list": [779, 632, 461],
     "output_sinks": {
       "syphon": {"enabled": true, "name": "Scope"},
       "ndi": {"enabled": true, "name": "Scope"}
@@ -40,11 +42,12 @@
     "height": 320,
     "vace_enabled": true,
     "vace_context_scale": 1,
+    "noise_controller": false,
     "loras": [
       {"path": "anmdf_mlt_wan2-1_14B_000001000.safetensors", "scale": 1, "merge_mode": "permanent_merge"}
     ],
     "prompt": "liquid mercury pooling and flowing across black glass",
-    "denoising_step_list": [949, 779, 632, 461],
+    "denoising_step_list": [779, 632, 461],
     "output_sinks": {
       "syphon": {"enabled": true, "name": "Scope"},
       "ndi": {"enabled": true, "name": "Scope"}
@@ -57,9 +60,10 @@
     "height": 320,
     "vace_enabled": true,
     "vace_context_scale": 1,
+    "noise_controller": false,
     "loras": [],
     "prompt": "abstract fluid art, iridescent light",
-    "denoising_step_list": [949, 779, 632, 461],
+    "denoising_step_list": [779, 632, 461],
     "output_sinks": {
       "syphon": {"enabled": true, "name": "Scope"},
       "ndi": {"enabled": true, "name": "Scope"}

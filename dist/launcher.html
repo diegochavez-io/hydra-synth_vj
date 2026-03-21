@@ -146,6 +146,9 @@
       line-height: 1.4; white-space: nowrap;
     }
     .btn:hover { border-color: var(--accent); color: var(--text); }
+    .btn:focus-visible {
+      outline: 1px solid var(--accent); outline-offset: 1px;
+    }
     .btn.main { border-color: var(--h-dim); color: var(--h); background: var(--h-surface); }
     .btn.main:hover { border-color: var(--h); color: var(--h); }
     .btn.stop { border-color: var(--danger); color: var(--danger); background: transparent; }
@@ -183,13 +186,25 @@
       border-left: 2px solid transparent;
       display: flex; align-items: center; gap: 6px;
       background: var(--panel);
+      cursor: pointer; user-select: none;
+      position: sticky; top: 0; z-index: 10;
     }
+    .section-head:hover { background: var(--surface); }
+    .section-head .sh-chevron {
+      font-size: 9px; color: var(--dim);
+      transition: transform 0.15s ease;
+      flex-shrink: 0; width: 10px; text-align: center;
+    }
+    .section-head.collapsed .sh-chevron { transform: rotate(-90deg); }
     .section-head .sh-title {
       font-family: var(--font-ui);
       font-size: var(--ts-hd); font-weight: 700;
       letter-spacing: 0.16em; text-transform: uppercase;
       color: var(--dim);
     }
+    /* Collapsible section bodies */
+    .section-body { }
+    .section-body.collapsed { display: none; }
     /* Section identity via :has() — Chrome/Safari OK for local tool */
     .section-head:has(.sh-title.hydra) { border-left-color: var(--h); }
     .section-head:has(.sh-title.scope) { border-left-color: var(--s); }
@@ -260,8 +275,14 @@
       border: 1px solid var(--line); border-top: 0;
       border-radius: 0 0 4px 4px;
       flex: 1; display: flex; flex-direction: column;
-      overflow: hidden;
+      overflow-y: auto; overflow-x: hidden;
+      min-height: 0;
     }
+    /* Thin scrollbar for controls panel */
+    #controls::-webkit-scrollbar { width: 4px; }
+    #controls::-webkit-scrollbar-track { background: transparent; }
+    #controls::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+    #controls::-webkit-scrollbar-thumb:hover { background: var(--dim); }
     #toolbar {
       padding: 6px 10px;
       border-bottom: 1px solid var(--line);
@@ -369,8 +390,12 @@
       border-bottom: 1px solid var(--line);
       padding: 8px 10px;
       display: flex; flex-wrap: wrap; gap: 5px;
-      max-height: 34vh; overflow: auto;
+      max-height: clamp(120px, 34vh, 400px); overflow-y: auto;
     }
+    #presets::-webkit-scrollbar { width: 4px; }
+    #presets::-webkit-scrollbar-track { background: transparent; }
+    #presets::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+    #presets::-webkit-scrollbar-thumb:hover { background: var(--dim); }
     .presetBtn {
       border: 1px solid var(--line); background: var(--surface);
       color: var(--muted); border-radius: 2px;
@@ -461,14 +486,7 @@
     }
     #scopeAuto .sa-counter { font-family: var(--font-code); font-size: var(--ts-xs); color: #6040a0; }
     /* Grid: toggle | name | min | step | max | bars | live-val | dot */
-    #scopeAuto .sa-row {
-      display: grid;
-      grid-template-columns: 32px 62px 46px 46px 46px 70px 46px 10px;
-      align-items: center;
-      gap: 4px;
-      margin-bottom: 4px;
-      transition: opacity 0.15s;
-    }
+    /* (grid-template-columns defined at end of stylesheet for adaptive layout) */
     #scopeAuto .sa-row.off { opacity: 0.22; pointer-events: none; }
     #scopeAuto .sa-row.off .sa-toggle { pointer-events: auto; opacity: 1; }
     #scopeAuto .sa-toggle {
@@ -644,6 +662,104 @@
     @media (max-width: 1200px) {
       #panel { min-width: 0; }
       #stage { min-height: 40vh; }
+      #presetsHeader { flex-wrap: wrap; }
+      .presetBtn { padding: 3px 7px; font-size: 11px; }
+    }
+    @media (max-width: 900px) {
+      #leftCol { min-width: 280px; }
+      #presets { max-height: clamp(80px, 25vh, 250px); }
+      #globalControls label > span:first-child { min-width: 42px; font-size: 11px; }
+      .presetBtn { padding: 2px 5px; font-size: 10px; max-width: 180px; }
+      #scopeAuto .sa-row {
+        grid-template-columns: 28px minmax(40px, 1fr) 38px 38px 38px minmax(46px, 56px) 38px 10px;
+        font-size: 11px;
+      }
+      .kbd-hint { display: none; }
+      #audioMeterPanel .audio-controls { gap: 4px; }
+      #presetsHeader .sh-actions-primary { gap: 2px; }
+    }
+    @media (max-height: 700px) {
+      #presets { max-height: clamp(60px, 20vh, 200px); }
+      #stageWrap { min-height: 80px; }
+      #audioMeterPanel { height: 50px; }
+    }
+
+    /* ── Focus-visible (keyboard nav) ── */
+    select:focus-visible,
+    input[type="range"]:focus-visible,
+    input[type="number"]:focus-visible,
+    input[type="text"]:focus-visible,
+    textarea:focus-visible {
+      outline: 1px solid var(--accent); outline-offset: 1px;
+    }
+
+    /* ── Keyboard shortcut badges ── */
+    .kbd-hint {
+      font-family: var(--font-code); font-size: 9px; font-weight: 400;
+      color: var(--dim); opacity: 0.6;
+      padding: 0 3px; margin-left: 2px;
+      letter-spacing: 0; text-transform: none;
+    }
+
+    /* ── Hydra header: two-row layout ── */
+    #presetsHeader {
+      flex-wrap: wrap;
+    }
+    #presetsHeader .sh-actions-primary {
+      display: flex; align-items: center; gap: 3px;
+      margin-left: auto;
+    }
+    #presetsHeader .sh-actions-secondary {
+      display: flex; align-items: center; gap: 3px;
+      width: 100%;
+      padding-top: 4px;
+      border-top: 1px solid var(--line);
+      margin-top: 4px;
+    }
+    #presetsHeader .sh-actions-secondary .sh-sec-spacer { flex: 1; }
+
+    /* ── Overflow menu (for secondary actions) ── */
+    .overflow-toggle {
+      border: 1px solid var(--line); background: var(--surface);
+      color: var(--dim); padding: 3px 7px; border-radius: 2px;
+      cursor: pointer; font-family: var(--font-ui); font-size: var(--ts-sm);
+      font-weight: 600; line-height: 1;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .overflow-toggle:hover { border-color: var(--accent); color: var(--text); }
+    .overflow-toggle.active { border-color: var(--accent); color: var(--text); }
+
+    /* ── Sources bar label ── */
+    #sourcesBar .sources-label {
+      font-family: var(--font-ui); font-size: var(--ts-hd); font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--dim); margin-right: 2px;
+    }
+
+    /* ── Audio meter: wrapping controls ── */
+    #audioMeterPanel .audio-controls {
+      position: absolute; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; gap: 6px;
+      padding: 3px 4px;
+      z-index: 1; flex-wrap: wrap;
+      background: linear-gradient(180deg, rgba(8,8,10,0.85) 0%, transparent 100%);
+    }
+    #audioMeterPanel .audio-controls .ac-group {
+      display: flex; align-items: center; gap: 4px;
+      flex-shrink: 0;
+    }
+    #audioMeterPanel .audio-controls .ac-sep {
+      width: 1px; height: 10px; background: var(--line); flex-shrink: 0;
+    }
+
+    /* ── Scope auto grid — adaptive columns ── */
+    #scopeAuto .sa-row {
+      display: grid;
+      grid-template-columns: 32px minmax(50px, 1fr) 46px 46px 46px minmax(56px, 70px) 46px 10px;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+      transition: opacity 0.15s;
     }
   </style>
 </head>
@@ -719,6 +835,7 @@
           <div style="display:flex;justify-content:flex-end;"><button id="resetFiltersBtn" class="btn gc-reset">R</button></div>
         </div>
       <div id="sourcesBar">
+        <span class="sources-label">Sources</span>
         <button id="startAudioBtn" class="btn">Audio</button>
         <div class="sb-sep" style="width:1px;height:14px;background:var(--line);margin:0 2px;"></div>
         <span class="src-label">s0</span><select class="src-select" data-src="0"><option value="none">—</option></select>
@@ -728,14 +845,20 @@
       </div>
       <div id="audioMeterPanel">
         <canvas id="audioMeterCanvas"></canvas>
-        <div style="position:absolute;top:3px;left:4px;display:flex;align-items:center;gap:6px;z-index:1;">
-          <select id="audioInputSelect" style="max-width:180px;padding:2px 18px 2px 4px;background-color:rgba(8,8,10,0.8);"></select>
-          <span style="color:var(--dim);">Gain</span>
-          <input type="range" id="audioGainSlider" min="0.1" max="10" step="0.1" value="1" style="width:80px;">
-          <span id="audioGainVal" style="color:var(--dim);min-width:28px;">1.0x</span>
-          <div style="width:1px;height:10px;background:var(--line);margin:0 2px;"></div>
-          <label style="display:flex;align-items:center;gap:3px;white-space:nowrap;color:var(--dim);">BPM <span id="bpmVal" style="width:24px;text-align:right;font-variant-numeric:tabular-nums;">30</span></label>
-          <button id="tapTempoBtn" class="btn">Tap</button>
+        <div class="audio-controls">
+          <div class="ac-group">
+            <select id="audioInputSelect" style="max-width:180px;padding:2px 18px 2px 4px;background-color:rgba(8,8,10,0.8);"></select>
+          </div>
+          <div class="ac-group">
+            <span style="color:var(--dim);">Gain</span>
+            <input type="range" id="audioGainSlider" min="0.1" max="10" step="0.1" value="1" style="width:80px;">
+            <span id="audioGainVal" style="color:var(--dim);min-width:28px;">1.0x</span>
+          </div>
+          <div class="ac-sep"></div>
+          <div class="ac-group">
+            <label style="display:flex;align-items:center;gap:3px;white-space:nowrap;color:var(--dim);">BPM <span id="bpmVal" style="width:24px;text-align:right;font-variant-numeric:tabular-nums;">30</span></label>
+            <button id="tapTempoBtn" class="btn">Tap</button>
+          </div>
           <!-- linkBtn moved to stageOverlay #linkBar -->
         </div>
       </div>
@@ -750,46 +873,56 @@
           <button id="toggleCodeBtn" class="btn" style="display:none;">Audience Mode</button>
         </div>
         <div id="status">Ready</div>
-        <div id="presetsHeader" class="section-head" style="flex-wrap:wrap;">
+        <div id="presetsHeader" class="section-head" data-section="hydra">
+          <span class="sh-chevron">▼</span>
           <span class="sh-title hydra">Hydra</span>
           <button class="sh-help-btn" data-help="hydra" title="Help">?</button>
           <a href="https://hydra.ojack.xyz/api/" target="_blank" class="btn" style="text-decoration:none;">Docs</a>
-          <div class="toolbar-sep"></div>
-          <button id="presetsRunBtn" class="btn main" title="Run current code (Cmd/Ctrl+Shift+Enter)">Run</button>
-          <button id="saveFrameBtn" class="btn" title="Save current canvas as PNG">Save Frame</button>
-          <button id="captureDirBtn" class="btn" title="Change capture folder" style="padding:3px 5px;line-height:1;">
-            <svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 2.5V10a1 1 0 001 1h10a1 1 0 001-1V4.5a1 1 0 00-1-1H7L5.5 2H2a1 1 0 00-1 1z"/></svg>
-          </button>
-          <button id="captureAllBtn" class="btn" title="Auto-advance through all presets and save a frame of each">Capture All</button>
-          <button id="communityRandomBtn" class="btn" title="Load random community Hydra sketch">Shuffle</button>
-          <button id="autoplayBtn" class="btn">Autoplay</button>
-          <select id="autoplayMode">
-            <option value="time">Time</option>
-            <option value="bars" selected>Bars (BPM)</option>
-          </select>
-          <label id="autoplayTimeLabel" style="display:none;">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999" style="width:50px;padding:3px 6px;border:1px solid var(--line);border-radius:3px;background:var(--surface);color:var(--muted);font-family:inherit;font-size:inherit;outline:none;"></label>
-          <label id="autoplayBarsLabel" style="display:flex;align-items:center;gap:4px;">Bars:
-            <select id="autoplayBars">
-              <option value="8" selected>8</option>
-              <option value="16">16</option>
-              <option value="32">32</option>
-              <option value="64">64</option>
-              <option value="128">128</option>
+          <div class="sh-actions-primary">
+            <button id="presetsRunBtn" class="btn main" title="Run current code (Cmd/Ctrl+Shift+Enter)">Run <span class="kbd-hint">⌘⇧↵</span></button>
+            <button id="autoplayBtn" class="btn">Autoplay</button>
+            <select id="autoplayMode">
+              <option value="time">Time</option>
+              <option value="bars" selected>Bars (BPM)</option>
             </select>
-          </label>
-          <span id="autoplayBpmDisplay" style="display:none;"></span>
-          <input type="hidden" id="autoplayBpm" value="120">
-          <span id="autoplayCountdown" style="font-variant-numeric:tabular-nums;"></span>
+            <label id="autoplayBarsLabel" style="display:flex;align-items:center;gap:4px;">Bars:
+              <select id="autoplayBars">
+                <option value="8" selected>8</option>
+                <option value="16">16</option>
+                <option value="32">32</option>
+                <option value="64">64</option>
+                <option value="128">128</option>
+              </select>
+            </label>
+            <label id="autoplayTimeLabel" style="display:none;">Seconds: <input type="number" id="autoplaySeconds" value="120" min="1" max="9999" style="width:50px;padding:3px 6px;border:1px solid var(--line);border-radius:3px;background:var(--surface);color:var(--muted);font-family:inherit;font-size:inherit;outline:none;"></label>
+            <span id="autoplayBpmDisplay" style="display:none;"></span>
+            <input type="hidden" id="autoplayBpm" value="120">
+            <span id="autoplayCountdown" style="font-variant-numeric:tabular-nums;"></span>
+            <button id="hydraMoreBtn" class="overflow-toggle" title="More actions">···</button>
+          </div>
+          <div id="hydraSecondaryActions" class="sh-actions-secondary" style="display:none;">
+            <button id="saveFrameBtn" class="btn" title="Save current canvas as PNG">Save Frame</button>
+            <button id="captureDirBtn" class="btn" title="Change capture folder" style="padding:3px 5px;line-height:1;">
+              <svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 2.5V10a1 1 0 001 1h10a1 1 0 001-1V4.5a1 1 0 00-1-1H7L5.5 2H2a1 1 0 00-1 1z"/></svg>
+            </button>
+            <button id="captureAllBtn" class="btn" title="Auto-advance through all presets and save a frame of each">Capture All</button>
+            <span class="sh-sec-spacer"></span>
+            <button id="communityRandomBtn" class="btn" title="Load random community Hydra sketch">Shuffle</button>
+          </div>
         </div>
-        <div id="presets"></div>
-        <!-- globalControls moved above audioMeterPanel -->
-        <div id="autoplayBar" style="display:none;">
-          <div id="beatGrid"></div>
-          <div id="autoplayProgress" style="display:none;"><div id="autoplayProgressFill"></div></div>
+        <div class="section-body" data-section="hydra">
+          <div id="presets"></div>
+          <!-- globalControls moved above audioMeterPanel -->
+          <div id="autoplayBar" style="display:none;">
+            <div id="beatGrid"></div>
+            <div id="autoplayProgress" style="display:none;"><div id="autoplayProgressFill"></div></div>
+          </div>
         </div>
-        <div class="section-head">
+        <div class="section-head" data-section="scope">
+          <span class="sh-chevron">▼</span>
           <span class="sh-title scope">Daydream / Scope</span>
           <button class="sh-help-btn" data-help="scope" title="Help">?</button>
+          <span style="flex:1;"></span>
           <button id="scopePanelToggle" class="btn">UI + Docs</button>
           <a href="https://docs.daydream.live/scope" target="_blank" class="btn" style="text-decoration:none;">Docs ↗</a>
           <button id="ddPromptsToggle" class="btn" style="display:none;">Prompts</button>
@@ -805,6 +938,7 @@
             <span id="ddNotesSaved" style="opacity:0;">saved</span>
           </div>
         </div>
+        <div class="section-body" data-section="scope">
         <div id="scopeIframePanel">
           <div class="sip-col">
             <div class="sip-head">
@@ -880,10 +1014,13 @@
           <!-- scopePresets moved above Scope controls -->
         </div>
         <div id="ddDebugLog"></div>
-        <div class="section-head">
+        </div><!-- /section-body scope -->
+        <div class="section-head" data-section="ca">
+          <span class="sh-chevron">▼</span>
           <span class="sh-title ca">Cellular Automata</span>
           <button class="sh-help-btn" data-help="ca" title="Help">?</button>
         </div>
+        <div class="section-body" data-section="ca">
         <div id="caPresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
         <div id="caControls" style="display:none;border-top:1px solid var(--line);padding:4px 10px;">
           <span style="color:#5a8040;font-size:var(--ts-xs);font-weight:700;letter-spacing:0.14em;font-family:var(--font-ui);display:block;margin-bottom:2px;">CONTROLS</span>
@@ -899,6 +1036,7 @@
             <button id="caReseedBtn" class="btn" style="flex:1;">Reseed</button>
           </div>
         </div>
+        </div><!-- /section-body ca -->
       </div>
     </div>
     <!-- Section help popouts -->
@@ -2615,6 +2753,12 @@
           video.playsInline = true
           video.play().catch(function (e) { console.log('[output] play() rejected:', e.message) })
         }
+        // Pass Hydra canvas and filter state directly to output window
+        // (bypasses window.opener which Arc browser may block)
+        try {
+          win._hydraSourceCanvas = hydraCanvas
+          win._hydraFilterStr = hydraCanvas ? hydraCanvas.style.filter : ''
+        } catch (e) {}
         return true
       }
 
@@ -2678,9 +2822,12 @@
           posLeft = s.left + Math.round((s.width - outW) / 2)
           posTop = s.top + Math.round((s.height - outH) / 2)
         }
-        // Force a detached popup window in Chrome — must specify toolbar=no etc.
+        // Force a detached popup window — popup=1 + unique name for Arc browser compat
+        // Arc deduplicates window.open by name, so a fixed name opens as a tab.
+        // Using a unique name each time forces a true new window.
         var features = 'popup=1,toolbar=no,menubar=no,location=no,status=no,scrollbars=no,resizable=yes,width=' + outW + ',height=' + outH + ',left=' + posLeft + ',top=' + posTop
-        const win = window.open(url, 'hydra_output', features)
+        var winName = 'hydra_output_' + Date.now()
+        const win = window.open(url, winName, features)
         if (!win) {
           setStatus('Popup blocked. Allow popups for this site.', true)
           return
@@ -2696,6 +2843,9 @@
           if (attachOutputStream(win)) {
             clearInterval(oneOffTimer)
             setStatus('Output connected — uncompressed stream.', false)
+            // Push current filter state to the newly connected output window
+            var filterStr = buildFilterString(hueCtrl.value, satCtrl.value, brightCtrl.value, contrastCtrl.value)
+            broadcastFilters(filterStr)
             return
           }
           if (tries > 60) {
@@ -4388,7 +4538,7 @@
         pipelineIds.push(pipelineId)
         if (postProc) pipelineIds.push(postProc)
         var vaceOn = ddVaceToggle ? ddVaceToggle.checked : false
-        var loadParams = { width: 576, height: 320, vace_enabled: vaceOn, vace_context_scale: vaceOn ? 1 : 0 }
+        var loadParams = { width: 576, height: 320, vace_enabled: vaceOn, vace_context_scale: vaceOn ? 1 : 0, noise_controller: false }
         if (loraPath) {
           loadParams.loras = [{ path: loraPath, scale: 1.0 }]
         } else {
@@ -5520,8 +5670,14 @@
         // Also apply directly if output window is open (for instant response)
         if (audienceWindow && !audienceWindow.closed) {
           try {
+            // Apply to the visible warpCanvas in the output window
+            var wc = audienceWindow.document.getElementById('warpCanvas')
+            if (wc) wc.style.filter = filterStr
+            // Also apply to video element (audience.html fallback)
             var v = audienceWindow.document.getElementById('v') || audienceWindow.document.getElementById('audienceVideo')
             if (v) v.style.filter = filterStr
+            // Update shared reference for output's render loop
+            audienceWindow._hydraFilterStr = filterStr
           } catch (e) {}
         }
       }
@@ -6150,17 +6306,20 @@
           return ascending.concat(descending)
         }
 
-        // Bar counts use non-aligning values so params rarely land on the same combo
+        // Gentle defaults — narrow ranges, long bar counts for museum/gallery ambience.
+        // Scene should breathe slowly, not jump around.
         var PARAMS = [
-          { id: 'noise', label: 'Noise',   key: 'noise_scale',             defMin: 0.10, defMax: 0.20, defStep: 0.025, defBars: 2,  type: 'float' },
-          { id: 'vace',  label: 'VACE',    key: 'vace_context_scale',      defMin: 0.88, defMax: 1.12, defStep: 0.06,  defBars: 3,  type: 'float' },
-          { id: 'kv',    label: 'KV Bias', key: 'kv_cache_attention_bias', defMin: 0.52, defMax: 0.68, defStep: 0.04,  defBars: 5,  type: 'float' }
+          { id: 'noise', label: 'Drift',      key: 'noise_scale',             defMin: 0.08, defMax: 0.14, defStep: 0.01, defBars: 8,  type: 'float' },
+          { id: 'vace',  label: 'Reference',   key: 'vace_context_scale',      defMin: 0.92, defMax: 1.08, defStep: 0.04, defBars: 16, type: 'float' },
+          { id: 'kv',    label: 'Memory',      key: 'kv_cache_attention_bias', defMin: 0.56, defMax: 0.64, defStep: 0.02, defBars: 32, type: 'float' }
         ]
 
+        // Denoising steps — OFF by default. These cause the biggest visual disruption.
+        // Enable manually when you want more scene evolution.
         var STEP_PARAMS = [
-          { id: 's1', label: 'Step 1', defMin: 850,  defMax: 1000, defStep: 25, defBars: 3 },
-          { id: 's2', label: 'Step 2', defMin: 500,  defMax: 800,  defStep: 25, defBars: 5 },
-          { id: 's3', label: 'Step 3', defMin: 100,  defMax: 500,  defStep: 25, defBars: 7 }
+          { id: 's1', label: 'Step 1', defMin: 900,  defMax: 1000, defStep: 25, defBars: 8,  defOff: true },
+          { id: 's2', label: 'Step 2', defMin: 600,  defMax: 800,  defStep: 25, defBars: 16, defOff: true },
+          { id: 's3', label: 'Step 3', defMin: 300,  defMax: 500,  defStep: 25, defBars: 32, defOff: true }
         ]
 
         // State — each param starts at a random point in its sequence
@@ -6182,7 +6341,7 @@
         STEP_PARAMS.forEach(function (p) {
           var seq = buildSequence(p.defMin, p.defMax, p.defStep)
           stepStates[p.id] = {
-            enabled: true,
+            enabled: !p.defOff,
             min: p.defMin, max: p.defMax, step: p.defStep,
             bars: p.defBars,
             seq: seq,
@@ -6348,7 +6507,7 @@
           var hdr = document.createElement('div')
           hdr.className = 'sa-head'
           var hdrLabel = document.createElement('span')
-          hdrLabel.textContent = 'SCOPE SEQ'
+          hdrLabel.textContent = 'SCENE BREATH'
           var counter = document.createElement('span')
           counter.className = 'sa-counter'
           counter.textContent = '0'
@@ -6410,8 +6569,9 @@
             row.className = 'sa-row'
 
             var tog = document.createElement('span')
-            tog.className = 'sa-toggle'
-            tog.textContent = 'ON'
+            tog.className = 'sa-toggle' + (ss.enabled ? '' : ' off')
+            tog.textContent = ss.enabled ? 'ON' : 'OFF'
+            if (!ss.enabled) row.className = 'sa-row off'
             tog.addEventListener('click', function () {
               ss.enabled = !ss.enabled
               tog.textContent = ss.enabled ? 'ON' : 'OFF'
@@ -6887,6 +7047,55 @@
             popout.style.top = (origTop + e.clientY - startY) + 'px'
           })
           document.addEventListener('mouseup', function () { dragging = false })
+        })
+      })()
+
+      // ── Hydra overflow menu toggle ──
+      ;(function () {
+        var moreBtn = document.getElementById('hydraMoreBtn')
+        var secondary = document.getElementById('hydraSecondaryActions')
+        if (!moreBtn || !secondary) return
+        moreBtn.addEventListener('click', function (e) {
+          e.stopPropagation()
+          var isOpen = secondary.style.display !== 'none'
+          secondary.style.display = isOpen ? 'none' : 'flex'
+          moreBtn.classList.toggle('active', !isOpen)
+        })
+      })()
+
+      // ── Collapsible sections ──
+      ;(function () {
+        var STORAGE_KEY = 'hydra-section-collapse'
+        var saved = {}
+        try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {} } catch (e) {}
+
+        var heads = document.querySelectorAll('.section-head[data-section]')
+        heads.forEach(function (head) {
+          var key = head.getAttribute('data-section')
+          var body = document.querySelector('.section-body[data-section="' + key + '"]')
+          if (!body) return
+
+          // Restore saved state
+          if (saved[key]) {
+            head.classList.add('collapsed')
+            body.classList.add('collapsed')
+          }
+
+          head.addEventListener('click', function (e) {
+            // Don't collapse when clicking buttons/links/inputs inside the header
+            if (e.target.closest('button, a, input, select')) return
+
+            var isCollapsed = head.classList.toggle('collapsed')
+            body.classList.toggle('collapsed', isCollapsed)
+
+            // Persist
+            try {
+              var state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}
+              if (isCollapsed) state[key] = true
+              else delete state[key]
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+            } catch (e) {}
+          })
         })
       })()
 

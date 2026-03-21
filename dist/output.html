@@ -35,8 +35,7 @@
       'varying vec2 v_texcoord;',
       'uniform sampler2D u_video;',
       'void main() {',
-      '  vec2 uv = v_texcoord;',
-      '  gl_FragColor = texture2D(u_video, uv);',
+      '  gl_FragColor = texture2D(u_video, v_texcoord);',
       '}'
     ].join('\n')
 
@@ -73,6 +72,9 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    // Prevent color mangling when reading from Hydra's WebGL canvas
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE)
 
     // Warp mesh state — default identity (3x3 grid, no distortion)
     var warpState = {
@@ -165,6 +167,13 @@
         return sourceCanvas
       }
       sourceCanvas = null
+      // Try direct reference from launcher (works even when window.opener is blocked)
+      try {
+        if (window._hydraSourceCanvas && window._hydraSourceCanvas.width > 0) {
+          sourceCanvas = window._hydraSourceCanvas
+          return sourceCanvas
+        }
+      } catch (e) {}
       // Try window.opener (popup case)
       try {
         if (window.opener && !window.opener.closed) {
@@ -190,24 +199,49 @@
     window.addEventListener('resize', resizeCanvas)
     resizeCanvas()
 
+    // Filter sync state
+    var lastSyncedFilter = ''
+    var filterPollCount = 0
+
     function render() {
       requestAnimationFrame(render)
 
-      // Pick texture source: checkerboard, direct canvas, or video stream fallback
+      // Sync CSS filter from launcher every ~10 frames
+      filterPollCount++
+      if (filterPollCount % 10 === 0) {
+        var f = ''
+        // Try direct reference from launcher (most reliable)
+        try { if (window._hydraFilterStr) f = window._hydraFilterStr } catch (e) {}
+        // Fallback: read from opener's canvas
+        if (!f) {
+          try {
+            if (window.opener && !window.opener.closed) {
+              var srcCanvas = window.opener.document.querySelector('#stage canvas')
+              if (srcCanvas) f = srcCanvas.style.filter || ''
+            }
+          } catch (e) {}
+        }
+        if (f !== lastSyncedFilter) {
+          lastSyncedFilter = f
+          canvas.style.filter = f
+        }
+      }
+
+      // Pick texture source: checkerboard, video stream, or direct canvas fallback
       var src = null
       if (mapModeOn) {
         if (checkerCanvas.width < 2) drawChecker(canvas.width, canvas.height)
         src = checkerCanvas
+      } else if (video.readyState >= 2) {
+        // Prefer video stream (captureStream) — works cross-window in all browsers
+        src = video
       } else {
-        // Prefer direct canvas read (robust, no captureStream)
+        // Fallback to direct canvas read (works in Safari, may fail in Chrome)
         var directCanvas = getSourceCanvas()
         if (directCanvas) {
           src = directCanvas
-        } else if (video.readyState >= 2) {
-          // Fallback to video stream (captureStream path)
-          src = video
         } else {
-          // No source yet — clear to black and keep looping (don't bail)
+          // No source yet — clear to black and keep looping
           gl.clear(gl.COLOR_BUFFER_BIT)
           return
         }
@@ -241,6 +275,33 @@
       }
     })
 
+    // Initial filter sync — try direct reference, then opener, retry for 3s
+    function syncFilterInitial () {
+      var f = ''
+      try { if (window._hydraFilterStr) f = window._hydraFilterStr } catch (e) {}
+      if (!f) {
+        try {
+          if (window.opener && !window.opener.closed) {
+            var srcCanvas = window.opener.document.querySelector('#stage canvas')
+            if (srcCanvas && srcCanvas.style.filter) f = srcCanvas.style.filter
+          }
+        } catch (e) {}
+      }
+      if (f) {
+        lastSyncedFilter = f
+        canvas.style.filter = f
+        return true
+      }
+      return false
+    }
+    if (!syncFilterInitial()) {
+      var syncRetries = 0
+      var syncTimer = setInterval(function () {
+        syncRetries++
+        if (syncFilterInitial() || syncRetries > 15) clearInterval(syncTimer)
+      }, 200)
+    }
+
     // WebSocket connection for filter updates and warp mesh updates
     var ws = null
     var wsRetry = 500
@@ -260,6 +321,7 @@
               if (mapModeOn) drawChecker(canvas.width, canvas.height)
             }
             if (data.type === 'filters') {
+              lastSyncedFilter = data.filter || ''
               canvas.style.filter = data.filter
             }
           } catch (e) {}

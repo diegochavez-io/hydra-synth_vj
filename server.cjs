@@ -489,6 +489,7 @@ const server = http.createServer(function (req, res) {
         if (preset.loras) loadParams.loras = preset.loras
         if (preset.vace_enabled !== undefined) loadParams.vace_enabled = preset.vace_enabled
         if (preset.vace_context_scale !== undefined) loadParams.vace_context_scale = preset.vace_context_scale
+        if (preset.noise_controller !== undefined) loadParams.noise_controller = preset.noise_controller
 
         var postData = JSON.stringify({
           pipeline_ids: [preset.pipeline || 'krea-realtime-video'],
@@ -1111,7 +1112,7 @@ server.on('upgrade', function (req, socket, head) {
   }
 })
 var lastCode = null
-var lastWarp = null
+var lastWarp = null  // NOTE: not sent on connect — output defaults to identity mesh
 var linkEnabled = false
 var linkBroadcastTimer = null
 
@@ -1145,7 +1146,8 @@ function stopLinkBroadcast () {
 
 wss.on('connection', function (ws) {
   if (lastCode) ws.send(lastCode)
-  if (lastWarp) ws.send(lastWarp)
+  // Don't send cached warp on connect — output always starts with clean identity mesh
+  // Warp state is only pushed when the user explicitly saves/loads a map preset
 
   // Send current link status on connect
   if (link) {
