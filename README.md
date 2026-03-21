@@ -1,165 +1,61 @@
-### Hydra-Synth
+# Hydra VJ
 
-Video synth engine for [hydra](https://github.com/ojack/hydra).
+A live visual performance app built on [Hydra](https://github.com/ojack/hydra), Olivia Jack's open-source video synth.
 
-Currently experimental / in-progress.
+50+ hand-coded presets, audio reactivity, projection mapping, cellular automata, and optional [Daydream Scope](https://daydream.live/) integration for real-time AI video generation.
 
-This is the main logic of hydra packaged as a javascript module, intended for use within javascript projects. If you are looking to get started with hydra quickly, visit the [web editor](https://hydra.ojack.xyz) or the [main repo](https://github.com/ojack/hydra). To use hydra within atom, follow the instructions at https://github.com/ojack/hydra-examples.
+Forked from [hydra-synth](https://github.com/hydra-synth/hydra-synth). Licensed under AGPL-3.0.
 
-![image of hydra in webpage](/assets/hydra-webpage.png?raw=true)
+## What's in this repo
 
-### To include in a webpage (bundled version):
-Include the bundled version of this library in your html file:
-```html
-<script src="https://unpkg.com/hydra-synth"></script>
-<script>
-      // create a new hydra-synth instance
-      var hydra = new Hydra({ detectAudio: false })
-      osc(4, 0.1, 1.2).out()
-</script>
+- `dist/launcher.html` - Main launcher UI (presets, controls, audio meter, Scope bridge)
+- `dist/output.html` - Fullscreen output window
+- `presets/` - 50+ Hydra presets (`.md` files with executable code blocks)
+- `server.cjs` - Local server with WebSocket sync, Ableton Link, OSC bridge
+- `scope-presets.json` - Daydream Scope preset configurations
+- `src/` - Modified hydra-synth engine
+- `dist/hydra-synth.js` - Bundled engine
+
+## Quick start
+
+```bash
+npm install
+node server.cjs
 ```
 
-You can see and remix a live example here: https://glitch.com/edit/#!/hydra-webpage
+Open `http://localhost:8000` in your browser. The launcher opens the output window automatically.
 
-### To use as a module:
-Download the module:
-```
-npm install --save hydra-synth
-```
+## Features
 
-Include in your app:
-```javascript
-import Hydra from 'hydra-synth'
+**Hydra engine** - Live-coded GLSL shaders via Hydra's JavaScript API. All presets are audio-reactive with smoothed envelopes.
 
-const hydra = new Hydra({ detectAudio: false })
-osc(4, 0.1, 1.2).out()
-```
+**Preset system** - Presets load from `presets/*.md`. Each file contains a code block that executes directly in the Hydra context. Global controls (brightness, contrast, saturation, hue, blur) apply across all presets.
 
-### To use using cjs/require syntax:
-```javascript
-const Hydra = require('hydra-synth')
-```
+**Audio reactivity** - Microphone input with FFT analysis. Bass, mid, treble, and overall level are available as smoothed globals (`a.fft[0]` through `a.fft[3]`).
 
+**Daydream Scope** - Optional AI video generation via Scope's Remote Inference. Connect with one toggle. Parameters (noise, VACE strength, denoising steps, prompts) can be sequenced via Ableton Link on bar boundaries.
 
-The rest of this README is about configuring hydra-synth. For broader hydra documentation and usage, see [getting started](https://github.com/ojack/hydra#basic-functions), [interactive function documentation](https://ojack.xyz/hydra-functions/), and [Hydra Book (by Naoto Hieda)](https://hydra-book.naotohieda.com/#/).
+**Cellular automata** - Lenia, SmoothLife, MNCA, Orbium, and more, built in as content sources.
 
-#### API:
-```javascript
-const hydra = new Hydra([opts])
-```
-create a new hydra instance
+**Projection mapping** - Warp mesh editor for mapping output onto surfaces.
 
-If `opts` is specified, the default options (shown below) will be overridden.
+## Scope setup
 
-```javascript
-{
-  canvas: null, // canvas element to render to. If none is supplied, a canvas will be created and appended to the screen
+1. Get a [Daydream Scope](https://daydream.live/) account
+2. Create `daydream.config.json` with your API key:
+   ```json
+   { "apiKey": "your-key-here" }
+   ```
+3. Toggle Scope on in the launcher
 
-  width: // defaults to canvas width when included, 1280 if not
+## LoRA
 
-  height: // defaults to canvas height when included, 720 if not
+I trained a custom Wan 2.1 14B LoRA on my Hydra output for use with Scope. Trigger word: `hydravj`
 
-  autoLoop: true, // if true, will automatically loop using requestAnimationFrame.If set to false, you must implement your own loop function using the tick() method (below)
+[hydravj LoRA on HuggingFace](https://huggingface.co/diegochavez/hydra_wan_2-1_14B)
 
-  makeGlobal: true, // if false, will not pollute global namespace (note: there are currently bugs with this)
+## Links
 
-  detectAudio: true, // recommend setting this to false to avoid asking for microphone
-
-  numSources: 4, // number of source buffers to create initially
-
-  numOutputs: 4, // number of output buffers to use. Note: untested with numbers other than 4. render() method might behave unpredictably
-
-  extendTransforms: [] // An array of transforms to be added to the synth, or an object representing a single transform
-
-  precision: null  // force precision of shaders, can be 'highp', 'mediump', or 'lowp' (recommended for ios). When no precision is specified, will use highp for ios, and mediump for everything else.
-
-  pb = null, // instance of rtc-patch-bay to use for streaming
-}
-
-```
-
-#### Custom render loop
-You can use your own render loop for triggering hydra updates, instead of the automatic looping. To use, set autoLoop to false, and call
-```javascript
-hydra.tick(dt)
-```
-where dt is the time elapsed in milliseconds since the last update
-
-### To develop:
-```javascript
-npm run dev
-```
-Sets up an example using hydra-synth that is automatically updated when source files are updated. It is possible to write test code by editing /example/index.js or by writing hydra code into the developer console.
-
-#### Non-global mode
-If makeGlobal is set to false, buffers and functions can be accessed via the synth property of the hydra instance.
-```javascript
-const h = new Hydra({ makeGlobal: false, detectAudio: false }).synth
-h.osc().rotate().out()
-```
-
-In non-global mode, it is important to start all hydra functions, buffers, and variables by referencing the instance of hydra synth you are currently using.e.g.
-```javascript
-const h = new Hydra({ makeGlobal: false, detectAudio: false }).synth
-h.osc().diff(h.shape()).out()
-h.gradient().out(h.o1)
-h.render()
-```
-
-This also makes it possible to use more than one hydra canvas at once:
-```javascript
-const h = new Hydra({ makeGlobal: false, detectAudio: false }).synth
-h.osc().diff(h.shape()).out()
-h.gradient().out(h.o1)
-h.render()
-
-const h2 = new Hydra({ makeGlobal: false, detectAudio: false }).synth
-h2.shape(4).diff(h2.osc(2, 0.1, 1.2)).out()
-```
-
-See https://glitch.com/edit/#!/multi-hydra for a working example of multiple hydra canvases, created by Naoto Hieda.
-
-If you would like to keep the same syntax as hydra in non-global mode, consider destructuring the object further:
-```javascript
-const { src, osc, gradient, shape, voronoi, noise, s0, s1, s2, s3, o0, o1, o2, o3, render } = hydra
-shape(4).diff(osc(2, 0.1, 1.2)).out()
-```
-
-[hydra-ts](https://github.com/folz/hydra-ts) is a fork of hydra-synth in Typescript maintained by @folz. 
-
-### Known issues / troubleshooting
-
-#### Vite
-When using hydra with Vite, you might see the error `Uncaught ReferenceError: global is not defined`. This is an issue in `hydra-synth` dependency, which further depends on node's `global`. 
-
-- To fully mitigate the issue: add a polyfill for `global`. (See [ref](https://github.com/vitejs/vite/discussions/5912#discussioncomment-1724947))
-- To workaround: add the following snippet to `vite.config.json`. (See [ref](https://github.com/vitejs/vite/discussions/5912#discussioncomment-2908994))
-``` js
-define: {
-  global: {},
-},
-```
-
-#### Autoplay on iOS
-
-*from issue https://github.com/hydra-synth/hydra-synth/issues/137*
-
-It seems on mobile safari, videos won't autoplay because of several reasons:
-
-* you need playsinline attribute (which can be added programmatically) https://stackoverflow.com/questions/43570460/html5-video-autoplay-on-iphone
-* If the `<video>` element is not rendered on screen, the video does not update. As a workaround, you can make a small render of the video in a corner and this seems to work
-
-```html
-    <video style="position:static;top:1px;width:1px;height:1px" id="vid" autoplay loop muted playsinline crossorigin>
-      <source src="https://cdn.glitch.global/8df667c3-e544-4cbb-8c16-f604238e8d2e/paper.mov?v=1682418858521">
-    </video>
-```
-
-```
-let v = document.getElementById("vid")
-v.addEventListener('loadeddata', () => {
-  s0.init({src: v})
-})
-```
-
-Here is a live example: https://glitch.com/edit/#!/hydra-video-autoplay-ios
+- [Hydra](https://hydra.ojack.xyz/) - Olivia Jack's original project
+- [Daydream Scope](https://daydream.live/) - Real-time AI video
+- [ai-toolkit](https://github.com/ostris/ai-toolkit) - LoRA training

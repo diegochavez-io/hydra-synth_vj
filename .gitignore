@@ -91,6 +91,34 @@ settings.json
 # Claude Code internals
 .claude/
 .mcp.json
+.planning/
+docs/superpowers/
 
 # Embedded repos
 tomato/
+
+# TouchDesigner files
+*.toe
+*.tox
+td-mcp-starter/
+td-mcp-starter.zip
+Backup/
+
+# PDFs and course materials
+*.pdf
+
+# Blog drafts
+blog_draft*.md
+
+# Archives
+dist/_archive/
+_archive/
+
+# Python cache
+__pycache__/
+
+# Scope notes (local only)
+scope-notes.json
+
+# Misc
+ui.pur
