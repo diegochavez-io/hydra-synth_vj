@@ -2913,7 +2913,8 @@ class HydraRenderer {
       update: dt => {},
       // user defined update function
       hush: this.hush.bind(this),
-      tick: this.tick.bind(this)
+      tick: this.tick.bind(this),
+      scope: this._initScope()
     };
     if (makeGlobal) window.loadScript = this.loadScript;
     this.timeSinceLastUpdate = 0;
@@ -3053,6 +3054,77 @@ class HydraRenderer {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(a.href);
     }, 300);
+  }
+
+  _initScope() {
+    const osc = (key, value, type = 'float') => {
+      fetch('/api/scope-osc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          key,
+          value,
+          type
+        })
+      }).catch(e => console.warn('[scope]', key, e.message));
+    };
+
+    const scope = {
+      // prompt — the generation text
+      prompt(text) {
+        osc('prompt', String(text), 'string');
+        return scope;
+      },
+
+      // noise_scale — drift amount (Scope default ~0.10)
+      noise(val) {
+        osc('noise_scale', parseFloat(val));
+        return scope;
+      },
+
+      // alias
+      drift(val) {
+        return scope.noise(val);
+      },
+
+      // vace_context_scale — reference strength
+      vace(val) {
+        osc('vace_context_scale', parseFloat(val));
+        return scope;
+      },
+
+      // kv_cache_attention_bias — memory
+      memory(val) {
+        osc('kv_cache_attention_bias', parseFloat(val));
+        return scope;
+      },
+
+      // denoising step schedules (int)
+      step1(val) {
+        osc('/scope/denoise_step_1', parseInt(val), 'int');
+        return scope;
+      },
+
+      step2(val) {
+        osc('/scope/denoise_step_2', parseInt(val), 'int');
+        return scope;
+      },
+
+      step3(val) {
+        osc('/scope/denoise_step_3', parseInt(val), 'int');
+        return scope;
+      },
+
+      // send arbitrary OSC key/value
+      send(key, value, type) {
+        osc(key, value, type || (typeof value === 'string' ? 'string' : 'float'));
+        return scope;
+      }
+
+    };
+    return scope;
   }
 
   _initAudio() {

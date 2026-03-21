@@ -1,0 +1,8 @@
+{
+  "name": "Clean Feed",
+  "description": "Pure AI feed, no hydra processing",
+  "tags": [
+    "scope"
+  ],
+  "code": "// Daydream Clean Feed — pure AI feed, no hydra processing\n// s3 = Scope NDI (auto-initialized)\n\nsrc(s3)\n  .out(o0);"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "047",
+  "description": "Warp Drive — osc tunneling through noise, heavy modulation",
+  "tags": [],
+  "code": "// Warp Drive — osc modulated heavily by noise, feedback creates tunnel drift\nspeed = 0.6\n\nAUDIO.bins = 6; AUDIO.smooth = 0.78; AUDIO.gain = 50; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar _hi = function(){ return a.fft[4] || 0 };\nvar low  = env(_lo, 0.4, 0.03);\nvar mid  = env(_mi, 0.35, 0.04);\nvar high = env(_hi, 0.3, 0.05);\nvar amp  = function(){ return (low() + mid() + high()) * 0.7 };\n\n// osc with HEAVY noise modulation = warped organic stripes\nosc(30, 0.04, 2.0)\n  .modulate(noise(3, 0.25), 0.2)\n  .modulateRotate(noise(1, 0.08), 0.08)\n  .color(\n    () => 0.3 + low() * 1.5,\n    () => 0.6 + mid() * 0.8,\n    () => 0.8 + high() * 0.6\n  )\n  .blend(osc(5, 0.06, 3.0).rotate(() => time * 0.05).color(0.2, 0.15, 0.3), 0.3)\n  .blend(src(o0).rotate(() => Math.sin(time * 0.04) * 0.005).hue(() => amp() * 0.008), 0.78)\n  .saturate(() => 1.0 + low() * 0.6)\n  .colorama(() => 0.002 + amp() * 0.006)\n  .contrast(() => 1.02 + low() * 0.12)\n  .brightness(() => 0.03 + low() * 0.03)\n  .out(o0)",
+  "filters": {
+    "hue": 200,
+    "sat": 150,
+    "bright": 105,
+    "contrast": 110,
+    "speed": 1
+  }
+}

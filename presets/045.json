@@ -1,0 +1,13 @@
+{
+  "name": "045",
+  "description": "Acid Candy — osc layers mult'd, heavy colorama feedback cycling",
+  "tags": [],
+  "code": "// Acid Candy — osc layers multiplied for pattern, colorama feedback cycling\nspeed = 0.6\n\nAUDIO.bins = 6; AUDIO.smooth = 0.78; AUDIO.gain = 50; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar _hi = function(){ return a.fft[4] || 0 };\nvar low  = env(_lo, 0.4, 0.03);\nvar mid  = env(_mi, 0.35, 0.04);\nvar high = env(_hi, 0.3, 0.05);\nvar amp  = function(){ return (low() + mid() + high()) * 0.7 };\n\n// three osc mult'd = complex web pattern\nosc(10, 0.1, 2.5)\n  .mult(osc(15, 0.08, 1.5).rotate(() => time * 0.04))\n  .mult(osc(7, 0.06, 3.0).rotate(() => time * -0.03))\n  .color(\n    () => 0.8 + low() * 1.0,\n    () => 0.4 + mid() * 0.9,\n    () => 0.6 + high() * 0.8\n  )\n  .modulate(noise(2, 0.2), 0.04)\n  // feedback with HEAVY colorama = colors cycle every frame\n  .blend(\n    src(o0)\n      .colorama(() => 0.005 + amp() * 0.01)\n      .hue(() => low() * 0.01),\n    0.82\n  )\n  .saturate(() => 1.2 + low() * 0.5)\n  .contrast(() => 1.03 + low() * 0.1)\n  .brightness(() => 0.03 + low() * 0.03)\n  .out(o0)",
+  "filters": {
+    "hue": 0,
+    "sat": 155,
+    "bright": 110,
+    "contrast": 105,
+    "speed": 1
+  }
+}

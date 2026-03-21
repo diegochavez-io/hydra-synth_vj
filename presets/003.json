@@ -1,0 +1,13 @@
+{
+  "name": "003",
+  "description": "Noise and oscillator blend, cool-toned variant",
+  "tags": [],
+  "code": "// ---- audio (smoothed envelopes) ----\nAUDIO.bins = 6; AUDIO.smooth = 0.88; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar _hi = function(){ return a.fft[4] || 0 };\nvar low = env(_lo, 0.25, 0.06);\nvar mid = env(_mi, 0.3, 0.08);\nvar high = env(_hi, 0.2, 0.1);\nvar amp = function(){ return (low() + mid() + high()) * 0.9 };\n\nnoise(2, 0.08 + Math.sin(time*0.2))\n.color (1,0, -1)\n.blend (osc (10, 0.2,5),0.80)\n.blend(o0, 0.85)\n.add (noise (9000, 0.78), 0.025 )\n.modulate (noise(1.5, 0.7), () => 0.1 + low()*0.01)\n.out (o0)",
+  "filters": {
+    "hue": 305,
+    "sat": 235,
+    "bright": 86,
+    "contrast": 100,
+    "speed": 0.2
+  }
+}

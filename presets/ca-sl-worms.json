@@ -1,0 +1,8 @@
+{
+  "name": "SL Worms",
+  "description": "Noise feedback — CA worms tunnel through texture",
+  "tags": [
+    "ca"
+  ],
+  "code": "// Noise feedback — CA worms tunnel through the texture\ncaStream('sl_worms').out(o1)\n\nnoise(3, 0.025).rotate(()=>time*0.012)\n  .modulate(src(o1), 0.06)\n  .modulateScale(src(o1), 0.04)\n  .color(0.2, 0.45, 0.35).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateRotate(src(o1), 0.03)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.6, 0.03), 0.003)\n  .modulateRotate(noise(0.2, 0.015), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.022)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.1)\n  .out(o0)"
+}

@@ -474,8 +474,6 @@
     #daydreamBar select { font-size: inherit; }
     #ddInfo { color: var(--dim); font-size: var(--ts-sm); }
     .dd-label { color: var(--dim); white-space: nowrap; font-size: var(--ts-sm); font-weight: 500; }
-    #ddDebugToggle { cursor: pointer; color: var(--dim); text-decoration: none; opacity: 0.4; font-size: var(--ts-xs); transition: opacity 0.12s; }
-    #ddDebugToggle:hover { opacity: 0.8; }
     /* SCOPE AUTO — purple palette, grid-aligned rows */
     #scopeAuto { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
     #scopeAuto .sa-head {
@@ -533,39 +531,11 @@
     }
     #scopeAuto .sa-bars:hover { border-color: var(--s-dim); color: var(--muted); }
 
-    /* ── Scope iframe panel (UI + Docs side-by-side) ── */
-    #scopeIframePanel {
-      display: none;
-      flex-direction: row;
-      gap: 4px;
-      padding: 4px;
-      background: var(--s-surface);
-      border-top: 1px solid var(--s-dim);
-      border-bottom: 1px solid var(--s-dim);
-    }
-    #scopeIframePanel.open { display: flex; }
-    .sip-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-    .sip-col .sip-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 3px 6px;
-      font-family: var(--font-ui); font-size: var(--ts-hd); font-weight: 700;
-      letter-spacing: 0.14em; text-transform: uppercase; color: var(--s);
-    }
-    .sip-col .sip-head a {
-      color: var(--dim); font-size: var(--ts-xs); text-decoration: none;
-      font-weight: 400; letter-spacing: 0;
-    }
-    .sip-col .sip-head a:hover { color: var(--muted); }
-    .sip-col iframe {
-      flex: 1; width: 100%; min-height: 420px;
-      border: 1px solid var(--s-dim); border-radius: 2px;
-      background: #0a0a10;
-    }
-    #scopePanelToggle, #ddNotesToggle, #ddPromptsToggle {
+    #ddNotesToggle, #ddPromptsToggle {
       cursor: pointer; transition: color 0.12s, border-color 0.12s, background 0.12s;
     }
-    #scopePanelToggle:hover, #ddNotesToggle:hover, #ddPromptsToggle:hover { color: var(--s) !important; }
-    #scopePanelToggle.active, #ddNotesToggle.active, #ddPromptsToggle.active {
+    #ddNotesToggle:hover, #ddPromptsToggle:hover { color: var(--s) !important; }
+    #ddNotesToggle.active, #ddPromptsToggle.active {
       color: var(--s); border-color: var(--s); background: var(--s-surface);
     }
 
@@ -593,8 +563,8 @@
       cursor: move;
     }
     #ddNotesArea {
-      width: 100%; min-height: 200px; max-height: 60vh;
-      resize: vertical; padding: 8px 10px;
+      width: 100%; flex: 1; min-height: 100px;
+      resize: none; padding: 8px 10px;
       background: var(--bg); color: var(--muted);
       border: none; outline: none;
       font-family: var(--font-code); font-size: var(--ts-sm);
@@ -612,11 +582,34 @@
       font-family: var(--font-code); font-size: var(--ts-sm); font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
-    #ddDebugLog {
+    /* ── Log popout ── */
+    #ddLogPopout {
       display: none;
-      border-top: 1px solid var(--line);
+      position: absolute;
+      z-index: 200;
+      width: 520px;
+      background: var(--panel);
+      border: 1px solid var(--s-dim);
+      border-radius: 4px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(100,60,160,0.15);
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #ddLogPopout.open { display: flex; }
+    .log-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px;
+      background: var(--s-surface);
+      border-bottom: 1px solid var(--s-dim);
+      font-family: var(--font-ui); font-size: var(--ts-hd); font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--s);
+      cursor: move;
+    }
+    #ddDebugLog {
+      flex: 1;
       background: #08080a;
-      max-height: 350px; overflow-y: auto;
+      min-height: 150px;
+      overflow-y: auto;
       padding: 6px 10px; line-height: 1.5;
       color: var(--dim);
     }
@@ -625,6 +618,20 @@
     #ddDebugLog .log-warn { color: var(--muted); }
     #ddDebugLog .log-info { color: var(--dim); }
     #ddDebugLog .log-time { color: var(--dim); margin-right: 6px; }
+
+    /* ── Popout resize handles ── */
+    .popout-resize {
+      position: absolute; right: 0; bottom: 0;
+      width: 16px; height: 16px; cursor: nwse-resize;
+    }
+    .popout-resize::after {
+      content: '';
+      position: absolute; right: 3px; bottom: 3px;
+      width: 8px; height: 8px;
+      border-right: 2px solid var(--s-dim);
+      border-bottom: 2px solid var(--s-dim);
+      opacity: 0.5;
+    }
 
     /* ── CA controls ── */
     #caControls label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -674,7 +681,7 @@
         grid-template-columns: 28px minmax(40px, 1fr) 38px 38px 38px minmax(46px, 56px) 38px 10px;
         font-size: 11px;
       }
-      .kbd-hint { display: none; }
+      /* kbd-hint stays visible at all sizes */
       #audioMeterPanel .audio-controls { gap: 4px; }
       #presetsHeader .sh-actions-primary { gap: 2px; }
     }
@@ -695,10 +702,8 @@
 
     /* ── Keyboard shortcut badges ── */
     .kbd-hint {
-      font-family: var(--font-code); font-size: 9px; font-weight: 400;
-      color: var(--dim); opacity: 0.6;
-      padding: 0 3px; margin-left: 2px;
-      letter-spacing: 0; text-transform: none;
+      opacity: 0.45; margin-left: 6px;
+      font-size: inherit; font-weight: inherit;
     }
 
     /* ── Hydra header: two-row layout ── */
@@ -768,11 +773,14 @@
     <div id="leftCol">
       <div id="stageBar">
         <div class="sb-left">
-          <button id="runAllBtn" class="btn main" title="Cmd/Ctrl+Shift+Enter">Run</button>
+          <button id="runAllBtn" class="btn main" title="Cmd/Ctrl+Shift+Enter">Run <span class="kbd-hint"></span></button>
           <button id="stopBtn" class="btn stop">Stop</button>
           <div class="sb-sep"></div>
           <button id="recordBtn" class="btn rec" title="Record canvas to MP4">Rec</button>
           <button id="batchRecordBtn" class="btn rec" title="Record all presets automatically">Batch</button>
+          <button id="screengrabBtn" class="btn" title="Save screengrab with filters applied (Cmd+G)" style="color:#7eb8da;">Grab</button>
+          <div class="sb-sep"></div>
+          <button id="serverRestartBtn" class="btn" title="Restart server + reload page">Restart</button>
           <div class="sb-sep"></div>
           <span id="mapControls" style="display:flex;align-items:center;gap:3px;">
             <button id="mapBtn" class="btn">Map</button>
@@ -851,8 +859,8 @@
           </div>
           <div class="ac-group">
             <span style="color:var(--dim);">Gain</span>
-            <input type="range" id="audioGainSlider" min="0.1" max="10" step="0.1" value="1" style="width:80px;">
-            <span id="audioGainVal" style="color:var(--dim);min-width:28px;">1.0x</span>
+            <input type="range" id="audioGainSlider" min="0.1" max="10" step="0.1" value="10" style="width:80px;">
+            <span id="audioGainVal" style="color:var(--dim);min-width:28px;">10.0x</span>
           </div>
           <div class="ac-sep"></div>
           <div class="ac-group">
@@ -879,7 +887,7 @@
           <button class="sh-help-btn" data-help="hydra" title="Help">?</button>
           <a href="https://hydra.ojack.xyz/api/" target="_blank" class="btn" style="text-decoration:none;">Docs</a>
           <div class="sh-actions-primary">
-            <button id="presetsRunBtn" class="btn main" title="Run current code (Cmd/Ctrl+Shift+Enter)">Run <span class="kbd-hint">⌘⇧↵</span></button>
+            <button id="presetsRunBtn" class="btn main" title="Run current code (Cmd/Ctrl+Shift+Enter)">Run <span class="kbd-hint"></span></button>
             <button id="autoplayBtn" class="btn">Autoplay</button>
             <select id="autoplayMode">
               <option value="time">Time</option>
@@ -922,10 +930,17 @@
           <span class="sh-chevron">▼</span>
           <span class="sh-title scope">Daydream / Scope</span>
           <button class="sh-help-btn" data-help="scope" title="Help">?</button>
+          <div class="dd-dot" id="ddDot" style="margin-left:6px;"></div>
+          <button id="ddScopeStart" class="btn">Start</button>
+          <button id="ddScopeRestart" class="btn" style="display:none;">Restart</button>
+          <button id="ddToggle" class="btn" style="display:none;">Connect Video</button>
+          <span id="ddInfo" style="font-size:var(--ts-xs);color:var(--muted);"></span>
+          <span id="scopeTimer" style="display:none;font-family:var(--font-code);font-size:var(--ts-sm);font-variant-numeric:tabular-nums;color:var(--dim);"></span>
+          <a href="http://localhost:8000" target="_blank" class="btn" style="text-decoration:none;" id="ddScopeOpenTab">Scope UI ↗</a>
           <span style="flex:1;"></span>
-          <button id="scopePanelToggle" class="btn">UI + Docs</button>
           <a href="https://docs.daydream.live/scope" target="_blank" class="btn" style="text-decoration:none;">Docs ↗</a>
-          <button id="ddPromptsToggle" class="btn" style="display:none;">Prompts</button>
+          <button id="ddPromptsToggle" class="btn" style="display:none;">Sequencer</button>
+          <button id="ddDebugToggle" class="btn">Log</button>
           <button id="ddNotesToggle" class="btn">Notes</button>
         </div>
         <div id="ddNotesPopout">
@@ -937,25 +952,17 @@
           <div class="notes-foot">
             <span id="ddNotesSaved" style="opacity:0;">saved</span>
           </div>
+          <div class="popout-resize" data-popout="ddNotesPopout"></div>
+        </div>
+        <div id="ddLogPopout">
+          <div class="log-head">
+            <span>Scope Log</span>
+            <button id="ddLogClose" class="btn" style="padding:1px 6px;">✕</button>
+          </div>
+          <div id="ddDebugLog"></div>
+          <div class="popout-resize" data-popout="ddLogPopout"></div>
         </div>
         <div class="section-body" data-section="scope">
-        <div id="scopeIframePanel">
-          <div class="sip-col">
-            <div class="sip-head">
-              <span>Scope UI</span>
-              <a href="http://localhost:8000" target="_blank">open in tab ↗</a>
-            </div>
-            <iframe id="scopeUiFrame" src="about:blank" allow="camera;microphone;autoplay"></iframe>
-          </div>
-          <div class="sip-col">
-            <div class="sip-head">
-              <span>Docs</span>
-              <a href="https://docs.daydream.live/scope" target="_blank">open in tab ↗</a>
-            </div>
-            <iframe id="scopeDocsFrame" src="about:blank"></iframe>
-          </div>
-        </div>
-        <div id="scopePresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
         <div id="daydreamBar">
           <!-- Hidden elements kept for JS compatibility -->
           <select id="ddMode" style="display:none;"><option value="scope">Scope</option><option value="cloud">Cloud</option></select>
@@ -968,23 +975,16 @@
           <select id="ddPostprocessor" style="display:none;"></select>
           <label id="ddVaceLabel" style="display:none;font-family:var(--font-ui);font-size:var(--ts-sm);color:var(--muted);cursor:pointer;"><input type="checkbox" id="ddVaceToggle"> VACE</label>
           <button id="ddLoadPipeline" style="display:none;"></button>
-          <div class="dd-row">
-            <div class="dd-dot" id="ddDot"></div>
-            <span class="dd-label">Scope</span>
-            <button id="ddScopeStart" class="btn">Start</button>
-            <button id="ddScopeRestart" class="btn" style="display:none;">Restart</button>
-            <button id="ddToggle" class="btn" style="display:none;">Connect Video</button>
-            <span id="ddInfo"></span>
-            <span id="scopeTimer" style="display:none;font-family:var(--font-code);font-size:var(--ts-sm);font-variant-numeric:tabular-nums;color:var(--dim);margin-left:4px;"></span>
-            <a href="http://localhost:8000" target="_blank" class="btn" style="text-decoration:none;display:none;" id="ddScopeOpenTab">Scope UI</a>
-            <span id="ddDebugToggle" style="margin-left:auto;">Log</span>
+          <div id="ddPromptSection" style="display:none;">
+            <span style="font-family:var(--font-ui);font-size:var(--ts-hd);font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--s);display:block;margin-bottom:4px;">Prompt</span>
+            <div class="dd-row" id="ddPromptRow">
+              <input type="text" id="ddPrompt" placeholder="Describe the visual..." value="abstract fluid art, iridescent light" style="flex:1;min-width:180px;">
+              <button id="ddSend" class="btn">Send</button>
+            </div>
           </div>
           <div id="ddPromptsWrap" style="display:none;">
-          <div class="dd-row" id="ddPromptRow">
-            <input type="text" id="ddPrompt" placeholder="Prompt..." value="abstract fluid art, iridescent light" style="flex:1;min-width:180px;">
-            <button id="ddSend" class="btn">Send</button>
-          </div>
-          <div id="piPanel" style="padding:4px 0 2px;">
+          <span style="font-family:var(--font-ui);font-size:var(--ts-hd);font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--s-dim);display:block;margin:8px 0 4px;">Prompt Sequence</span>
+          <div id="piPanel" style="padding:0 0 2px;">
             <div class="dd-row" style="margin-bottom:4px;">
               <button id="piRunBtn" class="btn main">▶ Sequence</button>
               <select id="piBarsSelect" style="font-size:inherit;">
@@ -997,23 +997,24 @@
               </select>
               <button id="piPrevBtn" class="btn">◀</button>
               <button id="piNextBtn" class="btn">▶</button>
-              <button id="piListToggle" class="btn" style="margin-left:auto;" title="Show/hide prompt list">Prompts</button>
             </div>
+            <div class="dd-row" style="margin-bottom:4px;">
+              <select id="piSceneSelect" style="font-size:inherit;flex:1;min-width:0;"></select>
+              <button id="piSceneSaveBtn" class="btn">Save</button>
+              <button id="piSceneNewBtn" class="btn">+ New</button>
+              <button id="piOpenFileBtn" class="btn" title="Load prompts from a .txt file">Open File</button>
+              <button id="piSceneDelBtn" class="btn" style="color:var(--danger);">Del</button>
+              <button id="piListToggle" class="btn" style="margin-left:auto;" title="Show/hide prompt editor">Edit</button>
+            </div>
+            <input type="file" id="piFileInput" accept=".txt,.text" style="display:none;">
             <div id="piListBody">
-              <div class="dd-row" style="margin-bottom:4px;">
-                <select id="piSceneSelect" style="font-size:inherit;flex:1;min-width:0;"></select>
-                <button id="piSceneSaveBtn" class="btn">Save</button>
-                <button id="piSceneNewBtn" class="btn">+ New</button>
-                <button id="piSceneDelBtn" class="btn" style="color:var(--danger);">Del</button>
-              </div>
-              <textarea id="piTextarea" spellcheck="false" placeholder="One prompt per line..." style="width:100%;resize:vertical;min-height:100px;background:var(--bg);color:var(--muted);border:1px solid var(--line);border-radius:2px;padding:6px 8px;font-family:var(--font-ui);font-size:var(--ts-sm);font-weight:400;line-height:1.6;outline:none;"></textarea>
+              <textarea id="piTextarea" spellcheck="false" placeholder="One prompt per line — each line becomes a step in the sequence..." style="width:100%;resize:vertical;min-height:100px;background:var(--bg);color:var(--muted);border:1px solid var(--line);border-radius:2px;padding:6px 8px;font-family:var(--font-ui);font-size:var(--ts-sm);font-weight:400;line-height:1.6;outline:none;"></textarea>
               <div style="padding:3px 2px 0;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="piStatus"></div>
             </div>
           </div>
           </div><!-- /ddPromptsWrap -->
-          <!-- scopePresets moved above Scope controls -->
         </div>
-        <div id="ddDebugLog"></div>
+        <div id="scopePresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
         </div><!-- /section-body scope -->
         <div class="section-head" data-section="ca">
           <span class="sh-chevron">▼</span>
@@ -1186,6 +1187,7 @@
       const saveAsBtn = document.getElementById('saveAsBtn')
       var currentPresetFile = localStorage.getItem(STORAGE_PRESET_FILE) || null
       var currentPresetName = localStorage.getItem(STORAGE_PRESET_NAME) || null
+      var currentPresetTags = JSON.parse(localStorage.getItem('hydra-live-preset-tags') || '[]')
       const runAllBtn = document.getElementById('runAllBtn')
       const startAudioBtn = document.getElementById('startAudioBtn')
       const openOutBtn = document.getElementById('openOutBtn')
@@ -1565,9 +1567,11 @@
       loadMapPresets()
 
       // ---- Grid overlay editor ----
-      // Compute the actual canvas content rect within #stage (accounting for object-fit: contain)
+      // Compute the actual canvas content rect relative to #stageWrap
+      // (SVG overlay is a child of stageWrap, but canvas lives inside #stage which is flex-centered)
       function getCanvasContentRect () {
         var stageEl = document.getElementById('stage')
+        var wrapEl = document.getElementById('stageWrap')
         var cvs = stageEl ? stageEl.querySelector('canvas') : null
         if (!cvs) {
           // Fallback to SVG bounds
@@ -1575,7 +1579,13 @@
           var r = svg.getBoundingClientRect()
           return { x: 0, y: 0, w: r.width, h: r.height }
         }
+        var wrapRect = wrapEl.getBoundingClientRect()
         var stageRect = stageEl.getBoundingClientRect()
+        // Offset of #stage within #stageWrap (from flex centering)
+        // Subtract clientLeft/clientTop to account for stageWrap borders
+        // (abs-positioned SVG starts at padding-box, getBoundingClientRect returns border-box)
+        var stageOffX = stageRect.left - wrapRect.left - wrapEl.clientLeft
+        var stageOffY = stageRect.top - wrapRect.top - wrapEl.clientTop
         var sw = stageRect.width
         var sh = stageRect.height
         var cw = cvs.width || sw
@@ -1596,7 +1606,7 @@
           offsetX = 0
           offsetY = (sh - contentH) / 2
         }
-        return { x: offsetX, y: offsetY, w: contentW, h: contentH }
+        return { x: stageOffX + offsetX, y: stageOffY + offsetY, w: contentW, h: contentH }
       }
 
       function updateMapOverlay () {
@@ -1734,24 +1744,23 @@
 
       var runningPresetFile = null
 
+      function getAllPresetBtns () {
+        return document.querySelectorAll('#presets .presetBtn, #scopePresets .presetBtn, #caPresets .presetBtn')
+      }
+
       function highlightActivePreset () {
-        var btns = presetsEl.querySelectorAll('.presetBtn')
-        btns.forEach(function (b) {
+        getAllPresetBtns().forEach(function (b) {
           b.classList.remove('active')
-          // If this button is the running preset, keep it green — don't add active
           if (b.dataset.file === runningPresetFile) return
-          // If loaded but not yet run, show as active (blue)
           if (b.dataset.file === currentPresetFile) b.classList.add('active')
         })
       }
 
       function markPresetRunning () {
-        var btns = presetsEl.querySelectorAll('.presetBtn')
-        // Clear running from all, mark current as running + played
-        btns.forEach(function (b) { b.classList.remove('running', 'active') })
+        getAllPresetBtns().forEach(function (b) { b.classList.remove('running', 'active') })
         runningPresetFile = currentPresetFile
         if (!currentPresetFile) return
-        btns.forEach(function (b) {
+        getAllPresetBtns().forEach(function (b) {
           if (b.dataset.file === currentPresetFile) {
             b.classList.add('running', 'played')
           }
@@ -1760,7 +1769,7 @@
 
       function flashSavedPreset () {
         if (!currentPresetFile) return
-        var btns = presetsEl.querySelectorAll('.presetBtn')
+        var btns = getAllPresetBtns()
         btns.forEach(function (b) {
           if (b.dataset.file === currentPresetFile) {
             b.style.animation = 'saveFlash 0.6s ease-out'
@@ -1982,6 +1991,10 @@
       var binColors = ['#ff4444', '#ff8833', '#aacc33', '#33ccaa', '#33aaee', '#cc44ff', '#ff44aa', '#ffcc33']
       var meterBinBoundaries = [150, 500, 2000]
 
+      var AUDIO_DEVICE_KEY = 'hydra_audioInputDeviceId'
+      var VIRTUAL_PATTERN = /ndi|virtual|obs|loopback|blackhole|soundflower|aggregate/i
+      var BUILTIN_PATTERN = /macbook|built.in/i
+
       function populateAudioInputs () {
         var sel = document.getElementById('audioInputSelect')
         if (!sel) return
@@ -1994,14 +2007,42 @@
             opt.textContent = d.label || ('Input ' + (i + 1))
             sel.appendChild(opt)
           })
-          // select current device if possible
+
+          // determine which device is currently active
+          var currentId = ''
           var a = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
           if (a && a.stream) {
             var tracks = a.stream.getAudioTracks()
-            if (tracks.length > 0) {
-              var currentId = tracks[0].getSettings().deviceId
-              if (currentId) sel.value = currentId
-            }
+            if (tracks.length > 0) currentId = tracks[0].getSettings().deviceId || ''
+          }
+
+          // check if we have a saved preference
+          var savedId = localStorage.getItem(AUDIO_DEVICE_KEY)
+          var savedExists = savedId && audioInputs.some(function (d) { return d.deviceId === savedId })
+
+          // determine the best device to use
+          var targetId = null
+          if (savedExists) {
+            // user previously chose a device — respect that
+            targetId = savedId
+          } else {
+            // auto-select: prefer built-in mic, else first non-virtual
+            var builtIn = audioInputs.find(function (d) { return BUILTIN_PATTERN.test(d.label) })
+            var firstPhysical = audioInputs.find(function (d) {
+              return !VIRTUAL_PATTERN.test(d.label) && d.label !== 'Default'
+            })
+            var best = builtIn || firstPhysical
+            if (best) targetId = best.deviceId
+          }
+
+          // switch if needed
+          if (targetId && targetId !== currentId) {
+            sel.value = targetId
+            initMeterAudio(targetId).then(function () {
+              switchAudioInput(targetId)
+            })
+          } else if (currentId) {
+            sel.value = currentId
           }
         })
       }
@@ -2056,7 +2097,7 @@
 
           if (!meterAudio.gainNode) {
             meterAudio.gainNode = meterAudio.context.createGain()
-            meterAudio.gainNode.gain.value = 1.0
+            meterAudio.gainNode.gain.value = 10.0
           }
           meterAudio.sourceNode.connect(meterAudio.gainNode)
 
@@ -2078,6 +2119,7 @@
             ha.analyser = meterAudio.analyser
             ha.frequencyData = meterAudio.frequencyData
             ha.gainNode = meterAudio.gainNode
+            ha.inputGain = meterAudio.gainNode.gain.value
             ha._sourceNode = meterAudio.sourceNode
             ha.stream = stream
             // recreate meyda on the shared gain node
@@ -2112,7 +2154,19 @@
         var inputSel = document.getElementById('audioInputSelect')
         if (inputSel) {
           inputSel.addEventListener('change', function () {
-            initMeterAudio(this.value).then(function () {
+            var selectedId = this.value
+            localStorage.setItem(AUDIO_DEVICE_KEY, selectedId)
+            initMeterAudio(selectedId).then(function () {
+              // Also switch Hydra's internal audio to the same device
+              switchAudioInput(selectedId)
+              // re-apply current gain after device switch
+              var slider = document.getElementById('audioGainSlider')
+              if (slider) {
+                var g = parseFloat(slider.value)
+                if (meterAudio.gainNode) meterAudio.gainNode.gain.value = g
+                var ha = (typeof hydra !== 'undefined' && hydra && hydra.synth && hydra.synth.a) ? hydra.synth.a : null
+                if (ha && ha.setGain) ha.setGain(g)
+              }
               setStatus('Audio input switched.', false)
             }).catch(function (err) {
               setStatus('Audio input error: ' + err.message, true)
@@ -2896,7 +2950,7 @@
           const res = await fetch('/api/presets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name.trim(), code: code, filters: getFilterState() })
+            body: JSON.stringify({ name: name.trim(), code: code, tags: currentPresetTags || [], filters: getFilterState() })
           })
           const data = await res.json()
           if (!res.ok) throw new Error(data.error || 'Save failed')
@@ -2921,7 +2975,7 @@
           const res = await fetch('/api/presets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: currentPresetName, code: code, filters: getFilterState() })
+            body: JSON.stringify({ name: currentPresetName, code: code, tags: currentPresetTags || [], filters: getFilterState() })
           })
           const data = await res.json()
           if (!res.ok) throw new Error(data.error || 'Save failed')
@@ -2934,6 +2988,16 @@
         }
       }
 
+      // Extract code and filters from a preset API response (handles .json and legacy .md)
+      function extractPresetData (data) {
+        if (data.code !== undefined) {
+          // JSON preset — fields are already parsed
+          return { code: data.code, filters: data.filters || null, tags: data.tags || [] }
+        }
+        // Legacy .md preset
+        return { code: parsePresetMarkdown(data.content), filters: parsePresetFilters(data.content), tags: [] }
+      }
+
       async function loadPresets (opts) {
         var suppressStatus = opts && opts.suppressStatus;
         try {
@@ -2941,10 +3005,17 @@
           const res = await fetch('/api/presets', { cache: 'no-store' })
           if (!res.ok) throw new Error(`HTTP ${res.status}`)
           const list = await res.json()
-          console.log('[hydra] loadPresets: got', list.length, 'presets, presetsEl=', presetsEl)
+          console.log('[hydra] loadPresets: got', list.length, 'presets')
 
+          // Clear all three containers
           presetsEl.innerHTML = ''
+          var scopePresetsEl = document.getElementById('scopePresets')
+          var caPresetsEl = document.getElementById('caPresets')
+          if (scopePresetsEl) scopePresetsEl.innerHTML = ''
+          if (caPresetsEl) caPresetsEl.innerHTML = ''
+
           list.forEach(function (entry) {
+            var tags = entry.tags || []
             const btn = document.createElement('button')
             btn.className = 'presetBtn'
             btn.textContent = entry.name || entry.file
@@ -2952,49 +3023,67 @@
             btn.dataset.file = entry.file
             btn.addEventListener('click', async function () {
               try {
-                const p = await fetch(`/api/presets/${entry.file}`, { cache: 'no-store' })
-                if (!p.ok) throw new Error(`HTTP ${p.status}`)
+                const p = await fetch('/api/presets/' + entry.file, { cache: 'no-store' })
+                if (!p.ok) throw new Error('HTTP ' + p.status)
                 const data = await p.json()
-                editorEl.value = parsePresetMarkdown(data.content)
-                localStorage.setItem(STORAGE_EDITOR, editorEl.value)
-                pendingFilters = parsePresetFilters(data.content)
-                currentPresetName = entry.name || entry.file.replace(/\.md$/, '')
+                var extracted = extractPresetData(data)
+                var code = extracted.code
+                if (typeof cm !== 'undefined' && cm) { cm.setValue(code) } else { editorEl.value = code }
+                localStorage.setItem(STORAGE_EDITOR, code)
+                pendingFilters = extracted.filters
+                currentPresetName = entry.name || entry.file.replace(/\.(json|md)$/, '')
                 currentPresetFile = entry.file
+                currentPresetTags = extracted.tags
                 localStorage.setItem(STORAGE_PRESET_NAME, currentPresetName)
                 localStorage.setItem(STORAGE_PRESET_FILE, currentPresetFile)
-                setStatus(`Loaded: ${currentPresetName}`, false)
+                localStorage.setItem('hydra-live-preset-tags', JSON.stringify(currentPresetTags))
+                setStatus('Loaded: ' + currentPresetName, false)
+                runCode(code, currentPresetName)
                 highlightActivePreset()
               } catch (error) {
-                setStatus(`Load failed: ${error.message}`, true)
+                setStatus('Load failed: ' + error.message, true)
               }
             })
-            presetsEl.appendChild(btn)
+
+            // Route to correct container based on tags
+            if (tags.indexOf('scope') !== -1 && scopePresetsEl) {
+              scopePresetsEl.appendChild(btn)
+            } else if (tags.indexOf('ca') !== -1 && caPresetsEl) {
+              caPresetsEl.appendChild(btn)
+            } else {
+              presetsEl.appendChild(btn)
+            }
           })
 
-          console.log('[hydra] loadPresets: created', list.length, 'buttons. presetsEl.children.length =', presetsEl.children.length)
-          if (!suppressStatus) setStatus(`${list.length} presets loaded.`, false)
+          console.log('[hydra] loadPresets: created', list.length, 'buttons')
+          if (!suppressStatus) setStatus(list.length + ' presets loaded.', false)
           highlightActivePreset()
 
           // Auto-load first preset if editor is empty
           if (!(cm ? cm.getValue() : editorEl.value).trim() && list.length > 0) {
-            var first = list[0]
+            // Find first Hydra preset (no scope/ca tags)
+            var first = list.filter(function (e) { return !e.tags || (!e.tags.length) })[0] || list[0]
             try {
               var p = await fetch('/api/presets/' + first.file, { cache: 'no-store' })
               var data = await p.json()
-              editorEl.value = parsePresetMarkdown(data.content)
-              localStorage.setItem(STORAGE_EDITOR, editorEl.value)
-              pendingFilters = parsePresetFilters(data.content)
-              currentPresetName = first.name || first.file.replace(/\.md$/, '')
+              var extracted = extractPresetData(data)
+              var autoCode = extracted.code
+              if (typeof cm !== 'undefined' && cm) { cm.setValue(autoCode) } else { editorEl.value = autoCode }
+              localStorage.setItem(STORAGE_EDITOR, autoCode)
+              pendingFilters = extracted.filters
+              currentPresetName = first.name || first.file.replace(/\.(json|md)$/, '')
               currentPresetFile = first.file
+              currentPresetTags = extracted.tags
               localStorage.setItem(STORAGE_PRESET_NAME, currentPresetName)
               localStorage.setItem(STORAGE_PRESET_FILE, currentPresetFile)
+              localStorage.setItem('hydra-live-preset-tags', JSON.stringify(currentPresetTags))
               runCode(editorEl.value, 'autoloaded: ' + (first.name || first.file))
               setStatus('Loaded: ' + (first.name || first.file), false)
               highlightActivePreset()
             } catch (e) {}
           }
         } catch (error) {
-          setStatus(`Preset load failed: ${error.message}`, true)
+          setStatus('Preset load failed: ' + error.message, true)
         }
       }
 
@@ -3472,6 +3561,11 @@
       runAllBtn.addEventListener('click', cmRunAll)
       document.getElementById('presetsRunBtn').addEventListener('click', cmRunAll)
 
+      // Populate keyboard shortcut hints (cross-platform)
+      var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+      var kbdLabel = isMac ? 'Cmd+Shift+Enter' : 'Ctrl+Shift+Enter'
+      document.querySelectorAll('.kbd-hint').forEach(function (el) { el.textContent = kbdLabel })
+
       // ---- Save Frame: capture canvas as PNG and upload to server ----
       document.getElementById('saveFrameBtn').addEventListener('click', function () {
         if (!hydraCanvas) { setStatus('No canvas to capture.', true); return }
@@ -3484,6 +3578,54 @@
             setStatus('Frame saved: ' + data.saved, false)
           }).catch(function (err) { setStatus('Frame save failed: ' + err.message, true) })
         }, 'image/png')
+      })
+
+      // ---- Screengrab: capture with filters applied, save to project screengrabs/ ----
+      function doScreengrab () {
+        if (!hydraCanvas) { setStatus('No canvas to capture.', true); return }
+        var w = hydraCanvas.width
+        var h = hydraCanvas.height
+        var sgCanvas = document.createElement('canvas')
+        sgCanvas.width = w; sgCanvas.height = h
+        var sgCtx = sgCanvas.getContext('2d', { willReadFrequently: true })
+        sgCtx.drawImage(hydraCanvas, 0, 0, w, h)
+
+        // Apply color filters (same as recording pipeline)
+        if (typeof filtersAreDefault === 'function' && !filtersAreDefault()) {
+          var imageData = sgCtx.getImageData(0, 0, w, h)
+          var mat = buildColorMatrix(
+            parseInt(hueCtrl.value, 10),
+            parseInt(satCtrl.value, 10),
+            parseInt(brightCtrl.value, 10),
+            parseInt(contrastCtrl.value, 10)
+          )
+          applyColorMatrix(imageData, mat)
+          if (typeof sharpenCtrl !== 'undefined') {
+            var shAmt = parseInt(sharpenCtrl.value, 10)
+            if (shAmt > 0) applySharpenConvolution(imageData, w, h, shAmt)
+          }
+          sgCtx.putImageData(imageData, 0, 0)
+        }
+
+        sgCanvas.toBlob(function (blob) {
+          if (!blob) { setStatus('Screengrab failed.', true); return }
+          var name = (currentPresetName || 'grab').replace(/[^a-zA-Z0-9_-]/g, '_')
+          fetch('/api/screengrab?name=' + encodeURIComponent(name), {
+            method: 'POST', body: blob, headers: { 'Content-Type': 'image/png' }
+          }).then(function (r) { return r.json() }).then(function (data) {
+            setStatus('Screengrab: ' + data.saved, false)
+          }).catch(function (err) { setStatus('Screengrab failed: ' + err.message, true) })
+        }, 'image/png')
+      }
+
+      document.getElementById('screengrabBtn').addEventListener('click', doScreengrab)
+
+      // Keyboard shortcut: Cmd+G / Ctrl+G
+      document.addEventListener('keydown', function (e) {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'g' && !e.shiftKey && !e.altKey) {
+          e.preventDefault()
+          doScreengrab()
+        }
       })
 
       // ---- Capture dir button ----
@@ -4027,6 +4169,18 @@
         batchRecordAllPresets()
       })
 
+      // Server restart button
+      document.getElementById('serverRestartBtn').addEventListener('click', function () {
+        setStatus('Restarting server...', false)
+        fetch('/api/server/restart', { method: 'POST' })
+          .then(function () {
+            setTimeout(function () { location.reload() }, 1500)
+          })
+          .catch(function () {
+            setTimeout(function () { location.reload() }, 1500)
+          })
+      })
+
       // Hydra editor-style shortcuts (from Hydra README)
       window.addEventListener('keydown', function (event) {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
@@ -4367,6 +4521,8 @@
       // ---- Debug log panel ----
       var ddLogEl = document.getElementById('ddDebugLog')
       var ddLogToggleEl = document.getElementById('ddDebugToggle')
+      var ddLogPopout = document.getElementById('ddLogPopout')
+      var ddLogCloseBtn = document.getElementById('ddLogClose')
       var ddLogStartTime = Date.now()
       function ddLog (msg, level) {
         level = level || 'info'
@@ -4378,10 +4534,58 @@
         console.log('[Scope ' + level + ' +' + elapsed + 's] ' + msg)
       }
       ddLogToggleEl.addEventListener('click', function () {
-        var visible = ddLogEl.style.display !== 'none'
-        ddLogEl.style.display = visible ? 'none' : 'block'
-        ddLogToggleEl.textContent = visible ? 'Log' : 'Hide Log'
+        var isOpen = ddLogPopout.classList.toggle('open')
+        ddLogToggleEl.classList.toggle('active', isOpen)
+        if (isOpen) {
+          var rect = ddLogToggleEl.getBoundingClientRect()
+          ddLogPopout.style.top = (rect.bottom + 4) + 'px'
+          ddLogPopout.style.left = Math.max(4, rect.left - 200) + 'px'
+          ddLogEl.scrollTop = ddLogEl.scrollHeight
+        }
       })
+      ddLogCloseBtn.addEventListener('click', function () {
+        ddLogPopout.classList.remove('open')
+        ddLogToggleEl.classList.remove('active')
+      })
+      // Log popout drag
+      ;(function () {
+        var head = ddLogPopout.querySelector('.log-head')
+        var dragging = false, dx = 0, dy = 0
+        head.addEventListener('mousedown', function (e) {
+          if (e.target.tagName === 'BUTTON') return
+          dragging = true
+          dx = e.clientX - ddLogPopout.offsetLeft
+          dy = e.clientY - ddLogPopout.offsetTop
+          e.preventDefault()
+        })
+        document.addEventListener('mousemove', function (e) {
+          if (!dragging) return
+          ddLogPopout.style.left = (e.clientX - dx) + 'px'
+          ddLogPopout.style.top = (e.clientY - dy) + 'px'
+        })
+        document.addEventListener('mouseup', function () { dragging = false })
+      })()
+
+      // ---- Popout resize handles (Notes + Log) ----
+      ;(function () {
+        document.querySelectorAll('.popout-resize').forEach(function (handle) {
+          var popout = handle.closest('#ddNotesPopout, #ddLogPopout')
+          if (!popout) return
+          var resizing = false, startX, startY, startW, startH
+          handle.addEventListener('mousedown', function (e) {
+            resizing = true
+            startX = e.clientX; startY = e.clientY
+            startW = popout.offsetWidth; startH = popout.offsetHeight
+            e.preventDefault(); e.stopPropagation()
+          })
+          document.addEventListener('mousemove', function (e) {
+            if (!resizing) return
+            popout.style.width = Math.max(280, startW + (e.clientX - startX)) + 'px'
+            popout.style.height = Math.max(150, startH + (e.clientY - startY)) + 'px'
+          })
+          document.addEventListener('mouseup', function () { resizing = false })
+        })
+      })()
 
       var ddCloudModels = [
         { value: 'stabilityai/sdxl-turbo', label: 'SDXL Turbo' },
@@ -4426,7 +4630,7 @@
 
       // Scope start/stop button
       var ddStartBtn = document.getElementById('ddScopeStart')
-      var ddToggleBtn = null // iframe removed — Scope UI opens in separate tab
+      var ddToggleBtn = null
       var ddScopeFrame = null
       var ddScopeDivider = null
 
@@ -4631,8 +4835,13 @@
       ddLoadPipelineBtn.addEventListener('click', function () {
         ddLogStartTime = Date.now()
         ddLogEl.innerHTML = ''
-        ddLogEl.style.display = 'block'
-        ddLogToggleEl.textContent = 'Hide Log'
+        if (!ddLogPopout.classList.contains('open')) {
+          ddLogPopout.classList.add('open')
+          ddLogToggleEl.classList.add('active')
+          var rect = ddLogToggleEl.getBoundingClientRect()
+          ddLogPopout.style.top = (rect.bottom + 4) + 'px'
+          ddLogPopout.style.left = Math.max(4, rect.left - 200) + 'px'
+        }
         // Full cycle: disconnect → reload pipeline+LoRA → reconnect
         if (ddActive) {
           ddLog('Disconnecting current session for reload...')
@@ -4694,9 +4903,10 @@
         ddRestartBtn.style.display = ''
         document.getElementById('ddScopeOpenTab').style.display = ''
         ddToggle.style.display = ''
-        // Show Prompts toggle button (prompts stay hidden until user clicks it)
+        // Show prompt input
+        document.getElementById('ddPromptSection').style.display = ''
+        // Show sequencer toggle + auto-open sequencer
         document.getElementById('ddPromptsToggle').style.display = ''
-        // Auto-open prompts panel
         var _pBtn = document.getElementById('ddPromptsToggle')
         var _pWrap = document.getElementById('ddPromptsWrap')
         if (_pWrap.style.display === 'none') {
@@ -4800,23 +5010,6 @@
       // On load: check if Scope is already running
       ddCheckAndShowScope()
 
-      // ---- Scope iframe panel toggle (UI + Docs) ----
-      ;(function () {
-        var panelToggle = document.getElementById('scopePanelToggle')
-        var panel = document.getElementById('scopeIframePanel')
-        var uiFrame = document.getElementById('scopeUiFrame')
-        var docsFrame = document.getElementById('scopeDocsFrame')
-        var loaded = false
-        panelToggle.addEventListener('click', function () {
-          var isOpen = panel.classList.toggle('open')
-          panelToggle.classList.toggle('active', isOpen)
-          if (isOpen && !loaded) {
-            uiFrame.src = 'http://localhost:8000'
-            docsFrame.src = 'https://docs.daydream.live/scope'
-            loaded = true
-          }
-        })
-      })()
 
       // ---- Prompts toggle ----
       ;(function () {
@@ -6078,14 +6271,44 @@
         var piSceneDelBtn  = document.getElementById('piSceneDelBtn')
         var piListToggle   = document.getElementById('piListToggle')
         var piListBody     = document.getElementById('piListBody')
+        var piOpenFileBtn  = document.getElementById('piOpenFileBtn')
+        var piFileInput    = document.getElementById('piFileInput')
 
-        // --- Prompt list collapse (hidden by default) ---
+        // --- Prompt editor collapse (hidden by default) ---
         var piListVisible = false
         piListBody.style.display = 'none'
         piListToggle.addEventListener('click', function () {
           piListVisible = !piListVisible
           piListBody.style.display = piListVisible ? '' : 'none'
-          piListToggle.textContent = piListVisible ? 'Prompts' : 'Prompts'
+          piListToggle.classList.toggle('active', piListVisible)
+        })
+
+        // --- Open .txt file as prompt sequence ---
+        piOpenFileBtn.addEventListener('click', function () { piFileInput.click() })
+        piFileInput.addEventListener('change', function () {
+          var file = piFileInput.files[0]
+          if (!file) return
+          var reader = new FileReader()
+          reader.onload = function (e) {
+            var text = e.target.result.trim()
+            if (!text) return
+            piTextarea.value = text
+            // Auto-save as a new scene named after the file
+            var name = file.name.replace(/\.[^.]+$/, '')
+            var scenes = piLoadScenes()
+            scenes[name] = text.split('\n').map(function (l) { return l.trim() }).filter(Boolean)
+            piSaveScenes(scenes)
+            piRebuildSelect(name)
+            piLoadScene(name)
+            // Show the editor so user can see the loaded prompts
+            if (!piListVisible) {
+              piListVisible = true
+              piListBody.style.display = ''
+              piListToggle.classList.add('active')
+            }
+          }
+          reader.readAsText(file)
+          piFileInput.value = '' // allow re-selecting same file
         })
 
         var piSync  = false
@@ -6134,8 +6357,11 @@
         function piUpdateStatus (list, sent) {
           if (!list.length) { piStatus.textContent = 'no prompts'; return }
           var idx = piIndex % list.length
-          var label = (idx + 1) + '/' + list.length + '  ' + list[idx]
-          piStatus.textContent = sent ? '→ ' + label : label
+          if (sent) {
+            piStatus.textContent = '→ sent ' + (idx + 1) + '/' + list.length + ': ' + list[idx]
+          } else {
+            piStatus.textContent = (idx + 1) + '/' + list.length + ': ' + list[idx]
+          }
         }
 
         function piFlash () {
@@ -6146,13 +6372,10 @@
           setTimeout(function () { panel.style.transition = 'background 0.4s'; panel.style.background = '' }, 60)
         }
 
-        function piSendCurrent () {
-          var list = piGetList()
-          if (!list.length) { piStatus.textContent = 'no prompts'; return }
-          var idx = piIndex % list.length
-          var raw = list[idx]
-          var prompt = 'datamosh, ' + raw
-          ddPromptEl.value = prompt
+        // Send whatever is currently in the live prompt field
+        function piSendLivePrompt () {
+          var prompt = ddPromptEl.value.trim()
+          if (!prompt) return
           piFlash()
           fetch('/api/scope-osc', {
             method: 'POST',
@@ -6160,6 +6383,7 @@
             body: JSON.stringify({ key: 'prompt', value: prompt, type: 'string' })
           }).then(function (r) { return r.json() }).then(function (res) {
             if (res.ok) {
+              var list = piGetList()
               piUpdateStatus(list, true)
             } else {
               piStatus.textContent = '⚠ OSC error: ' + JSON.stringify(res).slice(0, 80)
@@ -6167,6 +6391,30 @@
           }).catch(function (e) {
             piStatus.textContent = '⚠ ' + e.message
           })
+        }
+
+        // Pre-load the next prompt into the live field (user can edit before it fires)
+        function piPreloadNext () {
+          var list = piGetList()
+          if (!list.length) return
+          var nextIdx = (piIndex + 1) % list.length
+          var raw = list[nextIdx]
+          ddPromptEl.value = 'datamosh, ' + raw
+          piStatus.textContent = 'next (' + (nextIdx + 1) + '/' + list.length + '): ' + raw
+        }
+
+        function piSendCurrent () {
+          var list = piGetList()
+          if (!list.length) { piStatus.textContent = 'no prompts'; return }
+          var idx = piIndex % list.length
+          // If the live field was edited, send that; otherwise use the sequence prompt
+          var liveVal = ddPromptEl.value.trim()
+          var expected = 'datamosh, ' + list[idx]
+          var prompt = liveVal || expected
+          ddPromptEl.value = prompt
+          piSendLivePrompt()
+          // Pre-load next prompt into the live field
+          piPreloadNext()
         }
 
         function piAdvance () {
@@ -6850,7 +7098,6 @@
           function () { saveLayout() }
         )
 
-        // (Scope iframe removed — UI opens in separate tab)
 
         restoreLayout()
       })()
@@ -6872,98 +7119,12 @@
         }, 500)
       }).catch(function () {})
 
-      // ---- Daydream Scope presets ----
-      ;(function () {
-        var scopePresets = [
-          { name: 'Clean',
-            code: "// Daydream Clean — pure AI feed, no hydra processing\n// s3 = Scope NDI (auto-initialized)\n\nsrc(s3)\n  .out(o0);" },
-          { name: 'Blend',
-            code: "// Daydream Blend — AI feed layered with hydra organic texture\n// s3 = Scope NDI (auto-initialized)\n\nAUDIO.bins = 6; AUDIO.smooth = 0.92; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar low  = env(_lo, 0.4, 0.04);\nvar mid  = env(_mi, 0.45, 0.05);\nvar amp  = function(){ return (low() + mid()) * 0.5 };\n\nsrc(s3)\n  .saturate(1.2)\n  .out(o1);\n\nnoise(2.5, 0.04)\n  .rotate(() => time * 0.02)\n  .modulate(noise(1.2, 0.03), 0.12)\n  .color(0.85, 0.5, 0.3)\n  .brightness(-0.25)\n  .out(o2);\n\nsrc(o1)\n  .blend(src(o2), 0.25)\n  .out(o3);\n\nsrc(o0)\n  .blend(src(o3), 0.4)\n  .modulateScale(noise(1.4, 0.02), () => 0.005 + amp() * 0.0005)\n  .modulateRotate(noise(0.3, 0.015), 0.003)\n  .hue(() => 0.015 * Math.sin(time * 0.02) + 0.004 * low())\n  .luma(0.01, 0.06)\n  .saturate(() => 1.35 + amp() * 0.025)\n  .contrast(1.02)\n  .out(o0);" },
-          { name: 'Smoke Mirror',
-            code: "// Smoke Mirror — AI feed diffused through deep feedback fog\n// s3 = Scope NDI (auto-initialized)\n\nAUDIO.bins = 4; AUDIO.smooth = 0.94; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar low = env(_lo, 0.5, 0.03);\nvar mid = env(_mi, 0.4, 0.05);\n\n// AI feed — soft, desaturated\nsrc(s3)\n  .saturate(0.7)\n  .brightness(-0.05)\n  .out(o1);\n\n// feedback accumulator — very long decay\nsrc(o0)\n  .scale(1.002)\n  .rotate(function(){ return 0.0008 + low() * 0.0002 })\n  .saturate(0.97)\n  .brightness(-0.003)\n  .out(o2);\n\n// composite: seed AI into feedback fog\nsrc(o2)\n  .blend(src(o1), 0.12)\n  .modulate(noise(1.5, 0.015), function(){ return 0.008 + mid() * 0.003 })\n  .hue(function(){ return 0.006 * Math.sin(time * 0.015) })\n  .luma(0.008, 0.04)\n  .contrast(1.015)\n  .out(o0);" },
-        ]
+      // ---- Daydream Scope presets — loaded from presets/*.json via loadPresets() ----
+      // (previously hardcoded here, now served from JSON files with tags: ["scope"])
 
-        var scopeContainer = document.getElementById('scopePresets')
-        scopePresets.forEach(function (preset) {
-          var btn = document.createElement('button')
-          btn.className = 'presetBtn'
-          btn.textContent = preset.name
-          btn.title = preset.code.split('\n')[0]
-          btn.addEventListener('click', function () {
-            var code = preset.code
-            if (typeof cm !== 'undefined' && cm) {
-              cm.setValue(code)
-            } else {
-              editorEl.value = code
-            }
-            localStorage.setItem(STORAGE_EDITOR, code)
-            currentPresetName = 'Scope: ' + preset.name
-            currentPresetFile = null
-            localStorage.setItem(STORAGE_PRESET_NAME, currentPresetName)
-            runCode(code, 'Scope: ' + preset.name)
-            highlightActivePreset()
-          })
-          scopeContainer.appendChild(btn)
-        })
-      })()
 
-      // ---- Cellular Automata presets ----
-      ;(function () {
-        var caPresets = [
-          // Rich Hydra base (flock + chromatic + feedback from presets 7/8/13)
-          // renders instantly on o0. CA streams to o1, floats on top.
-
-          { name: 'Gliders',
-            code: "// Caustics + CA — the version that looked amazing + audio\ncaStream('sl_gliders').out(o1)\n\nAUDIO.bins = 4; AUDIO.smooth = 0.88; AUDIO.apply();\nvar low = env(()=>a.fft[0]||0, 0.3, 0.05);\nvar mid = env(()=>a.fft[1]||0, 0.35, 0.06);\nvar high = env(()=>a.fft[3]||0, 0.25, 0.08);\nvar amp = ()=>(low()+mid())*0.5;\n\nsetFunction({\n  name: 'caustic',\n  type: 'src',\n  inputs: [\n    {name: 'scale', type: 'float', default: 3.0},\n    {name: 'spd', type: 'float', default: 0.03},\n    {name: 'hueShift', type: 'float', default: 0.0}\n  ],\n  glsl: `\n    vec2 uv = _st * scale;\n    float t = time * spd;\n    vec2 q = vec2(\n      sin(uv.x*1.7 + uv.y*1.3 + t) + sin(uv.y*2.1 + t*0.7),\n      sin(uv.y*1.9 + uv.x*1.1 + t*0.8) + cos(uv.x*2.3 + t*0.5)\n    ) * 0.5;\n    vec2 r = vec2(\n      sin((uv.x+q.x)*1.3 + (uv.y+q.y)*1.7 + t*0.4),\n      cos((uv.y+q.y)*1.5 + (uv.x+q.x)*1.1 + t*0.3)\n    ) * 0.5;\n    vec2 w1 = uv + q * 2.0;\n    vec2 w2 = uv * 1.3 + r * 1.8;\n    vec2 w3 = uv * 0.8 + (q + r) * 1.2;\n    float c1 = pow(0.5 + 0.5*sin(w1.x*3.14)*sin(w1.y*3.14), 6.0);\n    float c2 = pow(0.5 + 0.5*sin(w2.x*2.7)*sin(w2.y*2.7), 6.0);\n    float c3 = pow(0.5 + 0.5*sin(w3.x*3.5)*sin(w3.y*3.5), 6.0);\n    float cv = max(c1, max(c2, c3));\n    float warpH = atan(r.y + q.x, r.x + q.y) / 6.2831 + 0.5;\n    float warpM = length(q + r);\n    float spatial = (uv.x + uv.y) * 0.08 / scale;\n    float h = warpH * 0.5 + spatial + warpM * 0.3 + hueShift;\n    vec3 lineCol = 0.5 + 0.5 * cos(6.2831 * (h + vec3(0.0, 0.15, 0.4)));\n    vec3 col = lineCol * cv * 2.5;\n    col += vec3(0.015, 0.008, 0.028) * (1.0 - cv) * warpM;\n    col = col / (1.0 + col);\n    col = pow(col, vec3(0.78));\n    return vec4(col, 1.0);\n  `\n})\n\ncaustic(3.5, ()=>0.06+amp()*0.008, ()=>time*0.003+low()*0.002)\n  .modulate(src(o1), 0.06)\n  .modulateRotate(src(o1), 0.04)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), ()=>0.015+amp()*0.004)\n  .blend(src(o2), ()=>0.38+low()*0.04)\n  .modulateScale(noise(1.6, 0.03), ()=>0.003+high()*0.001)\n  .modulateRotate(noise(0.2, 0.02), ()=>0.002+mid()*0.001)\n  .hue(()=>0.003+low()*0.002)\n  .luma(0.005, 0.06)\n  .brightness(()=>0.022+amp()*0.003)\n  .saturate(()=>1.2+low()*0.06)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), ()=>0.12+mid()*0.03)\n  .out(o0)" },
-
-          { name: 'Tide Pool',
-            code: "// Caustics — denser, slower, offset palette. CA ripples through\ncaStream('tide_pool').out(o1)\n\nsetFunction({\n  name: 'caustic',\n  type: 'src',\n  inputs: [\n    {name: 'scale', type: 'float', default: 3.0},\n    {name: 'spd', type: 'float', default: 0.03},\n    {name: 'hueShift', type: 'float', default: 0.0}\n  ],\n  glsl: `\n    vec2 uv = _st * scale;\n    float t = time * spd;\n    vec2 q = vec2(\n      sin(uv.x*1.7 + uv.y*1.3 + t) + sin(uv.y*2.1 + t*0.7),\n      sin(uv.y*1.9 + uv.x*1.1 + t*0.8) + cos(uv.x*2.3 + t*0.5)\n    ) * 0.5;\n    vec2 r = vec2(\n      sin((uv.x+q.x)*1.3 + (uv.y+q.y)*1.7 + t*0.4),\n      cos((uv.y+q.y)*1.5 + (uv.x+q.x)*1.1 + t*0.3)\n    ) * 0.5;\n    vec2 w1 = uv + q * 2.0;\n    vec2 w2 = uv * 1.3 + r * 1.8;\n    vec2 w3 = uv * 0.8 + (q + r) * 1.2;\n    float c1 = pow(0.5 + 0.5*sin(w1.x*3.14)*sin(w1.y*3.14), 6.0);\n    float c2 = pow(0.5 + 0.5*sin(w2.x*2.7)*sin(w2.y*2.7), 6.0);\n    float c3 = pow(0.5 + 0.5*sin(w3.x*3.5)*sin(w3.y*3.5), 6.0);\n    float cv = max(c1, max(c2, c3));\n    float warpH = atan(r.y + q.x, r.x + q.y) / 6.2831 + 0.5;\n    float warpM = length(q + r);\n    float spatial = (uv.x + uv.y) * 0.08 / scale;\n    float h = warpH * 0.5 + spatial + warpM * 0.3 + hueShift;\n    vec3 lineCol = 0.5 + 0.5 * cos(6.2831 * (h + vec3(0.0, 0.15, 0.4)));\n    vec3 col = lineCol * cv * 2.5;\n    col += vec3(0.015, 0.008, 0.028) * (1.0 - cv) * warpM;\n    col = col / (1.0 + col);\n    col = pow(col, vec3(0.78));\n    return vec4(col, 1.0);\n  `\n})\n\ncaustic(5.0, 0.04, ()=>time*0.005+0.33)\n  .modulate(src(o1), 0.08)\n  .modulateRotate(src(o1), 0.05)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.025)\n  .modulateRotate(src(o1), 0.015)\n  .blend(src(o2), 0.38)\n  .modulateScale(noise(1.2, 0.02), 0.004)\n  .modulateRotate(noise(0.25, 0.015), 0.003)\n  .hue(()=>0.004)\n  .luma(0.004, 0.05)\n  .brightness(0.022)\n  .saturate(1.25)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.1)\n  .out(o0)" },
-
-          { name: 'Amoeba',
-            code: "// Caustics — wide scale, organic speed. CA creatures warp the light\ncaStream('amoeba').out(o1)\n\nsetFunction({\n  name: 'caustic',\n  type: 'src',\n  inputs: [\n    {name: 'scale', type: 'float', default: 3.0},\n    {name: 'spd', type: 'float', default: 0.03},\n    {name: 'hueShift', type: 'float', default: 0.0}\n  ],\n  glsl: `\n    vec2 uv = _st * scale;\n    float t = time * spd;\n    vec2 q = vec2(\n      sin(uv.x*1.7 + uv.y*1.3 + t) + sin(uv.y*2.1 + t*0.7),\n      sin(uv.y*1.9 + uv.x*1.1 + t*0.8) + cos(uv.x*2.3 + t*0.5)\n    ) * 0.5;\n    vec2 r = vec2(\n      sin((uv.x+q.x)*1.3 + (uv.y+q.y)*1.7 + t*0.4),\n      cos((uv.y+q.y)*1.5 + (uv.x+q.x)*1.1 + t*0.3)\n    ) * 0.5;\n    vec2 w1 = uv + q * 2.0;\n    vec2 w2 = uv * 1.3 + r * 1.8;\n    vec2 w3 = uv * 0.8 + (q + r) * 1.2;\n    float c1 = pow(0.5 + 0.5*sin(w1.x*3.14)*sin(w1.y*3.14), 6.0);\n    float c2 = pow(0.5 + 0.5*sin(w2.x*2.7)*sin(w2.y*2.7), 6.0);\n    float c3 = pow(0.5 + 0.5*sin(w3.x*3.5)*sin(w3.y*3.5), 6.0);\n    float cv = max(c1, max(c2, c3));\n    float warpH = atan(r.y + q.x, r.x + q.y) / 6.2831 + 0.5;\n    float warpM = length(q + r);\n    float spatial = (uv.x + uv.y) * 0.08 / scale;\n    float h = warpH * 0.5 + spatial + warpM * 0.3 + hueShift;\n    vec3 lineCol = 0.5 + 0.5 * cos(6.2831 * (h + vec3(0.0, 0.15, 0.4)));\n    vec3 col = lineCol * cv * 2.5;\n    col += vec3(0.015, 0.008, 0.028) * (1.0 - cv) * warpM;\n    col = col / (1.0 + col);\n    col = pow(col, vec3(0.78));\n    return vec4(col, 1.0);\n  `\n})\n\ncaustic(2.5, 0.035, ()=>time*0.004+0.67)\n  .modulate(src(o1), 0.1)\n  .modulateRotate(src(o1), 0.06)\n  .modulateScale(src(o1), 0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.03)\n  .modulateRotate(src(o1), 0.02)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.0, 0.015), 0.004)\n  .modulateRotate(noise(0.2, 0.01), 0.003)\n  .hue(()=>0.005*Math.sin(time*0.012))\n  .luma(0.004, 0.05)\n  .brightness(0.022)\n  .saturate(1.2)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.12)\n  .out(o0)" },
-
-          { name: 'Lenia',
-            code: "// Warm osc field — CA blobs modulate the oscillator math\ncaStream('lava_lamp').out(o1)\n\nosc(4, 0.015, 0.6).rotate(()=>time*0.01)\n  .modulate(src(o1), 0.07)\n  .modulateRotate(osc(3, 0.01, 0), 0.04)\n  .mult(src(o1).add(solid(0.3, 0.15, 0.1), 0.8))\n  .color(0.55, 0.3, 0.2).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.02)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.5, 0.02), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.02)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.08)\n  .out(o0)" },
-
-          { name: 'SL Worms',
-            code: "// Noise feedback — CA worms tunnel through the texture\ncaStream('sl_worms').out(o1)\n\nnoise(3, 0.025).rotate(()=>time*0.012)\n  .modulate(src(o1), 0.06)\n  .modulateScale(src(o1), 0.04)\n  .color(0.2, 0.45, 0.35).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateRotate(src(o1), 0.03)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.6, 0.03), 0.003)\n  .modulateRotate(noise(0.2, 0.015), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.022)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.1)\n  .out(o0)" },
-
-          { name: 'MNCA',
-            code: "// Voronoi + osc — CA solitons warp both coordinate systems\ncaStream('mnca_worm').out(o1)\n\nvoronoi(8, 0.012, 0.15)\n  .modulate(src(o1), 0.06)\n  .add(osc(5, 0.008, 0.4).rotate(()=>time*0.01)\n    .modulate(src(o1), 0.04), 0.4)\n  .color(0.35, 0.2, 0.55).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.025)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.4, 0.02), 0.003)\n  .modulateRotate(noise(0.25, 0.015), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.022)\n  .saturate(1.2)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.1)\n  .out(o0)" },
-
-          { name: 'MNCA 2',
-            code: "// Deep feedback — CA mitosis drives the accumulator\ncaStream('mnca_mitosis').out(o1)\n\nnoise(2, 0.02).rotate(()=>time*0.008)\n  .mult(src(o1).add(solid(0.2, 0.15, 0.35), 0.7))\n  .modulate(src(o1), 0.05)\n  .color(0.3, 0.2, 0.5).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateRotate(src(o1), 0.03)\n  .modulateScale(src(o1), 0.02)\n  .blend(src(o2), 0.3)\n  .modulateScale(noise(1.5, 0.025), 0.004)\n  .hue(()=>0.004)\n  .luma(0.005, 0.06)\n  .brightness(0.022)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.12)\n  .out(o0)" },
-
-          { name: 'CA Flock',
-            code: "// Flock shapes — CA vortex distorts their coordinates\ncaStream('tentacles').out(o1)\n\nshape(100, 0.012, 0.01).repeat(8, 6)\n  .scale(()=>0.5+Math.sin(time*0.3)*0.03)\n  .rotate(()=>time*0.08)\n  .scrollX(()=>Math.sin(time*0.1)*0.15)\n  .scrollY(()=>Math.cos(time*0.08)*0.12)\n  .modulate(src(o1), 0.06)\n  .modulateRotate(src(o1), 0.04)\n  .modulate(noise(0.8, 0.03), 0.15)\n  .color(()=>0.45+Math.sin(time*0.09)*0.25, ()=>0.3+Math.cos(time*0.07)*0.2, ()=>0.6+Math.sin(time*0.11)*0.2)\n  .brightness(0.025)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.02)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.4, 0.02), 0.003)\n  .modulateRotate(noise(0.2, 0.015), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.022)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.1)\n  .out(o0)" },
-
-          { name: 'CA Warp',
-            code: "// Deep warp — CA organisms bend space itself\ncaStream('amoeba').out(o1)\n\nnoise(3, 0.015).rotate(()=>time*0.006)\n  .modulate(src(o1), 0.08)\n  .modulateRotate(src(o1), 0.06)\n  .modulateScale(src(o1), 0.03)\n  .color(0.4, 0.3, 0.55).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulate(src(o1), 0.03)\n  .modulateRotate(src(o1), 0.02)\n  .blend(src(o2), 0.3)\n  .modulateScale(noise(1.2, 0.015), 0.004)\n  .hue(()=>0.004*Math.sin(time*0.01))\n  .luma(0.004, 0.05)\n  .brightness(0.022)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.12)\n  .out(o0)" },
-        ]
-
-        var container = document.getElementById('caPresets')
-        caPresets.forEach(function (preset) {
-          var btn = document.createElement('button')
-          btn.className = 'presetBtn'
-          btn.textContent = preset.name
-          btn.title = preset.code.split('\n')[0]
-          btn.addEventListener('click', function () {
-            var code = preset.code
-            if (typeof cm !== 'undefined' && cm) {
-              cm.setValue(code)
-            } else {
-              editorEl.value = code
-            }
-            localStorage.setItem(STORAGE_EDITOR, code)
-            currentPresetName = 'CA: ' + preset.name
-            currentPresetFile = null
-            localStorage.setItem(STORAGE_PRESET_NAME, currentPresetName)
-            runCode(code, 'CA: ' + preset.name)
-            highlightActivePreset()
-          })
-          container.appendChild(btn)
-        })
-      })()
+      // ---- Cellular Automata presets — loaded from presets/*.json via loadPresets() ----
+      // (previously hardcoded here, now served from JSON files with tags: ["ca"])
 
       setNdiButtonState()
       startAudio()

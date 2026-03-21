@@ -1,0 +1,15 @@
+{
+  "name": "030",
+  "description": "Daydream Clean — pure AI feed, no hydra processing",
+  "tags": [
+    "scope"
+  ],
+  "code": "// Daydream Clean — pure AI feed, no hydra processing\n// s3 = Scope NDI (auto-initialized)\n\nsrc(s3)\n  .out(o0);",
+  "filters": {
+    "hue": 180,
+    "sat": 100,
+    "bright": 100,
+    "contrast": 100,
+    "speed": 1
+  }
+}

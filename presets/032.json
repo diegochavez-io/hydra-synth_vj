@@ -1,0 +1,13 @@
+{
+  "name": "032",
+  "description": "Prism Flock — shapes over liquid base, chromatic aberr, beat sync",
+  "tags": [],
+  "code": "// Prism Flock — flock shapes over liquid base with chromatic aberration\nspeed = 0.6\n\nAUDIO.bins = 6; AUDIO.smooth = 0.80; AUDIO.gain = 30; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar _hi = function(){ return a.fft[4] || 0 };\nvar low  = env(_lo, 0.4, 0.03);\nvar mid  = env(_mi, 0.35, 0.04);\nvar high = env(_hi, 0.3, 0.05);\nvar amp  = function(){ return (low() + mid() + high()) * 0.7 };\n\n// BPM-synced shape sides — morphs on beat\nvar sides = [3, 5, 8, 200].fast(0.25).smooth(0.5)\n\n// o1: liquid base (from 031 DNA)\nosc(15, 0.08, 1.8)\n  .color(\n    () => 0.9 + low() * 0.5,\n    () => 0.3 + mid() * 0.4,\n    () => 0.6 + high() * 0.4\n  )\n  .modulate(noise(2.5, 0.3), 0.1)\n  .blend(src(o0).hue(() => amp() * 0.006), 0.75)\n  .colorama(() => 0.001 + amp() * 0.003)\n  .out(o1)\n\n// o2: flock shapes — repeated, drifting, audio-colored\nshape(sides, 0.15, 0.02)\n  .repeat(6, 4, () => Math.sin(time * 0.08) * 0.1, () => Math.cos(time * 0.06) * 0.08)\n  .rotate(() => time * 0.03)\n  .scrollX(() => Math.sin(time * 0.1) * 0.15)\n  .scrollY(() => Math.cos(time * 0.08) * 0.1)\n  .modulate(noise(1.5, 0.04), 0.06)\n  .color(\n    () => 0.8 + low() * 0.6,\n    () => 0.4 + mid() * 0.5,\n    () => 0.9 + high() * 0.4\n  )\n  .out(o2)\n\n// o3: composite — shapes layered over liquid\nsrc(o1)\n  .add(src(o2).luma(0.15, 0.2), () => 0.3 + amp() * 0.3)\n  .saturate(() => 1.3 + low() * 0.4)\n  .contrast(() => 1.05 + low() * 0.08)\n  .out(o3)\n\n// final: chromatic aberration + feedback\nsrc(o3)\n  .r().scrollX(() => 0.0015 + low() * 0.001)\n  .color(1.1, 0.1, 0.05)\n  .add(\n    src(o3).g()\n    .scrollX(() => -(0.0008 + mid() * 0.0006))\n    .color(0.2, 1.0, 0.15)\n  )\n  .add(\n    src(o3).b()\n    .scrollY(() => 0.0006 + high() * 0.0005)\n    .color(0.08, 0.15, 0.85)\n  )\n  .blend(src(o0), 0.3)\n  .brightness(() => 0.02 + low() * 0.02)\n  .out(o0)",
+  "filters": {
+    "hue": 0,
+    "sat": 140,
+    "bright": 105,
+    "contrast": 110,
+    "speed": 1
+  }
+}

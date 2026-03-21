@@ -1,0 +1,13 @@
+{
+  "name": "031",
+  "description": "Liquid Prism — osc blend with feedback, audio color shift",
+  "tags": [],
+  "code": "// Liquid Prism — colorful osc blend with self-feedback\nspeed = 0.5\n\nAUDIO.bins = 6; AUDIO.smooth = 0.82; AUDIO.gain = 30; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar _hi = function(){ return a.fft[4] || 0 };\nvar low  = env(_lo, 0.35, 0.04);\nvar mid  = env(_mi, 0.3, 0.05);\nvar high = env(_hi, 0.25, 0.06);\nvar amp  = function(){ return (low() + mid() + high()) * 0.6 };\n\nosc(15, 0.06, 1.8)\n  .color(\n    () => 0.9 + low() * 0.5,\n    () => 0.3 + mid() * 0.4,\n    () => 0.6 + high() * 0.4\n  )\n  .blend(osc(6, 0.1, 0.8).rotate(() => time * 0.04), 0.4)\n  .modulate(noise(2.5, 0.3), () => 0.1 + low() * 0.008)\n  .blend(src(o0).rotate(() => Math.sin(time * 0.03) * 0.003).hue(() => amp() * 0.006), 0.84)\n  .saturate(() => 1.2 + low() * 0.3)\n  .colorama(() => 0.001 + amp() * 0.003)\n  .hue(() => mid() * 0.015)\n  .contrast(() => 1.02 + low() * 0.08)\n  .brightness(0.02)\n  .out(o0)",
+  "filters": {
+    "hue": 0,
+    "sat": 120,
+    "bright": 100,
+    "contrast": 105,
+    "speed": 1
+  }
+}

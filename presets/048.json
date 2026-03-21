@@ -1,0 +1,13 @@
+{
+  "name": "048",
+  "description": "Liquid Mirror — noise self-modulated with inverted osc overlay",
+  "tags": [],
+  "code": "// Liquid Mirror — noise feeds back through itself, osc overlay adds structure\nspeed = 0.5\n\nAUDIO.bins = 6; AUDIO.smooth = 0.78; AUDIO.gain = 50; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar _hi = function(){ return a.fft[4] || 0 };\nvar low  = env(_lo, 0.4, 0.03);\nvar mid  = env(_mi, 0.35, 0.04);\nvar high = env(_hi, 0.3, 0.05);\nvar amp  = function(){ return (low() + mid() + high()) * 0.7 };\n\n// noise warped by osc, inverted for negative-space effect\nnoise(3, 0.08)\n  .modulateScale(osc(8, 0.05, 0), 0.12)\n  .invert(0.6)\n  .color(\n    () => 0.6 + low() * 1.0,\n    () => 0.5 + mid() * 0.8,\n    () => 0.3 + high() * 1.0\n  )\n  .add(osc(15, 0.04, 2.0).color(0.2, 0.15, 0.3).rotate(() => time * 0.03), 0.3)\n  .modulate(src(o0), () => 0.01 + low() * 0.004)\n  .blend(src(o0).hue(() => 0.003 + amp() * 0.005).colorama(() => 0.002 + mid() * 0.004), 0.83)\n  .saturate(() => 1.2 + low() * 0.5)\n  .contrast(() => 1.03 + low() * 0.1)\n  .brightness(() => 0.03 + low() * 0.03)\n  .out(o0)",
+  "filters": {
+    "hue": 40,
+    "sat": 145,
+    "bright": 110,
+    "contrast": 108,
+    "speed": 1
+  }
+}

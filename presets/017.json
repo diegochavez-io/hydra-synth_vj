@@ -1,0 +1,13 @@
+{
+  "name": "017",
+  "description": "Oscillator feedback loop with modulated repeat",
+  "tags": [],
+  "code": "// ---- audio (smoothed envelopes) ----\nAUDIO.bins = 4; AUDIO.smooth = 0.85; AUDIO.apply();\nvar low = env(()=> a.fft[0]||0, 0.3, 0.05);\nvar mid = env(()=> a.fft[1]||0, 0.25, 0.06);\nvar high = env(()=> a.fft[3]||0, 0.2, 0.08);\n\nspeed = 0.2\nosc(20, 0.2, 2)\n  .color(()=>-1.1 + low()*0.15, ()=>0.4 + mid()*0.1, ()=>-0.5 + high()*0.1)\n  .modulate(osc(9))\n  .modulateScale(noise(-2, 0.04))\n  .kaleid(2)\n  .modulateRepeat(o0, 1, 1, 0.1, 0.1)\n  .modulateScrollX(o0, 0.1, 0.1)\n  .modulateScrollY(o0, 0.1, 0.1)\n  .blend(o0, 0.50)\n  .saturate(()=> 1.0 + low()*0.12)\n  .hue(()=> mid()*0.008)\n  .out(o0)",
+  "filters": {
+    "hue": 227,
+    "sat": 232,
+    "bright": 164,
+    "contrast": 100,
+    "speed": 0.6
+  }
+}

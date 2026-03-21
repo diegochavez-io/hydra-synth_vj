@@ -1,0 +1,8 @@
+{
+  "name": "002",
+  "description": "Smoke Mirror — AI feed diffused through deep feedback fog",
+  "tags": [
+    "scope"
+  ],
+  "code": "// Smoke Mirror — AI feed diffused through deep feedback fog\n// s3 = Scope NDI (auto-initialized)\n\nAUDIO.bins = 4; AUDIO.smooth = 0.94; AUDIO.apply();\nvar _lo = function(){ return a.fft[0] || 0 };\nvar _mi = function(){ return a.fft[2] || 0 };\nvar low = env(_lo, 0.5, 0.03);\nvar mid = env(_mi, 0.4, 0.05);\n\n// AI feed — soft, desaturated\nsrc(s3)\n  .saturate(0.7)\n  .brightness(-0.05)\n  .out(o1);\n\n// feedback accumulator — very long decay\nsrc(o0)\n  .scale(1.002)\n  .rotate(function(){ return 0.0008 + low() * 0.0002 })\n  .saturate(0.97)\n  .brightness(-0.003)\n  .out(o2);\n\n// composite: seed AI into feedback fog\nsrc(o2)\n  .blend(src(o1), 0.12)\n  .modulate(noise(1.5, 0.015), function(){ return 0.008 + mid() * 0.003 })\n  .hue(function(){ return 0.006 * Math.sin(time * 0.015) })\n  .luma(0.008, 0.04)\n  .contrast(1.015)\n  .out(o0);"
+}

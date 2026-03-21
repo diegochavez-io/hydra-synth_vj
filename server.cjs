@@ -271,37 +271,59 @@ const server = http.createServer(function (req, res) {
     return
   }
 
-  // ---- API: list presets ----
+  // ---- API: list presets (scans directory, supports .json + .md fallback) ----
   if (req.method === 'GET' && urlPath === '/api/presets') {
-    var indexPath = path.join(PRESETS_DIR, 'index.json')
-    fs.readFile(indexPath, 'utf8', function (err, data) {
-      if (err) return jsonResponse(res, 500, { error: 'Cannot read index.json' })
+    fs.readdir(PRESETS_DIR, function (err, files) {
+      if (err) return jsonResponse(res, 500, { error: 'Cannot read presets directory' })
+      var presets = []
+      // Load index.json for .md description fallback
+      var mdIndex = {}
       try {
-        var entries = JSON.parse(data)
-        var presets = entries.map(function (e) {
-          return { file: e.file, name: e.name || e.file.replace(/\.md$/, '').replace(/-/g, ' '), description: e.description || '' }
-        })
-        jsonResponse(res, 200, presets)
-      } catch (e) {
-        jsonResponse(res, 500, { error: 'Invalid index.json' })
-      }
+        var idx = JSON.parse(fs.readFileSync(path.join(PRESETS_DIR, 'index.json'), 'utf8'))
+        idx.forEach(function (e) { mdIndex[e.file] = e })
+      } catch (e) {}
+      files.sort()
+      files.forEach(function (f) {
+        if (f.startsWith('.') || f.startsWith('_')) return
+        var fp = path.join(PRESETS_DIR, f)
+        try {
+          if (f.endsWith('.json') && f !== 'index.json') {
+            var obj = JSON.parse(fs.readFileSync(fp, 'utf8'))
+            presets.push({ file: f, name: obj.name || f.replace(/\.json$/, ''), description: obj.description || '', tags: obj.tags || [] })
+          } else if (f.endsWith('.md')) {
+            var entry = mdIndex[f] || {}
+            presets.push({ file: f, name: entry.name || f.replace(/\.md$/, '').replace(/-/g, ' '), description: entry.description || '', tags: [] })
+          }
+        } catch (e) {}
+      })
+      jsonResponse(res, 200, presets)
     })
     return
   }
 
-  // ---- API: load a preset ----
+  // ---- API: load a preset (.json native, .md fallback) ----
   if (req.method === 'GET' && urlPath.startsWith('/api/presets/')) {
     var fileName = path.basename(urlPath)
     var filePath = path.join(PRESETS_DIR, fileName)
     if (!filePath.startsWith(PRESETS_DIR)) return jsonResponse(res, 403, { error: 'Forbidden' })
     fs.readFile(filePath, 'utf8', function (err, data) {
       if (err) return jsonResponse(res, 404, { error: 'Not found' })
-      jsonResponse(res, 200, { file: fileName, content: data })
+      if (fileName.endsWith('.json')) {
+        try {
+          var obj = JSON.parse(data)
+          jsonResponse(res, 200, { file: fileName, name: obj.name, code: obj.code, filters: obj.filters || null, tags: obj.tags || [], description: obj.description || '' })
+        } catch (e) {
+          jsonResponse(res, 500, { error: 'Invalid JSON preset' })
+        }
+      } else {
+        // Legacy .md format
+        jsonResponse(res, 200, { file: fileName, content: data })
+      }
     })
     return
   }
 
-  // ---- API: save a preset ----
+  // ---- API: save a preset (writes .json) ----
   if (req.method === 'POST' && urlPath === '/api/presets') {
     readBody(req, function (body) {
       try {
@@ -309,21 +331,16 @@ const server = http.createServer(function (req, res) {
         if (!data.name || !data.code) return jsonResponse(res, 400, { error: 'name and code required' })
         var slug = slugify(data.name)
         if (!slug) return jsonResponse(res, 400, { error: 'Invalid name' })
-        var file = slug + '.md'
-        var content = '# ' + data.name + '\n\n```js\n' + data.code.trim() + '\n```\n'
-        if (data.filters) {
-          content += '\n<!-- filters:' + JSON.stringify(data.filters) + ' -->\n'
+        var file = slug + '.json'
+        var preset = {
+          name: data.name,
+          description: data.description || '',
+          tags: data.tags || [],
+          code: data.code.trim(),
+          filters: data.filters || null
         }
-        fs.writeFile(path.join(PRESETS_DIR, file), content, 'utf8', function (err) {
+        fs.writeFile(path.join(PRESETS_DIR, file), JSON.stringify(preset, null, 2) + '\n', 'utf8', function (err) {
           if (err) return jsonResponse(res, 500, { error: 'Write failed' })
-          // Update index.json
-          var indexPath = path.join(PRESETS_DIR, 'index.json')
-          var index = []
-          try { index = JSON.parse(fs.readFileSync(indexPath, 'utf8')) } catch (e) {}
-          if (!index.some(function (e) { return e.file === file })) {
-            index.push({ id: slug, name: data.name, file: file, description: data.description || '' })
-            fs.writeFileSync(indexPath, JSON.stringify(index, null, 2) + '\n')
-          }
           jsonResponse(res, 200, { saved: file })
         })
       } catch (e) {
@@ -333,23 +350,15 @@ const server = http.createServer(function (req, res) {
     return
   }
 
-  // ---- API: delete a preset ----
+  // ---- API: archive a preset ----
   if (req.method === 'DELETE' && urlPath.startsWith('/api/presets/')) {
     var delName = path.basename(urlPath)
     var delPath = path.join(PRESETS_DIR, delName)
     if (!delPath.startsWith(PRESETS_DIR)) return jsonResponse(res, 403, { error: 'Forbidden' })
-    // Move to _archive instead of deleting
     var archiveDir = path.join(PRESETS_DIR, '_archive')
     try { fs.mkdirSync(archiveDir, { recursive: true }) } catch (e) {}
     fs.rename(delPath, path.join(archiveDir, delName), function (err) {
       if (err) return jsonResponse(res, 404, { error: 'Not found' })
-      // Update index.json
-      var indexPath = path.join(PRESETS_DIR, 'index.json')
-      try {
-        var index = JSON.parse(fs.readFileSync(indexPath, 'utf8'))
-        index = index.filter(function (e) { return e.file !== delName })
-        fs.writeFileSync(indexPath, JSON.stringify(index, null, 2) + '\n')
-      } catch (e) {}
       jsonResponse(res, 200, { archived: delName })
     })
     return
@@ -883,6 +892,22 @@ const server = http.createServer(function (req, res) {
     return
   }
 
+  // ---- API: server restart ----
+  if (req.method === 'POST' && urlPath === '/api/server/restart') {
+    jsonResponse(res, 200, { ok: true, message: 'restarting' })
+    console.log('  Server restart requested — respawning...')
+    setTimeout(function () {
+      var child = spawn(process.argv[0], process.argv.slice(1), {
+        detached: true,
+        stdio: 'inherit',
+        cwd: process.cwd()
+      })
+      child.unref()
+      process.exit(0)
+    }, 300)
+    return
+  }
+
   // ---- API: settings ----
   if (req.method === 'GET' && urlPath === '/api/settings') {
     jsonResponse(res, 200, loadSettings())
@@ -931,6 +956,39 @@ const server = http.createServer(function (req, res) {
   }
 
   // ---- API: save frame (canvas screenshot as PNG) ----
+  // ---- Screengrab: save to project screengrabs/ folder ----
+  if (req.method === 'POST' && urlPath === '/api/screengrab') {
+    var sgDir = path.join(__dirname, 'screengrabs')
+    try { fs.mkdirSync(sgDir, { recursive: true }) } catch (e) {}
+    var sgQp = req.url.split('?')[1] || ''
+    var sgName = ''
+    sgQp.split('&').forEach(function (p) {
+      var kv = p.split('=')
+      if (kv[0] === 'name') sgName = decodeURIComponent(kv[1] || '')
+    })
+    sgName = sgName.replace(/[^a-zA-Z0-9_-]/g, '')
+    var sgChunks = []
+    req.on('data', function (c) { sgChunks.push(c) })
+    req.on('end', function () {
+      var sgBuf = Buffer.concat(sgChunks)
+      var d = new Date()
+      var sgTs = d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0') + '_' +
+        String(d.getHours()).padStart(2, '0') + '.' +
+        String(d.getMinutes()).padStart(2, '0') + '.' +
+        String(d.getSeconds()).padStart(2, '0')
+      var sgFilename = (sgName ? sgName + '_' + sgTs : 'grab_' + sgTs) + '.png'
+      var sgPath = path.join(sgDir, sgFilename)
+      fs.writeFile(sgPath, sgBuf, function (err) {
+        if (err) return jsonResponse(res, 500, { error: 'Write failed: ' + err.message })
+        console.log('  Screengrab saved: ' + sgPath + ' (' + (sgBuf.length / 1024).toFixed(0) + ' KB)')
+        jsonResponse(res, 200, { saved: sgFilename, path: sgPath })
+      })
+    })
+    return
+  }
+
   if (req.method === 'POST' && urlPath === '/api/frame') {
     var frameDir = getCaptureDir()
     // Optional ?name=xxx query param for custom filename
