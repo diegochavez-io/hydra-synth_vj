@@ -15,7 +15,77 @@
   <video id="v" autoplay muted playsinline></video>
   <canvas id="checkerSrc" style="display:none;"></canvas>
   <canvas id="warpCanvas"></canvas>
+  <script src="/dist/hydra-synth.js"></script>
   <script>
+    // Detect standalone mode (OBS browser source, no opener)
+    var standalone = false
+    try { standalone = !window.opener || window.opener.closed } catch (e) { standalone = true }
+    if (standalone && typeof window._hydraSourceCanvas === 'undefined') {
+      // Run Hydra directly in this page — OBS mirror mode
+      (function () {
+        var warpCanvas = document.getElementById('warpCanvas')
+        warpCanvas.style.display = 'none'
+
+        var hydra = null
+        try {
+          hydra = new Hydra({ detectAudio: false, makeGlobal: true, canvas: warpCanvas })
+        } catch (e) {
+          try { hydra = new Hydra({ detectAudio: false, makeGlobal: true }) } catch (e2) {}
+        }
+        if (hydra) {
+          var hCanvas = hydra.canvas
+          if (hCanvas !== warpCanvas) {
+            // Hydra created its own canvas — use it
+            warpCanvas.style.display = 'none'
+            hCanvas.style.width = '100vw'
+            hCanvas.style.height = '100vh'
+            hCanvas.style.display = 'block'
+            hCanvas.style.background = '#000'
+            document.body.appendChild(hCanvas)
+          } else {
+            warpCanvas.style.display = 'block'
+          }
+        }
+
+        // Connect to server WS to receive preset code
+        var ws = null, wsRetry = 500
+        function connectWs () {
+          try {
+            ws = new WebSocket('ws://' + window.location.host)
+            ws.onopen = function () { wsRetry = 500 }
+            ws.onmessage = function (event) {
+              var str = event.data
+              try {
+                var data = JSON.parse(str)
+                if (data.type === 'filters') {
+                  var target = hydra ? hydra.canvas : warpCanvas
+                  target.style.filter = data.filter || ''
+                  return
+                }
+                if (data.type === 'link' || data.type === 'link-status' || data.type === 'warp-update' || data.type === 'map-mode') return
+                if (data.code) {
+                  try { eval(data.code) } catch (e) { console.warn('[mirror] eval error:', e.message) }
+                  return
+                }
+              } catch (e) {}
+              // Raw string fallback — treat as Hydra code
+              try { eval(str) } catch (e) { console.warn('[mirror] eval error:', e.message) }
+            }
+            ws.onclose = function () { ws = null; setTimeout(connectWs, wsRetry); wsRetry = Math.min(wsRetry * 2, 5000) }
+            ws.onerror = function () { if (ws) ws.close() }
+          } catch (e) { ws = null }
+        }
+        connectWs()
+
+        // Skip the warp renderer below
+        window._standaloneMode = true
+      })()
+    }
+
+    if (window._standaloneMode) {
+      // Standalone mode active — skip warp renderer, just run Hydra directly
+    } else {
+
     // WebGL warp renderer — renders video through a deformable mesh
     var canvas = document.getElementById('warpCanvas')
     var gl = canvas.getContext('webgl', { alpha: false, antialias: false, preserveDrawingBuffer: false })
@@ -331,6 +401,8 @@
       } catch (e) { ws = null }
     }
     connectWs()
+
+    } // end else (warp renderer mode)
   </script>
 </body>
 </html>

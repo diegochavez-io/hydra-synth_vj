@@ -117,8 +117,18 @@ _archive/
 # Python cache
 __pycache__/
 
-# Scope notes (local only)
+# Scope notes and personal presets (local only)
 scope-notes.json
+scope-presets.json
+
+# Personal presets (only examples/ ships with repo)
+presets/*.json
+presets/*.md
+presets/maps/
+!presets/examples/
 
 # Misc
 ui.pur
+files.zip
+files/
+screengrabs/

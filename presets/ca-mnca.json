@@ -1,8 +1,0 @@
-{
-  "name": "MNCA",
-  "description": "Voronoi + osc — CA solitons warp both coordinate systems",
-  "tags": [
-    "ca"
-  ],
-  "code": "// Voronoi + osc — CA solitons warp both coordinate systems\ncaStream('mnca_worm').out(o1)\n\nvoronoi(8, 0.012, 0.15)\n  .modulate(src(o1), 0.06)\n  .add(osc(5, 0.008, 0.4).rotate(()=>time*0.01)\n    .modulate(src(o1), 0.04), 0.4)\n  .color(0.35, 0.2, 0.55).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.025)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.4, 0.02), 0.003)\n  .modulateRotate(noise(0.25, 0.015), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.022)\n  .saturate(1.2)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.1)\n  .out(o0)"
-}

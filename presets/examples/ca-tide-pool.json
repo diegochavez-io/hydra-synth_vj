@@ -1,0 +1,8 @@
+{
+  "name": "G.SCOTT-2",
+  "description": "Rich noise layers with Gray-Scott modulation — vivid, organic",
+  "tags": [
+    "ca"
+  ],
+  "code": "// G.SCOTT-2 — rich noise layers, CA as organic modulator\ncaStream('tide_pool').out(o1)\n\n// o2: layered noise background — three color fields blended\nnoise(2, 0.03).color(0.7, 0.25, 0.5)\n  .add(noise(5, 0.02).rotate(()=>time*0.006).color(0.15, 0.45, 0.7), 0.4)\n  .add(noise(1.2, 0.015).rotate(()=>-time*0.004).color(0.55, 0.4, 0.15), 0.3)\n  .modulateRotate(src(o1), 0.025)\n  .modulateScale(src(o1), 0.02)\n  .hue(()=>time*0.002)\n  .brightness(0.06)\n  .saturate(1.2)\n  .out(o2)\n\n// o0: feedback painting — bg feeds in, CA warps the texture\nsrc(o0)\n  .scale(1.001)\n  .scrollX(()=>Math.sin(time*0.02)*0.001)\n  .scrollY(()=>Math.cos(time*0.017)*0.0008)\n  .modulateRotate(src(o1), 0.03)\n  .modulateScale(src(o1), 0.02)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.5, 0.02), 0.004)\n  .modulateRotate(noise(0.3, 0.01), 0.003)\n  .hue(()=>0.002)\n  .luma(0.004, 0.06)\n  .brightness(0.02)\n  .saturate(1.15)\n  .contrast(1.02)\n  .out(o0)"
+}

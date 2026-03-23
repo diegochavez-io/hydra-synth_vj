@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hydra Mirror</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    #status { position: fixed; top: 10px; left: 10px; color: #0f0; font: 14px monospace; z-index: 999; }
+    #mirror { width: 100%; height: 100%; display: block; background: #000; }
+  </style>
+</head>
+<body>
+  <div id="status">loading...</div>
+  <canvas id="mirror"></canvas>
+  <script>
+    var status = document.getElementById('status')
+    var canvas = document.getElementById('mirror')
+    canvas.width = 1920
+    canvas.height = 1200
+    var ctx = canvas.getContext('2d')
+
+    // Draw test pattern to prove canvas works
+    ctx.fillStyle = '#200020'
+    ctx.fillRect(0, 0, 1920, 1200)
+    ctx.fillStyle = '#0f0'
+    ctx.font = '24px monospace'
+    ctx.fillText('mirror ready — waiting for frames', 40, 40)
+    status.textContent = 'canvas ok, connecting ws...'
+
+    // Receive frames from launcher via WebSocket as blobs
+    var ws = null, wsRetry = 500
+    function connectWs () {
+      ws = new WebSocket('ws://' + window.location.host)
+      ws.binaryType = 'blob'
+      ws.onopen = function () {
+        wsRetry = 500
+        status.textContent = 'ws connected, waiting for frames...'
+        // Tell server this is a mirror client
+        ws.send(JSON.stringify({ type: 'mirror-subscribe' }))
+      }
+      ws.onmessage = function (event) {
+        if (event.data instanceof Blob) {
+          // Binary frame data — render it
+          var img = new Image()
+          img.onload = function () {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+            URL.revokeObjectURL(img.src)
+            status.style.display = 'none'
+          }
+          img.src = URL.createObjectURL(event.data)
+          return
+        }
+        // JSON messages
+        try {
+          var data = JSON.parse(event.data)
+          if (data.type === 'frame') {
+            var img = new Image()
+            img.onload = function () {
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+              status.style.display = 'none'
+            }
+            img.src = data.data
+            return
+          }
+          if (data.type === 'filters') {
+            canvas.style.filter = data.filter || ''
+            return
+          }
+        } catch (e) {}
+      }
+      ws.onclose = function () {
+        ws = null
+        status.style.display = 'block'
+        status.textContent = 'ws disconnected, reconnecting...'
+        setTimeout(connectWs, wsRetry)
+        wsRetry = Math.min(wsRetry * 2, 5000)
+      }
+      ws.onerror = function () { if (ws) ws.close() }
+    }
+    connectWs()
+  </script>
+</body>
+</html>

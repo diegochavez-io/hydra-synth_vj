@@ -1,8 +1,0 @@
-{
-  "name": "CA Warp",
-  "description": "Deep warp — CA organisms bend space itself",
-  "tags": [
-    "ca"
-  ],
-  "code": "// Deep warp — CA organisms bend space itself\ncaStream('amoeba').out(o1)\n\nnoise(3, 0.015).rotate(()=>time*0.006)\n  .modulate(src(o1), 0.08)\n  .modulateRotate(src(o1), 0.06)\n  .modulateScale(src(o1), 0.03)\n  .color(0.4, 0.3, 0.55).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulate(src(o1), 0.03)\n  .modulateRotate(src(o1), 0.02)\n  .blend(src(o2), 0.3)\n  .modulateScale(noise(1.2, 0.015), 0.004)\n  .hue(()=>0.004*Math.sin(time*0.01))\n  .luma(0.004, 0.05)\n  .brightness(0.022)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.12)\n  .out(o0)"
-}

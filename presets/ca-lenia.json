@@ -1,8 +1,0 @@
-{
-  "name": "Lenia",
-  "description": "Warm osc field — CA blobs modulate oscillator math",
-  "tags": [
-    "ca"
-  ],
-  "code": "// Warm osc field — CA blobs modulate the oscillator math\ncaStream('lava_lamp').out(o1)\n\nosc(4, 0.015, 0.6).rotate(()=>time*0.01)\n  .modulate(src(o1), 0.07)\n  .modulateRotate(osc(3, 0.01, 0), 0.04)\n  .mult(src(o1).add(solid(0.3, 0.15, 0.1), 0.8))\n  .color(0.55, 0.3, 0.2).brightness(0.03)\n  .out(o2)\n\nsrc(o0)\n  .modulateScale(src(o1), 0.02)\n  .blend(src(o2), 0.35)\n  .modulateScale(noise(1.5, 0.02), 0.003)\n  .hue(()=>0.003)\n  .luma(0.005, 0.06)\n  .brightness(0.02)\n  .saturate(1.15)\n  .contrast(1.02)\n  .add(src(o1).mult(src(o2)), 0.08)\n  .out(o0)"
-}

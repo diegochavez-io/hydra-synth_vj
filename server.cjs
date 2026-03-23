@@ -276,26 +276,55 @@ const server = http.createServer(function (req, res) {
     fs.readdir(PRESETS_DIR, function (err, files) {
       if (err) return jsonResponse(res, 500, { error: 'Cannot read presets directory' })
       var presets = []
+      var seen = {}
       // Load index.json for .md description fallback
       var mdIndex = {}
       try {
         var idx = JSON.parse(fs.readFileSync(path.join(PRESETS_DIR, 'index.json'), 'utf8'))
         idx.forEach(function (e) { mdIndex[e.file] = e })
       } catch (e) {}
-      files.sort()
-      files.forEach(function (f) {
+
+      // Helper: scan a directory and add presets to list
+      function scanDir (dir, prefix) {
+        var dirFiles
+        try { dirFiles = fs.readdirSync(dir) } catch (e) { return }
+        dirFiles.sort()
+        dirFiles.forEach(function (f) {
+          if (f.startsWith('.') || f.startsWith('_') || f === 'examples') return
+          var fp = path.join(dir, f)
+          var apiFile = prefix ? prefix + '/' + f : f
+          try {
+            if (f.endsWith('.json') && f !== 'index.json') {
+              var obj = JSON.parse(fs.readFileSync(fp, 'utf8'))
+              presets.push({ file: apiFile, name: obj.name || f.replace(/\.json$/, ''), description: obj.description || '', tags: obj.tags || [], example: !!prefix })
+              seen[f] = true
+            } else if (f.endsWith('.md')) {
+              var entry = mdIndex[f] || {}
+              presets.push({ file: apiFile, name: entry.name || f.replace(/\.md$/, '').replace(/-/g, ' '), description: entry.description || '', tags: [], example: !!prefix })
+              seen[f] = true
+            }
+          } catch (e) {}
+        })
+      }
+
+      // Scan user presets first (root), then examples (skipping dupes)
+      scanDir(PRESETS_DIR, '')
+      // Scan examples — always included as a separate set
+      var exDir = path.join(PRESETS_DIR, 'examples')
+      var exFiles
+      try { exFiles = fs.readdirSync(exDir) } catch (e) { exFiles = [] }
+      exFiles.sort()
+      exFiles.forEach(function (f) {
         if (f.startsWith('.') || f.startsWith('_')) return
-        var fp = path.join(PRESETS_DIR, f)
+        var fp = path.join(exDir, f)
         try {
           if (f.endsWith('.json') && f !== 'index.json') {
             var obj = JSON.parse(fs.readFileSync(fp, 'utf8'))
-            presets.push({ file: f, name: obj.name || f.replace(/\.json$/, ''), description: obj.description || '', tags: obj.tags || [] })
-          } else if (f.endsWith('.md')) {
-            var entry = mdIndex[f] || {}
-            presets.push({ file: f, name: entry.name || f.replace(/\.md$/, '').replace(/-/g, ' '), description: entry.description || '', tags: [] })
+            presets.push({ file: 'examples/' + f, name: obj.name || f.replace(/\.json$/, ''), description: obj.description || '', tags: obj.tags || [], example: true })
           }
         } catch (e) {}
       })
+
       jsonResponse(res, 200, presets)
     })
     return
@@ -303,8 +332,10 @@ const server = http.createServer(function (req, res) {
 
   // ---- API: load a preset (.json native, .md fallback) ----
   if (req.method === 'GET' && urlPath.startsWith('/api/presets/')) {
-    var fileName = path.basename(urlPath)
-    var filePath = path.join(PRESETS_DIR, fileName)
+    // Support examples/ subpath: /api/presets/examples/001.json
+    var relPath = urlPath.replace('/api/presets/', '')
+    var fileName = path.basename(relPath)
+    var filePath = relPath.startsWith('examples/') ? path.join(PRESETS_DIR, 'examples', fileName) : path.join(PRESETS_DIR, fileName)
     if (!filePath.startsWith(PRESETS_DIR)) return jsonResponse(res, 403, { error: 'Forbidden' })
     fs.readFile(filePath, 'utf8', function (err, data) {
       if (err) return jsonResponse(res, 404, { error: 'Not found' })
@@ -329,9 +360,16 @@ const server = http.createServer(function (req, res) {
       try {
         var data = JSON.parse(body)
         if (!data.name || !data.code) return jsonResponse(res, 400, { error: 'name and code required' })
-        var slug = slugify(data.name)
-        if (!slug) return jsonResponse(res, 400, { error: 'Invalid name' })
-        var file = slug + '.json'
+        var file
+        if (data.file) {
+          // Overwrite existing file (Save)
+          file = path.basename(data.file)
+        } else {
+          // New preset (Save As)
+          var slug = slugify(data.name)
+          if (!slug) return jsonResponse(res, 400, { error: 'Invalid name' })
+          file = slug + '.json'
+        }
         var preset = {
           name: data.name,
           description: data.description || '',
@@ -989,6 +1027,15 @@ const server = http.createServer(function (req, res) {
     return
   }
 
+  // ---- Open screengrabs folder in Finder ----
+  if (req.method === 'GET' && urlPath === '/api/screengrab-open') {
+    var sgOpenDir = path.join(__dirname, 'screengrabs')
+    try { fs.mkdirSync(sgOpenDir, { recursive: true }) } catch (e) {}
+    require('child_process').exec('open ' + JSON.stringify(sgOpenDir))
+    jsonResponse(res, 200, { ok: true })
+    return
+  }
+
   if (req.method === 'POST' && urlPath === '/api/frame') {
     var frameDir = getCaptureDir()
     // Optional ?name=xxx query param for custom filename
@@ -1222,10 +1269,29 @@ wss.on('connection', function (ws) {
     ws.send(JSON.stringify({ type: 'link-status', available: false }))
   }
 
-  ws.on('message', function (msg) {
+  ws.on('message', function (msg, isBinary) {
+    // Binary frames — relay only to mirror-subscribed clients
+    var msgBuf = Buffer.isBuffer(msg) ? msg : (msg instanceof ArrayBuffer ? Buffer.from(msg) : null)
+    if (isBinary || (msgBuf && msgBuf.length > 2 && msgBuf[0] === 0xFF && msgBuf[1] === 0xD8)) {
+      wss.clients.forEach(function (client) {
+        if (client !== ws && client.readyState === 1 && client._mirror) {
+          client.send(msgBuf || msg, { binary: true })
+        }
+      })
+      return
+    }
+
     var str = msg.toString()
     try {
       var data = JSON.parse(str)
+
+      // Mirror subscribe — tag this client to receive binary frames
+      if (data.type === 'mirror-subscribe') {
+        ws._mirror = true
+        console.log('[mirror] client subscribed')
+        return
+      }
+
       // Handle Link control messages
       if (data.type === 'link-enable' && link) {
         linkEnabled = true

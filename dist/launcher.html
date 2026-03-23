@@ -66,15 +66,21 @@
     }
     .v-splitter:hover { background: var(--line); }
     .h-splitter {
-      height: 4px; cursor: row-resize; flex-shrink: 0;
+      height: 5px; cursor: row-resize; flex-shrink: 0;
       background: transparent;
       transition: background 0.2s;
+      position: relative;
     }
-    .h-splitter:hover { background: var(--line); }
+    .h-splitter:hover { background: var(--accent); }
+    .h-splitter#hSplitterStage {
+      background: var(--line);
+    }
+    .h-splitter#hSplitterStage:hover { background: var(--accent); }
     #leftCol {
       display: flex; flex-direction: column;
       width: 55vw; min-width: 360px;
-      overflow: hidden; flex-shrink: 0;
+      overflow-x: hidden; overflow-y: auto;
+      flex-shrink: 0;
     }
 
     /* ── Stage bar (above preview) ── */
@@ -84,22 +90,41 @@
       background: var(--panel);
       border: 1px solid var(--line); border-radius: 4px 4px 0 0;
     }
-    #stageBar .sb-left { display: flex; align-items: center; gap: 3px; }
-    #stageBar .sb-right { display: flex; align-items: center; gap: 3px; margin-left: auto; }
+    #stageBar .sb-left { display: flex; align-items: center; gap: 3px; overflow: hidden; min-width: 0; }
+    #stageBar .sb-right { display: flex; align-items: center; gap: 3px; margin-left: auto; flex-shrink: 0; }
     #stageBar .sb-sep { width: 1px; height: 14px; background: var(--line); margin: 0 3px; }
 
     /* ── Stage ── */
     #stageWrap {
-      position: relative; flex: 1; min-height: 120px;
+      position: relative; flex: 1; min-height: 80px;
       background: #000;
       border-left: 1px solid var(--line); border-right: 1px solid var(--line);
       display: flex; align-items: center; justify-content: center;
       overflow: hidden;
     }
+    /* ── Zoom picker (Premiere-style) ── */
+    #zoomPicker {
+      display: inline-flex; align-items: center; gap: 0;
+      border: 1px solid var(--line); border-radius: 2px;
+      overflow: hidden; height: 22px; margin-left: 4px;
+    }
+    #zoomPicker button {
+      background: var(--surface); color: var(--dim);
+      border: none; border-right: 1px solid var(--line);
+      font-family: var(--font-code); font-size: 9px; font-weight: 600;
+      padding: 0 5px; height: 100%; cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+      white-space: nowrap; letter-spacing: 0;
+    }
+    #zoomPicker button:last-child { border-right: none; }
+    #zoomPicker button:hover { background: var(--line); color: var(--text); }
+    #zoomPicker button.active {
+      background: var(--accent); color: #fff;
+    }
     #stage {
       position: relative;
       overflow: hidden; background: #000;
-      max-width: 100%; max-height: 100%;
+      flex-shrink: 0;
     }
     #stage canvas { width: 100%; height: 100%; display: block; }
 
@@ -276,7 +301,7 @@
       border-radius: 0 0 4px 4px;
       flex: 1; display: flex; flex-direction: column;
       overflow-y: auto; overflow-x: hidden;
-      min-height: 0;
+      min-height: 180px;
     }
     /* Thin scrollbar for controls panel */
     #controls::-webkit-scrollbar { width: 4px; }
@@ -417,6 +442,11 @@
       0%   { background: var(--h); color: var(--bg); border-color: var(--h); }
       100% { background: var(--h-surface); color: var(--h); border-color: var(--h); }
     }
+    @keyframes grabFlash {
+      0%   { background: #2a7a3a; color: #fff; border-color: #3a9a4a; box-shadow: 0 0 8px rgba(60,180,80,0.6); }
+      100% { background: transparent; color: #7eb8da; border-color: var(--line); box-shadow: none; }
+    }
+    .grab-flash { animation: grabFlash 0.6s ease-out; }
 
     /* ── Autoplay ── */
     #autoplayBar {
@@ -766,9 +796,34 @@
       margin-bottom: 4px;
       transition: opacity 0.15s;
     }
+    /* ── Error toast overlay ── */
+    #hydraErrorToast {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      max-width: 520px;
+      max-height: 120px;
+      overflow-y: auto;
+      padding: 8px 14px;
+      background: rgba(180, 20, 20, 0.88);
+      color: #fff;
+      font-family: var(--font-code);
+      font-size: 12px;
+      line-height: 1.4;
+      border-radius: 4px;
+      z-index: 9999;
+      pointer-events: auto;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.25s;
+      word-break: break-word;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    #hydraErrorToast.visible { opacity: 1; }
   </style>
 </head>
 <body>
+  <div id="hydraErrorToast" title="Click to dismiss"></div>
   <div id="app">
     <div id="leftCol">
       <div id="stageBar">
@@ -779,6 +834,7 @@
           <button id="recordBtn" class="btn rec" title="Record canvas to MP4">Rec</button>
           <button id="batchRecordBtn" class="btn rec" title="Record all presets automatically">Batch</button>
           <button id="screengrabBtn" class="btn" title="Save screengrab with filters applied (Cmd+G)" style="color:#7eb8da;">Grab</button>
+          <button id="screengrabOpenBtn" class="btn" title="Open screengrabs folder" style="color:#7eb8da;font-size:9px;padding:1px 4px;">Open</button>
           <div class="sb-sep"></div>
           <button id="serverRestartBtn" class="btn" title="Restart server + reload page">Restart</button>
           <div class="sb-sep"></div>
@@ -818,6 +874,14 @@
             <option value="custom">Custom</option>
           </select>
           <span id="resLabel" style="color:var(--dim);font-family:var(--font-code);font-size:var(--ts-xs);font-variant-numeric:tabular-nums;"></span>
+          <div class="sb-sep"></div>
+          <span id="zoomPicker">
+            <button data-zoom="fit" class="active" title="Fit to panel">Fit</button>
+            <button data-zoom="0.25" title="25%">25</button>
+            <button data-zoom="0.5" title="50%">50</button>
+            <button data-zoom="0.75" title="75%">75</button>
+            <button data-zoom="1" title="100% (actual pixels)">100</button>
+          </span>
         </div>
       </div>
       <div id="stageWrap">
@@ -825,6 +889,7 @@
         <canvas id="mapCheckerboard" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; z-index:5; object-fit:contain;"></canvas>
         <svg id="mapOverlay" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; z-index:10;"></svg>
       </div>
+      <div class="h-splitter" id="hSplitterStage" title="Drag to resize preview"></div>
       <div id="belowStageBar">
         <button id="linkBtn" class="btn" style="display:none;">Link</button>
         <span id="linkBpmDisplay" class="link-info" style="display:none;"></span>
@@ -859,8 +924,8 @@
           </div>
           <div class="ac-group">
             <span style="color:var(--dim);">Gain</span>
-            <input type="range" id="audioGainSlider" min="0.1" max="10" step="0.1" value="10" style="width:80px;">
-            <span id="audioGainVal" style="color:var(--dim);min-width:28px;">10.0x</span>
+            <input type="range" id="audioGainSlider" min="0.1" max="30" step="0.1" value="15" style="width:80px;">
+            <span id="audioGainVal" style="color:var(--dim);min-width:28px;">15.0x</span>
           </div>
           <div class="ac-sep"></div>
           <div class="ac-group">
@@ -886,6 +951,7 @@
           <span class="sh-title hydra">Hydra</span>
           <button class="sh-help-btn" data-help="hydra" title="Help">?</button>
           <a href="https://hydra.ojack.xyz/api/" target="_blank" class="btn" style="text-decoration:none;">Docs</a>
+          <button id="exampleDiceBtn" class="btn" title="Load a random community Hydra sketch from hydra.ojack.xyz"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></button>
           <div class="sh-actions-primary">
             <button id="presetsRunBtn" class="btn main" title="Run current code (Cmd/Ctrl+Shift+Enter)">Run <span class="kbd-hint"></span></button>
             <button id="autoplayBtn" class="btn">Autoplay</button>
@@ -1026,13 +1092,10 @@
         <div id="caControls" style="display:none;border-top:1px solid var(--line);padding:4px 10px;">
           <span style="color:#5a8040;font-size:var(--ts-xs);font-weight:700;letter-spacing:0.14em;font-family:var(--font-ui);display:block;margin-bottom:2px;">CONTROLS</span>
           <label><span>Hue</span><input type="range" id="caHue" min="0" max="1" step="0.01" value="0.5"><span class="val" id="caHueVal">0.50</span></label>
-          <label><span>Brightness</span><input type="range" id="caBright" min="0.3" max="2.5" step="0.05" value="1.0"><span class="val" id="caBrightVal">1.00</span></label>
-          <label><span>Speed</span><input type="range" id="caSpeed" min="0.1" max="4" step="0.1" value="1.0"><span class="val" id="caSpeedVal">1.0</span></label>
-          <label><span>Thickness</span><input type="range" id="caThick" min="0" max="10" step="0.5" value="0"><span class="val" id="caThickVal">0</span></label>
-          <span style="color:#5a8040;font-size:var(--ts-xs);font-weight:700;letter-spacing:0.14em;font-family:var(--font-ui);display:block;margin-top:4px;margin-bottom:2px;">SHAPE</span>
-          <label><span>Growth</span><input type="range" id="caFeed" min="0.01" max="0.08" step="0.001" value="0.037"><span class="val" id="caFeedVal">0.037</span></label>
-          <label><span>Tolerance</span><input type="range" id="caKill" min="0.04" max="0.07" step="0.001" value="0.06"><span class="val" id="caKillVal">0.060</span></label>
-          <label><span>Smoothness</span><input type="range" id="caSmooth" min="5" max="30" step="1" value="10"><span class="val" id="caSmoothVal">10</span></label>
+          <label><span>Diffusion</span><input type="range" id="caThick" min="0" max="10" step="0.5" value="0"><span class="val" id="caThickVal">0</span></label>
+          <span style="color:#5a8040;font-size:var(--ts-xs);font-weight:700;letter-spacing:0.14em;font-family:var(--font-ui);display:block;margin-top:4px;margin-bottom:2px;">REACTION-DIFFUSION</span>
+          <label><span>Feed Rate</span><input type="range" id="caFeed" min="0.01" max="0.08" step="0.001" value="0.037"><span class="val" id="caFeedVal">0.037</span></label>
+          <label><span>Kill Rate</span><input type="range" id="caKill" min="0.04" max="0.07" step="0.001" value="0.06"><span class="val" id="caKillVal">0.060</span></label>
           <div style="margin-top:4px;display:flex;gap:4px;">
             <button id="caReseedBtn" class="btn" style="flex:1;">Reseed</button>
           </div>
@@ -1079,11 +1142,10 @@
         <p>GPU-accelerated reaction-diffusion simulation rendered on <code>s0</code>. Creates organic, evolving textures — coral, worms, mitosis patterns.</p>
         <div class="help-section">Controls</div>
         <ul>
-          <li><strong>Hue / Brightness</strong> — color the output</li>
-          <li><strong>Speed</strong> — simulation steps per frame</li>
-          <li><strong>Thickness</strong> — line weight of the structures</li>
-          <li><strong>Growth / Tolerance</strong> — reaction-diffusion feed/kill rates. Small changes = big visual shifts</li>
-          <li><strong>Smoothness</strong> — blur passes between steps</li>
+          <li><strong>Hue</strong> — color the output</li>
+          <li><strong>Diffusion</strong> — spatial spread of reactants</li>
+          <li><strong>Feed Rate</strong> — rate chemical A is replenished. Small changes = big visual shifts</li>
+          <li><strong>Kill Rate</strong> — rate chemical B decays. Small changes = big visual shifts</li>
         </ul>
         <div class="help-section">Tips</div>
         <p>CA writes to <code>s0</code>, so Hydra presets that use <code>src(s0)</code> will pick it up automatically. Hit <strong>Reseed</strong> to restart the simulation with fresh noise.</p>
@@ -1737,9 +1799,48 @@
         if (mapModeActive) updateMapOverlay()
       })
 
+      // ── Error toast overlay ──
+      var errorToast = document.getElementById('hydraErrorToast')
+      var errorToastTimer = null
+
+      function showErrorToast (msg) {
+        if (!errorToast) return
+        errorToast.textContent = msg
+        errorToast.classList.add('visible')
+        clearTimeout(errorToastTimer)
+        errorToastTimer = setTimeout(function () {
+          errorToast.classList.remove('visible')
+        }, 6000)
+      }
+
+      function hideErrorToast () {
+        if (!errorToast) return
+        errorToast.classList.remove('visible')
+        clearTimeout(errorToastTimer)
+      }
+
+      if (errorToast) {
+        errorToast.addEventListener('click', hideErrorToast)
+      }
+
+      // catch uncaught JS errors (runtime errors in presets, etc.)
+      window.addEventListener('error', function (e) {
+        if (e.message) showErrorToast(e.message)
+      })
+      window.addEventListener('unhandledrejection', function (e) {
+        var msg = (e.reason && e.reason.message) ? e.reason.message : String(e.reason || 'Promise rejected')
+        showErrorToast(msg)
+      })
+      // catch hydra tick-loop errors (from update() in presets)
+      window.addEventListener('hydra-error', function (e) {
+        if (e.detail && e.detail.message) showErrorToast('update() error: ' + e.detail.message)
+      })
+
       function setStatus (text, isError) {
         statusEl.textContent = text
         statusEl.style.color = isError ? 'var(--danger)' : 'var(--muted)'
+        if (isError) showErrorToast(text)
+        else hideErrorToast()
       }
 
       var runningPresetFile = null
@@ -2469,6 +2570,8 @@
         return { w: parseInt(parts[0], 10), h: parseInt(parts[1], 10) }
       }
 
+      var previewZoom = 'fit' // 'fit' | 0.25 | 0.5 | 0.75 | 1
+
       function fitCanvas () {
         if (!hydraCanvas) return
         var res = parseResolution(resolutionMode)
@@ -2482,15 +2585,30 @@
           }
           currentResW = res.w
           currentResH = res.h
-          // Size stage to fit within stageWrap preserving aspect ratio
-          var wrapRect = wrap.getBoundingClientRect()
-          var ww = wrapRect.width
-          var wh = wrapRect.height
-          var scale = Math.min(ww / res.w, wh / res.h)
-          stageEl.style.width = Math.floor(res.w * scale) + 'px'
-          stageEl.style.height = Math.floor(res.h * scale) + 'px'
+
+          if (previewZoom === 'fit') {
+            // Fit — scale canvas to fill whatever space stageWrap currently has
+            wrap.style.overflow = 'hidden'
+            var wrapRect = wrap.getBoundingClientRect()
+            var ww = wrapRect.width
+            var wh = wrapRect.height
+            var scale = Math.min(ww / res.w, wh / res.h)
+            stageEl.style.width = Math.floor(res.w * scale) + 'px'
+            stageEl.style.height = Math.floor(res.h * scale) + 'px'
+          } else {
+            // Fixed zoom — shrink stageWrap to canvas size
+            var z = parseFloat(previewZoom)
+            var zW = Math.floor(res.w * z)
+            var zH = Math.floor(res.h * z)
+            wrap.style.flex = 'none'
+            wrap.style.height = zH + 'px'
+            wrap.style.overflow = 'hidden'
+            stageEl.style.width = zW + 'px'
+            stageEl.style.height = zH + 'px'
+          }
         } else {
           // Auto — fill stage area
+          wrap.style.overflow = 'hidden'
           stageEl.style.width = '100%'
           stageEl.style.height = '100%'
           var rect = stageEl.getBoundingClientRect()
@@ -2975,7 +3093,7 @@
           const res = await fetch('/api/presets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: currentPresetName, code: code, tags: currentPresetTags || [], filters: getFilterState() })
+            body: JSON.stringify({ name: currentPresetName, code: code, tags: currentPresetTags || [], filters: getFilterState(), file: currentPresetFile })
           })
           const data = await res.json()
           if (!res.ok) throw new Error(data.error || 'Save failed')
@@ -3007,7 +3125,7 @@
           const list = await res.json()
           console.log('[hydra] loadPresets: got', list.length, 'presets')
 
-          // Clear all three containers
+          // Clear all containers
           presetsEl.innerHTML = ''
           var scopePresetsEl = document.getElementById('scopePresets')
           var caPresetsEl = document.getElementById('caPresets')
@@ -3045,7 +3163,8 @@
               }
             })
 
-            // Route to correct container based on tags
+            // Route to correct container based on tags (skip examples — loaded via dice button)
+            if (entry.example) return
             if (tags.indexOf('scope') !== -1 && scopePresetsEl) {
               scopePresetsEl.appendChild(btn)
             } else if (tags.indexOf('ca') !== -1 && caPresetsEl) {
@@ -3059,8 +3178,8 @@
           if (!suppressStatus) setStatus(list.length + ' presets loaded.', false)
           highlightActivePreset()
 
-          // Auto-load first preset if editor is empty
-          if (!(cm ? cm.getValue() : editorEl.value).trim() && list.length > 0) {
+          // Auto-load first Hydra preset on startup
+          if (opts && opts.autoLoadFirst && list.length > 0) {
             // Find first Hydra preset (no scope/ca tags)
             var first = list.filter(function (e) { return !e.tags || (!e.tags.length) })[0] || list[0]
             try {
@@ -3392,6 +3511,14 @@
         })
       })()
 
+      // ---- Example dice button — delegates to community shuffle ----
+      ;(function () {
+        var diceBtn = document.getElementById('exampleDiceBtn')
+        var communityBtn = document.getElementById('communityRandomBtn')
+        if (!diceBtn || !communityBtn) return
+        diceBtn.addEventListener('click', function () { communityBtn.click() })
+      })()
+
       // GLSL syntax overlay — full token classification for types, keywords, builtins
       ;(function () {
         var glslTypes = /^(?:void|bool|int|uint|float|double|vec[234]|dvec[234]|bvec[234]|ivec[234]|uvec[234]|mat[234]|mat[234]x[234]|sampler[123]D|samplerCube|sampler[12]DShadow|samplerCubeShadow|sampler[12]DArray|sampler[12]DArrayShadow|isampler[123]D|isamplerCube|isampler[12]DArray|usampler[123]D|usamplerCube|usampler[12]DArray)\b/
@@ -3614,11 +3741,21 @@
             method: 'POST', body: blob, headers: { 'Content-Type': 'image/png' }
           }).then(function (r) { return r.json() }).then(function (data) {
             setStatus('Screengrab: ' + data.saved, false)
+            var sgBtn = document.getElementById('screengrabBtn')
+            sgBtn.classList.remove('grab-flash')
+            void sgBtn.offsetWidth
+            sgBtn.classList.add('grab-flash')
           }).catch(function (err) { setStatus('Screengrab failed: ' + err.message, true) })
         }, 'image/png')
       }
 
       document.getElementById('screengrabBtn').addEventListener('click', doScreengrab)
+
+      document.getElementById('screengrabOpenBtn').addEventListener('click', function () {
+        fetch('/api/screengrab-open').then(function (r) { return r.json() }).then(function (data) {
+          if (data.error) setStatus(data.error, true)
+        }).catch(function (err) { setStatus('Open failed: ' + err.message, true) })
+      })
 
       // Keyboard shortcut: Cmd+G / Ctrl+G
       document.addEventListener('keydown', function (e) {
@@ -4235,6 +4372,45 @@
         }
       })
 
+      // ── Zoom picker ──
+      ;(function () {
+        var picker = document.getElementById('zoomPicker')
+        if (!picker) return
+        var btns = picker.querySelectorAll('button')
+        // Restore saved zoom
+        try {
+          var saved = localStorage.getItem('hydra-preview-zoom')
+          if (saved) {
+            previewZoom = saved === 'fit' ? 'fit' : parseFloat(saved)
+            btns.forEach(function (b) {
+              b.classList.toggle('active', b.getAttribute('data-zoom') === saved)
+            })
+            // Apply flex mode for fit vs fixed zoom
+            var wrap = document.getElementById('stageWrap')
+            if (saved !== 'fit') {
+              // fitCanvas will set height; just switch off flex
+              wrap.style.flex = 'none'
+            }
+          }
+        } catch (e) {}
+        btns.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var val = btn.getAttribute('data-zoom')
+            previewZoom = val === 'fit' ? 'fit' : parseFloat(val)
+            btns.forEach(function (b) { b.classList.remove('active') })
+            btn.classList.add('active')
+            try { localStorage.setItem('hydra-preview-zoom', val) } catch (e) {}
+            // When switching to Fit, restore flex layout; otherwise fitCanvas handles it
+            var wrap = document.getElementById('stageWrap')
+            if (val === 'fit') {
+              wrap.style.flex = '1'
+              wrap.style.height = ''
+            }
+            fitCanvas()
+          })
+        })
+      })()
+
       window.addEventListener('resize', fitCanvas)
       // Re-fit preview when stageWrap resizes (splitter drag, etc.)
       ;(function () {
@@ -4714,21 +4890,90 @@
         ddPreprocessorSelect.style.display = ''
         ddPostprocessorSelect.style.display = ''
 
-        // Fetch installed LoRAs
-        fetch('/api/scope/api/v1/loras').then(function (r) { return r.json() }).then(function (data) {
-          var loras = data.lora_files || []
-          ddLoraSelect.innerHTML = '<option value="">No LoRA</option>'
-          loras.forEach(function (l) {
-            var opt = document.createElement('option')
-            opt.value = l.path || l.name || l
-            opt.textContent = l.name || l.path || l
-            ddLoraSelect.appendChild(opt)
-          })
-          ddLoraSelect.style.display = ''
-        }).catch(function () {})
+        // Fetch installed LoRAs + auto-install missing ones from scope-presets.json
+        ddSyncLoras()
 
         ddLoadPipelineBtn.style.display = ''
         ddVaceLabel.style.display = ''
+      }
+
+      // Populate LoRA dropdown from installed list
+      function ddPopulateLoraDropdown (loraFiles) {
+        ddLoraSelect.innerHTML = '<option value="">No LoRA</option>'
+        loraFiles.forEach(function (l) {
+          var opt = document.createElement('option')
+          opt.value = l.path || l.name || l
+          opt.textContent = l.name || l.path || l
+          ddLoraSelect.appendChild(opt)
+        })
+        ddLoraSelect.style.display = ''
+      }
+
+      // Auto-install missing LoRAs from scope-presets.json sources
+      function ddSyncLoras () {
+        Promise.all([
+          fetch('/api/scope/api/v1/loras').then(function (r) { return r.json() }),
+          fetch('/api/scope/presets').then(function (r) { return r.json() })
+        ]).then(function (results) {
+          var installed = results[0].lora_files || []
+          var presets = results[1] || []
+          var installedNames = installed.map(function (l) { return l.name || l.path || l })
+
+          // Extract unique LoRAs with source info from presets
+          var needed = {}
+          presets.forEach(function (p) {
+            ;(p.loras || []).forEach(function (l) {
+              if (l.source && l.hf_filename && !needed[l.hf_filename]) {
+                needed[l.hf_filename] = l
+              }
+            })
+          })
+
+          // Find missing
+          var missing = Object.keys(needed).filter(function (name) {
+            return installedNames.indexOf(name) === -1
+          })
+
+          if (missing.length === 0) {
+            ddLog('LoRAs: ' + installedNames.length + ' installed, all presets covered', 'ok')
+            ddPopulateLoraDropdown(installed)
+            return
+          }
+
+          ddLog('LoRAs: ' + missing.length + ' missing — auto-installing from HuggingFace...', 'warn')
+
+          // Install missing LoRAs in parallel
+          var installs = missing.map(function (name) {
+            var lora = needed[name]
+            ddLog('  Installing ' + name + '...', 'warn')
+            return fetch('/api/scope/api/v1/lora/download', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                source: lora.source,
+                repo_id: lora.repo_id,
+                hf_filename: lora.hf_filename
+              })
+            }).then(function (r) {
+              if (!r.ok) throw new Error('HTTP ' + r.status)
+              return r.json()
+            }).then(function (data) {
+              ddLog('  Installed ' + name + ' (' + (data.size_bytes ? Math.round(data.size_bytes / 1024 / 1024) + 'MB' : 'ok') + ')', 'ok')
+            }).catch(function (err) {
+              ddLog('  Failed to install ' + name + ': ' + err.message, 'err')
+            })
+          })
+
+          return Promise.all(installs).then(function () {
+            // Refresh the list after installs
+            return fetch('/api/scope/api/v1/loras').then(function (r) { return r.json() }).then(function (data) {
+              ddPopulateLoraDropdown(data.lora_files || [])
+              ddLog('LoRA sync complete', 'ok')
+            })
+          })
+        }).catch(function (err) {
+          ddLog('LoRA sync failed: ' + (err.message || err), 'err')
+        })
       }
 
       // Build pipeline load payload from current dropdown selections
@@ -5317,6 +5562,37 @@
         })
       }
 
+      // Auto-enable Syphon + NDI outputs once a session is active
+      function ddEnableOutputSinks () {
+        var attempts = 0
+        var maxAttempts = 30
+        function tryEnable () {
+          attempts++
+          fetch('/api/scope/api/v1/session/parameters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              output_sinks: {
+                syphon: { enabled: true, name: 'Scope' },
+                ndi: { enabled: true, name: 'Scope' }
+              }
+            })
+          }).then(function (r) { return r.json() }).then(function (data) {
+            if (data.status === 'ok') {
+              ddLog('Syphon + NDI outputs enabled', 'ok')
+            } else if (attempts < maxAttempts) {
+              setTimeout(tryEnable, 2000)
+            } else {
+              ddLog('Output sinks: gave up after ' + maxAttempts + ' attempts', 'warn')
+            }
+          }).catch(function () {
+            if (attempts < maxAttempts) setTimeout(tryEnable, 2000)
+          })
+        }
+        // Wait a moment for session to start, then try
+        setTimeout(tryEnable, 3000)
+      }
+
       // ---- Scope WebRTC (bidirectional: send canvas + receive AI output) ----
       function ddConnectScope () {
         if (ddActive) return
@@ -5338,10 +5614,10 @@
             ddSetState('connecting', 'Waiting for pipeline...')
             return ddPollPipelineStatus()
           }
-          // Not loaded — tell user to load from Scope UI
-          ddLog('No pipeline loaded — load one from Scope UI (localhost:8000)', 'warn')
-          ddSetState('connecting', 'Waiting for pipeline — load in Scope UI...')
-          return ddPollPipelineStatus()
+          // Not loaded — auto-load krea-realtime-video
+          ddLog('No pipeline loaded — auto-loading krea-realtime-video...', 'warn')
+          ddSetState('connecting', 'Auto-loading pipeline...')
+          return ddLoadPipeline()
         }).catch(function () {
           ddLog('Pipeline status unavailable — waiting...', 'warn')
           ddSetState('connecting', 'Waiting for Scope...')
@@ -5349,6 +5625,8 @@
         }).then(function () {
           ddLog('Pipeline ready — starting frame polling', 'ok')
           ddStartFramePolling()
+          // Enable Syphon + NDI after session is active (retry until session exists)
+          ddEnableOutputSinks()
         }).catch(function (err) {
           ddLog('CONNECTION FAILED: ' + (err.message || err), 'err')
           ddSetState('err', err.message || 'Connection failed')
@@ -5769,6 +6047,9 @@
         if (e.key === 'Enter') { e.preventDefault(); if (ddActive) ddUpdatePrompt(); else ddConnect() }
       })
 
+      // Init: fetch pipelines + sync LoRAs on page load
+      ddFetchPipelinesAndLoras()
+
       // ---- Global visual filters (CSS on canvas) ----
       var hueCtrl = document.getElementById('hueCtrl')
       var satCtrl = document.getElementById('satCtrl')
@@ -5993,12 +6274,9 @@
       // Wire all sliders — single event handler pattern
       ;[
         ['caHue', 'caHueVal', 2, 'hue'],
-        ['caBright', 'caBrightVal', 2, 'brightness'],
-        ['caSpeed', 'caSpeedVal', 1, 'speed'],
         ['caThick', 'caThickVal', 1, 'thickness'],
         ['caFeed', 'caFeedVal', 3, 'feed'],
         ['caKill', 'caKillVal', 3, 'kill'],
-        ['caSmooth', 'caSmoothVal', 0, 'T']
       ].forEach(function (def) {
         var el = document.getElementById(def[0])
         var valEl = document.getElementById(def[1])
@@ -7065,7 +7343,8 @@
             var saved = JSON.parse(localStorage.getItem(LAYOUT_KEY))
             if (!saved) return
             if (saved.leftW) { leftCol.style.width = saved.leftW + 'px' }
-            if (saved.stageH) {
+            // Only restore stage height when in fit mode (zoom controls own it otherwise)
+            if (saved.stageH && previewZoom === 'fit') {
               var sw = document.getElementById('stageWrap')
               if (sw) { sw.style.height = saved.stageH + 'px'; sw.style.flex = 'none' }
             }
@@ -7084,26 +7363,36 @@
           function () { saveLayout() }
         )
 
-        // Horizontal splitter: stageWrap / controls
+        // Horizontal splitters: stageWrap resize (both below-stage and below-controls)
         var stageWrapEl = document.getElementById('stageWrap')
-        makeDrag(document.getElementById('hSplitter'),
-          function (dx, dy) {
-            var h = Math.max(120, stageWrapEl.offsetHeight + dy)
-            stageWrapEl.style.height = h + 'px'
-            stageWrapEl.style.flex = 'none'
-            fitCanvas()
-            if (mapModeActive) updateMapOverlay()
-          },
-          null,
-          function () { saveLayout() }
-        )
+        function stageHDrag (dx, dy) {
+          var h = Math.max(80, stageWrapEl.offsetHeight + dy)
+          stageWrapEl.style.height = h + 'px'
+          stageWrapEl.style.flex = 'none'
+          // Switch to Fit so canvas scales to the dragged size
+          previewZoom = 'fit'
+          try { localStorage.setItem('hydra-preview-zoom', 'fit') } catch (e) {}
+          var btns = document.querySelectorAll('#zoomPicker button')
+          btns.forEach(function (b) {
+            b.classList.toggle('active', b.getAttribute('data-zoom') === 'fit')
+          })
+          // Re-fit canvas to new container size (won't touch flex/height)
+          fitCanvas()
+          if (mapModeActive) updateMapOverlay()
+        }
+        function stageHEnd () { saveLayout() }
+        // Splitter directly below canvas
+        var hSplitterStage = document.getElementById('hSplitterStage')
+        if (hSplitterStage) makeDrag(hSplitterStage, stageHDrag, null, stageHEnd)
+        // Original splitter below audio panel
+        makeDrag(document.getElementById('hSplitter'), stageHDrag, null, stageHEnd)
 
 
         restoreLayout()
       })()
 
       console.log('[hydra] Init complete. Calling loadPresets()...')
-      loadPresets().then(function () {
+      loadPresets({ autoLoadFirst: true }).then(function () {
         // Auto-run the loaded preset so something is on screen immediately
         var code = cm ? cm.getValue() : editorEl.value
         if (code && code.trim()) {
@@ -7209,6 +7498,40 @@
           })
           document.addEventListener('mouseup', function () { dragging = false })
         })
+      })()
+
+      // ── Mirror frame streaming (for OBS browser source) ──
+      ;(function () {
+        var MIRROR_INTERVAL = 1000 / 30
+        var lastFrameTime = 0
+        var mirrorCanvas = document.createElement('canvas')
+        var mirrorCtx = mirrorCanvas.getContext('2d')
+        var sending = false
+
+        function mirrorLoop (ts) {
+          requestAnimationFrame(mirrorLoop)
+          if (!hydraCanvas || !relayWs || relayWs.readyState !== 1) return
+          if (sending) return
+          if (ts - lastFrameTime < MIRROR_INTERVAL) return
+          lastFrameTime = ts
+
+          // Copy WebGL canvas to 2D canvas (captures current frame reliably)
+          if (mirrorCanvas.width !== hydraCanvas.width || mirrorCanvas.height !== hydraCanvas.height) {
+            mirrorCanvas.width = hydraCanvas.width
+            mirrorCanvas.height = hydraCanvas.height
+          }
+          mirrorCtx.drawImage(hydraCanvas, 0, 0)
+          sending = true
+          mirrorCanvas.toBlob(function (blob) {
+            sending = false
+            if (blob && relayWs && relayWs.readyState === 1) {
+              blob.arrayBuffer().then(function (buf) {
+                relayWs.send(buf)
+              })
+            }
+          }, 'image/jpeg', 0.8)
+        }
+        requestAnimationFrame(mirrorLoop)
       })()
 
       // ── Hydra overflow menu toggle ──

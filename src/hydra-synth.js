@@ -486,7 +486,14 @@ class HydraRenderer {
     //  console.log(1000/this.timeSinceLastUpdate)
       this.synth.stats.fps = Math.ceil(1000/this.timeSinceLastUpdate)
       if(this.synth.update) {
-        try { this.synth.update(this.timeSinceLastUpdate) } catch (e) { console.log(e) }
+        try { this.synth.update(this.timeSinceLastUpdate) } catch (e) {
+          console.log(e)
+          // surface to UI via custom event (throttle: only fire once then clear update to stop spam)
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('hydra-error', { detail: { message: e.message || String(e) } }))
+          }
+          this.synth.update = null
+        }
       }
     //  console.log(this.synth.speed, this.synth.time)
       for (let i = 0; i < this.s.length; i++) {

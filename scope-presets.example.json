@@ -1,0 +1,43 @@
+[
+  {
+    "name": "Example: Krea + LoRA",
+    "pipeline": "krea-realtime-video",
+    "width": 576,
+    "height": 320,
+    "vace_enabled": true,
+    "vace_context_scale": 1,
+    "noise_controller": false,
+    "loras": [
+      {
+        "path": "my_lora_000001000.safetensors",
+        "scale": 1,
+        "merge_mode": "permanent_merge",
+        "source": "huggingface",
+        "repo_id": "your-username/your-lora-repo",
+        "hf_filename": "my_lora_000001000.safetensors"
+      }
+    ],
+    "prompt": "your prompt here",
+    "denoising_step_list": [779, 632, 461],
+    "output_sinks": {
+      "syphon": {"enabled": true, "name": "Scope"},
+      "ndi": {"enabled": true, "name": "Scope"}
+    }
+  },
+  {
+    "name": "Example: Krea No LoRA",
+    "pipeline": "krea-realtime-video",
+    "width": 576,
+    "height": 320,
+    "vace_enabled": true,
+    "vace_context_scale": 1,
+    "noise_controller": false,
+    "loras": [],
+    "prompt": "abstract fluid art, iridescent light",
+    "denoising_step_list": [779, 632, 461],
+    "output_sinks": {
+      "syphon": {"enabled": true, "name": "Scope"},
+      "ndi": {"enabled": true, "name": "Scope"}
+    }
+  }
+]
