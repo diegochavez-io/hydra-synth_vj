@@ -88,6 +88,9 @@ function getDaydreamKey () {
 function getScopeUrl () {
   return process.env.SCOPE_URL || getDaydreamConfig().scopeUrl || null
 }
+function getScopeOscPort () {
+  return parseInt(process.env.SCOPE_OSC_PORT) || getDaydreamConfig().scopeOscPort || null
+}
 
 // Shared Daydream stream state (browser creates, TD can update)
 var activeDaydreamStreamId = null
@@ -519,53 +522,187 @@ const server = http.createServer(function (req, res) {
     return
   }
 
-  // ---- API: Apply Scope preset ----
+  // ---- API: Apply Scope preset (full workflow) ----
+  // POST /api/scope/preset  body: preset object from scope-presets.json
+  // 1. Ensures cloud connected  2. Installs missing LoRAs  3. Loads pipeline
+  // 4. Polls until loaded  5. Applies session params (prompt, denoising, etc.)
   if (req.method === 'POST' && urlPath === '/api/scope/preset') {
     readBody(req, function (body) {
       try {
         var preset = JSON.parse(body)
         var scopeBase = getScopeUrl()
         if (!scopeBase) return jsonResponse(res, 400, { error: 'No Scope URL' })
-        var scopeIsHttps = scopeBase.startsWith('https')
-        var scopeLib = scopeIsHttps ? https : http
 
-        // Load pipeline with full config
-        var loadParams = {}
-        if (preset.width) loadParams.width = preset.width
-        if (preset.height) loadParams.height = preset.height
-        if (preset.loras) loadParams.loras = preset.loras
-        if (preset.vace_enabled !== undefined) loadParams.vace_enabled = preset.vace_enabled
-        if (preset.vace_context_scale !== undefined) loadParams.vace_context_scale = preset.vace_context_scale
-        if (preset.noise_controller !== undefined) loadParams.noise_controller = preset.noise_controller
-
-        var postData = JSON.stringify({
-          pipeline_ids: [preset.pipeline || 'krea-realtime-video'],
-          load_params: loadParams
-        })
-        var urlObj = new URL(scopeBase + '/api/v1/pipeline/load')
-        var opts = {
-          hostname: urlObj.hostname, port: urlObj.port || (scopeIsHttps ? 443 : 80),
-          path: urlObj.pathname, method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
-        }
-        var req2 = scopeLib.request(opts, function (r) {
-          var chunks = []
-          r.on('data', function (c) { chunks.push(c) })
-          r.on('end', function () {
-            console.log('  Scope preset: pipeline load →', r.statusCode, '(' + (preset.name || preset.pipeline) + ')')
-            // Pipeline loading is async — the prompt and output_sinks
-            // will be applied by the user via the Scope UI once loaded
-            jsonResponse(res, 200, {
-              applied: true,
-              pipeline: preset.pipeline,
-              name: preset.name,
-              note: 'Pipeline loading — apply prompt and outputs after it finishes loading'
+        // Helper: make request to Scope API
+        function scopeRequest (method, apiPath, data, cb) {
+          var scopeIsHttps = scopeBase.startsWith('https')
+          var scopeLib = scopeIsHttps ? https : http
+          var postData = data ? JSON.stringify(data) : null
+          var urlObj = new URL(scopeBase + apiPath)
+          var opts = {
+            hostname: urlObj.hostname, port: urlObj.port || (scopeIsHttps ? 443 : 80),
+            path: urlObj.pathname + (urlObj.search || ''), method: method,
+            headers: { 'Content-Type': 'application/json' }
+          }
+          if (postData) opts.headers['Content-Length'] = Buffer.byteLength(postData)
+          var req2 = scopeLib.request(opts, function (r) {
+            var chunks = []
+            r.on('data', function (c) { chunks.push(c) })
+            r.on('end', function () {
+              var text = Buffer.concat(chunks).toString()
+              try { cb(null, JSON.parse(text), r.statusCode) }
+              catch (e) { cb(null, text, r.statusCode) }
             })
           })
+          req2.on('error', function (e) { cb(e) })
+          if (postData) req2.write(postData)
+          req2.end()
+        }
+
+        var steps = []
+        var presetName = preset.name || preset.pipeline || 'unknown'
+        console.log('  Scope workflow: starting "' + presetName + '"')
+
+        // Step 1: Check cloud connection
+        function stepCheckCloud (next) {
+          scopeRequest('GET', '/api/v1/cloud/status', null, function (err, data) {
+            if (err) return next('Cloud check failed: ' + err.message)
+            if (data.connected) {
+              console.log('  Scope workflow: cloud connected (' + data.connection_id + ')')
+              return next()
+            }
+            console.log('  Scope workflow: cloud not connected, connecting...')
+            scopeRequest('POST', '/api/v1/cloud/connect', {}, function (err2) {
+              if (err2) return next('Cloud connect failed: ' + err2.message)
+              // Wait a few seconds for WebSocket handshake
+              setTimeout(function () { next() }, 5000)
+            })
+          })
+        }
+
+        // Step 2: Install missing LoRAs
+        function stepInstallLoras (next) {
+          if (!preset.loras || preset.loras.length === 0) return next()
+          scopeRequest('GET', '/api/v1/loras', null, function (err, data) {
+            if (err) return next('LoRA list failed: ' + err.message)
+            var installed = (data.lora_files || []).map(function (l) { return l.name })
+            var missing = preset.loras.filter(function (l) {
+              var name = l.path.replace(/\.safetensors$/, '')
+              return installed.indexOf(name) === -1
+            })
+            if (missing.length === 0) {
+              console.log('  Scope workflow: all LoRAs installed')
+              return next()
+            }
+            var pending = missing.length
+            var anyErr = null
+            missing.forEach(function (lora) {
+              if (!lora.source || !lora.repo_id || !lora.hf_filename) {
+                pending--
+                if (pending === 0) next(anyErr)
+                return
+              }
+              console.log('  Scope workflow: downloading LoRA ' + lora.hf_filename + '...')
+              scopeRequest('POST', '/api/v1/lora/download', {
+                source: lora.source, repo_id: lora.repo_id, hf_filename: lora.hf_filename
+              }, function (err2) {
+                if (err2) anyErr = 'LoRA download failed: ' + err2.message
+                pending--
+                if (pending === 0) next(anyErr)
+              })
+            })
+          })
+        }
+
+        // Step 3: Load pipeline
+        function stepLoadPipeline (next) {
+          var loadParams = {}
+          if (preset.width) loadParams.width = preset.width
+          if (preset.height) loadParams.height = preset.height
+          if (preset.vace_enabled !== undefined) loadParams.vace_enabled = preset.vace_enabled
+          if (preset.vace_context_scale !== undefined) loadParams.vace_context_scale = preset.vace_context_scale
+          if (preset.noise_controller !== undefined) loadParams.noise_controller = preset.noise_controller
+          if (preset.lora_merge_mode) loadParams.lora_merge_mode = preset.lora_merge_mode
+          if (preset.loras && preset.loras.length > 0) {
+            loadParams.loras = preset.loras.map(function (l) {
+              var entry = { path: l.path, scale: l.scale || 1 }
+              if (l.merge_mode) entry.merge_mode = l.merge_mode
+              return entry
+            })
+          }
+          console.log('  Scope workflow: loading pipeline ' + (preset.pipeline || 'krea-realtime-video'))
+          scopeRequest('POST', '/api/v1/pipeline/load', {
+            pipeline_ids: [preset.pipeline || 'krea-realtime-video'],
+            load_params: loadParams
+          }, function (err) {
+            if (err) return next('Pipeline load failed: ' + err.message)
+            next()
+          })
+        }
+
+        // Step 4: Poll until pipeline loaded (up to 5 minutes)
+        function stepWaitLoaded (next) {
+          var attempts = 0
+          var maxAttempts = 40  // 40 * 8s = ~5 min
+          function poll () {
+            scopeRequest('GET', '/api/v1/pipeline/status', null, function (err, data) {
+              attempts++
+              if (err) return next('Pipeline status check failed: ' + err.message)
+              var st = data.status || 'unknown'
+              if (st === 'loaded') {
+                console.log('  Scope workflow: pipeline loaded (' + attempts * 8 + 's)')
+                return next()
+              }
+              if (st === 'not_loaded' && attempts > 3) {
+                return next('Pipeline failed to load (status: not_loaded after ' + (attempts * 8) + 's)')
+              }
+              if (st === 'error') {
+                return next('Pipeline load error: ' + (data.error || 'unknown'))
+              }
+              if (attempts >= maxAttempts) {
+                return next('Pipeline load timeout after ' + (maxAttempts * 8) + 's')
+              }
+              var stage = data.loading_stage || ''
+              if (attempts % 5 === 0) console.log('  Scope workflow: loading... (' + stage + ') ' + (attempts * 8) + 's')
+              setTimeout(poll, 8000)
+            })
+          }
+          poll()
+        }
+
+        // Step 5: Apply session parameters (prompt, denoising, etc.)
+        function stepApplyParams (next) {
+          var params = {}
+          if (preset.prompt) params.prompt = preset.prompt
+          if (preset.denoising_step_list) params.denoising_step_list = preset.denoising_step_list
+          if (preset.noise_scale !== undefined) params.noise_scale = preset.noise_scale
+          if (preset.kv_cache_attention_bias !== undefined) params.kv_cache_attention_bias = preset.kv_cache_attention_bias
+          if (Object.keys(params).length === 0) return next()
+          console.log('  Scope workflow: applying session params', Object.keys(params).join(', '))
+          scopeRequest('POST', '/api/v1/session/parameters', params, function (err, data) {
+            if (err) return next('Session params failed: ' + err.message)
+            next()
+          })
+        }
+
+        // Run steps in sequence
+        function runSteps (stepFns, idx, done) {
+          if (idx >= stepFns.length) return done(null)
+          stepFns[idx](function (err) {
+            if (err) return done(err)
+            runSteps(stepFns, idx + 1, done)
+          })
+        }
+
+        runSteps([stepCheckCloud, stepInstallLoras, stepLoadPipeline, stepWaitLoaded, stepApplyParams], 0, function (err) {
+          if (err) {
+            console.log('  Scope workflow FAILED:', err)
+            jsonResponse(res, 500, { error: err, preset: presetName })
+          } else {
+            console.log('  Scope workflow DONE: "' + presetName + '"')
+            jsonResponse(res, 200, { applied: true, pipeline: preset.pipeline, name: presetName })
+          }
         })
-        req2.on('error', function (e) { jsonResponse(res, 500, { error: e.message }) })
-        req2.write(postData)
-        req2.end()
       } catch (e) {
         jsonResponse(res, 400, { error: 'Invalid JSON: ' + e.message })
       }
@@ -624,7 +761,7 @@ const server = http.createServer(function (req, res) {
         var oscMsg = Buffer.concat([addrBuf, tagBuf, valBuf])
         var oscUrlParsed = new URL(scopeUrlForOsc)
         var oscHost = oscUrlParsed.hostname
-        var oscPort = parseInt(oscUrlParsed.port) || 8000
+        var oscPort = getScopeOscPort() || parseInt(oscUrlParsed.port) || 8000
         var dgram = require('dgram')
         var sock = dgram.createSocket('udp4')
         sock.send(oscMsg, oscPort, oscHost, function (err) {

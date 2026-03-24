@@ -85,8 +85,8 @@
 
     /* ── Stage bar (above preview) ── */
     #stageBar {
-      display: flex; align-items: center; gap: 4px;
-      padding: 4px 8px;
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 10px;
       background: var(--panel);
       border: 1px solid var(--line); border-radius: 4px 4px 0 0;
     }
@@ -130,8 +130,8 @@
 
     /* ── Below-preview bar ── */
     #belowStageBar {
-      display: flex; align-items: center; gap: 4px;
-      padding: 3px 8px;
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px;
       background: var(--panel);
       border: 1px solid var(--line); border-top: 0;
       border-radius: 0 0 4px 4px;
@@ -145,8 +145,8 @@
 
     /* ── Sources bar ── */
     #sourcesBar {
-      display: flex; align-items: center; gap: 6px;
-      padding: 4px 10px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px;
       border-bottom: 1px solid var(--line);
       background: var(--panel);
     }
@@ -206,10 +206,10 @@
 
     /* ── Section headers ── */
     .section-head {
-      padding: 5px 10px 5px 9px;
+      padding: 8px 12px 8px 10px;
       border-bottom: 1px solid var(--line);
       border-left: 2px solid transparent;
-      display: flex; align-items: center; gap: 6px;
+      display: flex; align-items: center; gap: 8px;
       background: var(--panel);
       cursor: pointer; user-select: none;
       position: sticky; top: 0; z-index: 10;
@@ -309,12 +309,12 @@
     #controls::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
     #controls::-webkit-scrollbar-thumb:hover { background: var(--dim); }
     #toolbar {
-      padding: 6px 10px;
+      padding: 7px 12px;
       border-bottom: 1px solid var(--line);
-      display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
     }
     #status {
-      padding: 4px 10px;
+      padding: 6px 12px;
       border-bottom: 1px solid var(--line);
       color: var(--dim);
     }
@@ -337,11 +337,11 @@
 
     /* ── Global controls (sliders) ── */
     #globalControls {
-      padding: 4px 10px 6px;
-      display: flex; flex-direction: column; gap: 2px;
+      padding: 8px 12px 10px;
+      display: flex; flex-direction: column; gap: 5px;
       color: var(--muted);
     }
-    #globalControls .gc-header { display: flex; align-items: center; gap: 6px; margin-bottom: 1px; }
+    #globalControls .gc-header { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
     #globalControls .gc-reset {
       padding: 1px 4px; font-size: 9px;
       color: var(--dim); opacity: 0.4;
@@ -362,7 +362,7 @@
       font-variant-numeric: tabular-nums; color: var(--muted);
     }
     #globalControls input[type="range"] { flex: 1; min-width: 0; }
-    #globalControls .gc-sep { width: 100%; height: 1px; background: var(--line); margin: 2px 0; }
+    #globalControls .gc-sep { width: 100%; height: 1px; background: var(--line); margin: 4px 0; }
 
     /* ── Range sliders ── */
     input[type="range"] {
@@ -375,8 +375,8 @@
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--dim); border: none; margin-top: -3px;
+      width: 2px; height: 14px; border-radius: 1px;
+      background: var(--dim); border: none; margin-top: -6px;
       transition: background 0.12s;
     }
     input[type="range"]:hover::-webkit-slider-thumb { background: var(--muted); }
@@ -385,7 +385,7 @@
       height: 2px; border-radius: 1px; background: var(--line); border: none;
     }
     input[type="range"]::-moz-range-thumb {
-      width: 8px; height: 8px; border-radius: 50%;
+      width: 2px; height: 14px; border-radius: 1px;
       background: var(--dim); border: none;
     }
     input[type="range"]:hover::-moz-range-thumb { background: var(--muted); }
@@ -408,13 +408,13 @@
     #sharpenCtrl::-moz-range-track { background: linear-gradient(to right, var(--bg), #b0a0d0); }
     #audioGainSlider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--line), #5ab8c8); }
     #audioGainSlider::-moz-range-track { background: linear-gradient(to right, var(--line), #5ab8c8); }
-    #audioGainSlider::-webkit-slider-thumb { width: 7px; height: 7px; margin-top: -2.5px; }
-    #audioGainSlider::-moz-range-thumb { width: 7px; height: 7px; }
+    #audioGainSlider::-webkit-slider-thumb { width: 2px; height: 12px; margin-top: -5px; }
+    #audioGainSlider::-moz-range-thumb { width: 2px; height: 12px; }
     /* ── Presets ── */
     #presets {
       border-bottom: 1px solid var(--line);
-      padding: 8px 10px;
-      display: flex; flex-wrap: wrap; gap: 5px;
+      padding: 10px 12px;
+      display: flex; flex-wrap: wrap; gap: 6px;
       max-height: clamp(120px, 34vh, 400px); overflow-y: auto;
     }
     #presets::-webkit-scrollbar { width: 4px; }
@@ -451,8 +451,8 @@
     /* ── Autoplay ── */
     #autoplayBar {
       border-bottom: 1px solid var(--line);
-      padding: 6px 10px;
-      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      padding: 8px 12px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     }
     #autoplayBar label { color: var(--dim); white-space: nowrap; }
     #autoplayBar input[type="number"] {
@@ -482,11 +482,11 @@
     /* ── Daydream / Scope ── */
     #daydreamBar {
       border-top: 1px solid var(--line);
-      padding: 6px 10px;
+      padding: 8px 12px;
       color: var(--muted);
     }
-    .dd-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .dd-row + .dd-row { margin-top: 5px; }
+    .dd-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .dd-row + .dd-row { margin-top: 6px; }
     .dd-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
     .dd-dot.on { background: var(--s); animation: dd-pulse 2s ease infinite; }
     .dd-dot.err { background: var(--danger); }
@@ -505,11 +505,11 @@
     #ddInfo { color: var(--dim); font-size: var(--ts-sm); }
     .dd-label { color: var(--dim); white-space: nowrap; font-size: var(--ts-sm); font-weight: 500; }
     /* SCOPE AUTO — purple palette, grid-aligned rows */
-    #scopeAuto { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+    #scopeAuto { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
     #scopeAuto .sa-head {
       font-family: var(--font-ui); font-size: var(--ts-hd); font-weight: 700;
       letter-spacing: 0.14em; text-transform: uppercase;
-      color: #6040a0; margin-bottom: 6px;
+      color: #6040a0; margin-bottom: 8px;
       display: flex; justify-content: space-between; align-items: center;
     }
     #scopeAuto .sa-counter { font-family: var(--font-code); font-size: var(--ts-xs); color: #6040a0; }
@@ -774,13 +774,13 @@
     /* ── Audio meter: wrapping controls ── */
     #audioMeterPanel .audio-controls {
       position: absolute; top: 0; left: 0; right: 0;
-      display: flex; align-items: center; gap: 6px;
-      padding: 3px 4px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px;
       z-index: 1; flex-wrap: wrap;
       background: linear-gradient(180deg, rgba(8,8,10,0.85) 0%, transparent 100%);
     }
     #audioMeterPanel .audio-controls .ac-group {
-      display: flex; align-items: center; gap: 4px;
+      display: flex; align-items: center; gap: 6px;
       flex-shrink: 0;
     }
     #audioMeterPanel .audio-controls .ac-sep {
@@ -792,8 +792,8 @@
       display: grid;
       grid-template-columns: 32px minmax(50px, 1fr) 46px 46px 46px minmax(56px, 70px) 46px 10px;
       align-items: center;
-      gap: 4px;
-      margin-bottom: 4px;
+      gap: 6px;
+      margin-bottom: 6px;
       transition: opacity 0.15s;
     }
     /* ── Error toast overlay ── */
@@ -1029,6 +1029,7 @@
           <div class="popout-resize" data-popout="ddLogPopout"></div>
         </div>
         <div class="section-body" data-section="scope">
+        <div id="scopePresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
         <div id="daydreamBar">
           <!-- Hidden elements kept for JS compatibility -->
           <select id="ddMode" style="display:none;"><option value="scope">Scope</option><option value="cloud">Cloud</option></select>
@@ -1080,7 +1081,6 @@
           </div>
           </div><!-- /ddPromptsWrap -->
         </div>
-        <div id="scopePresets" style="display:flex;gap:4px;flex-wrap:wrap;padding:4px 10px;"></div>
         </div><!-- /section-body scope -->
         <div class="section-head" data-section="ca">
           <span class="sh-chevron">▼</span>
@@ -5642,27 +5642,33 @@
         ddLog('Looking for NDI Virtual Camera (Scope NDI output)...')
         ddActive = true
 
-        navigator.mediaDevices.enumerateDevices().then(function (devices) {
-          var videoDevices = devices.filter(function (d) { return d.kind === 'videoinput' })
-          ddLog('Video devices found: ' + videoDevices.length)
-          videoDevices.forEach(function (d) { ddLog('  • ' + (d.label || d.deviceId)) })
-          var ndiDevice = videoDevices.find(function (d) { return d.label.toLowerCase().indexOf('ndi') !== -1 })
-          var constraints = {
-            video: ndiDevice
-              ? { deviceId: { exact: ndiDevice.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }
-              : { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }
-          }
-          if (ndiDevice) {
-            ddLog('Found: ' + ndiDevice.label, 'ok')
-          } else {
-            ddLog('No NDI device — using default camera', 'warn')
-          }
-          return navigator.mediaDevices.getUserMedia(constraints)
+        // Step 1: get camera permission first (labels are hidden until granted in Safari)
+        navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } } })
+        .then(function (initialStream) {
+          // Got permission — now enumerate to find NDI device by label
+          return navigator.mediaDevices.enumerateDevices().then(function (devices) {
+            var videoDevices = devices.filter(function (d) { return d.kind === 'videoinput' })
+            ddLog('Video devices found: ' + videoDevices.length)
+            videoDevices.forEach(function (d) { ddLog('  • ' + (d.label || d.deviceId)) })
+            var ndiDevice = videoDevices.find(function (d) { return d.label.toLowerCase().indexOf('ndi') !== -1 })
+            if (ndiDevice) {
+              ddLog('Found NDI: ' + ndiDevice.label, 'ok')
+              // Stop initial stream and re-request with exact NDI device
+              initialStream.getTracks().forEach(function (t) { t.stop() })
+              return navigator.mediaDevices.getUserMedia({
+                video: { deviceId: { exact: ndiDevice.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }
+              })
+            }
+            // No NDI label found — use the initial stream as-is
+            var trackLabel = initialStream.getVideoTracks()[0].label || ''
+            ddLog('No NDI label match — using: ' + trackLabel, 'warn')
+            return initialStream
+          })
         }).then(function (stream) {
           ddNdiStream = stream
           var track = stream.getVideoTracks()[0]
           var settings = track.getSettings()
-          ddLog('Capturing: ' + (settings.width || '?') + 'x' + (settings.height || '?') + ' (' + track.label + ')', 'ok')
+          ddLog('Capturing: ' + (settings.width || '?') + 'x' + (settings.height || '?') + ' @ ' + (settings.frameRate || '?') + 'fps (' + track.label + ')', 'ok')
 
           if (!ddVideo) {
             ddVideo = document.createElement('video')
@@ -5675,29 +5681,35 @@
           ddVideo.srcObject = stream
           ddVideo.play()
 
-          // Canvas intermediary — only update on new video frames
-          var ddCanvas = document.createElement('canvas')
-          var ddCtx = ddCanvas.getContext('2d', { willReadFrequently: false })
-          ddCanvas._newFrame = false
-
-          function ddOnVideoFrame () {
-            if (ddCanvas.width !== ddVideo.videoWidth) { ddCanvas.width = ddVideo.videoWidth; ddCanvas.height = ddVideo.videoHeight }
-            ddCtx.drawImage(ddVideo, 0, 0)
-            ddCanvas._newFrame = true
-            ddVideo.requestVideoFrameCallback(ddOnVideoFrame)
+          // Frame gate: only flag for GPU upload when a real new video frame arrives
+          ddVideo._newFrame = false
+          var ddFrameCount = 0
+          var ddFpsStart = performance.now()
+          function ddMarkNewFrame () {
+            ddVideo._newFrame = true
+            ddFrameCount++
+            // Log actual NDI fps every 5 seconds
+            var elapsed = performance.now() - ddFpsStart
+            if (elapsed > 5000) {
+              var fps = (ddFrameCount / (elapsed / 1000)).toFixed(1)
+              ddLog('NDI input: ' + fps + ' fps', parseFloat(fps) < 10 ? 'warn' : 'ok')
+              ddFrameCount = 0
+              ddFpsStart = performance.now()
+            }
+            ddVideo.requestVideoFrameCallback(ddMarkNewFrame)
+          }
+          if (ddVideo.requestVideoFrameCallback) {
+            ddVideo.requestVideoFrameCallback(ddMarkNewFrame)
           }
 
+          // Wire video element directly to s0 (GPU reads video texture, no canvas copy)
           function wireS0 () {
             if (typeof s0 !== 'undefined' && s0.init && ddVideo.videoWidth > 0) {
-              ddCanvas.width = ddVideo.videoWidth; ddCanvas.height = ddVideo.videoHeight
-              ddCtx.drawImage(ddVideo, 0, 0)
-              ddCanvas._newFrame = true
-              s0.init({ src: ddCanvas, dynamic: true })
-              ddLog('Wired to s0 — ' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight, 'ok')
+              s0.init({ src: ddVideo, dynamic: true })
+              // Mark s0 as persistent so cleanupSources() doesn't destroy the NDI feed on preset changes
+              persistentSources[0] = { stream: ddNdiStream, video: ddVideo, label: 'NDI Scope' }
+              ddLog('Wired to s0 — ' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight + ' (persistent)', 'ok')
               ddSetState('on', 'src(s0) = NDI (' + ddVideo.videoWidth + 'x' + ddVideo.videoHeight + ')')
-              if (ddVideo.requestVideoFrameCallback) {
-                ddVideo.requestVideoFrameCallback(ddOnVideoFrame)
-              }
             } else {
               setTimeout(wireS0, 200)
             }
@@ -5989,6 +6001,7 @@
         ddActive = false
         if (ddFramePollTimer) { clearTimeout(ddFramePollTimer); ddFramePollTimer = null }
         if (ddNdiStream) { ddNdiStream.getTracks().forEach(function (t) { t.stop() }); ddNdiStream = null }
+        delete persistentSources[0]
         if (ddWhipPc) { try { ddWhipPc.close() } catch (e) {} ddWhipPc = null }
         if (ddWhepPc) { try { ddWhepPc.close() } catch (e) {} ddWhepPc = null }
         if (ddScopePc) { try { ddScopePc.close() } catch (e) {} ddScopePc = null }
@@ -6463,27 +6476,30 @@
         var STORAGE_KEY = 'hydra-pi-scenes-v1'
 
         var DEFAULT_SCENES = {
-          'Museum Ambient': [
-            'slow translucent ink diffusing through still water, deep indigo and warm copper tones, soft caustic light',
-            'abstract geological strata, layered sediment textures in slate gray and oxidized bronze, very slow erosion',
-            'bioluminescent deep ocean organisms, soft teal and violet glow pulsing gently against dark water',
-            'weathered metal patina close-up, verdigris green and raw copper textures, matte surface detail',
-            'aerial view of salt flats at dusk, soft pink and pale lavender reflected in thin water layer',
-            'microscopic crystal growth, translucent mineral formations in amber and smoky quartz tones',
-            'fog moving through ancient stone architecture, warm amber light diffusing through gray mist',
-            'abstract fluid dynamics, viscous dark liquid with iridescent surface tension in petroleum colors',
-            'moth wing macro texture, soft powder scales in muted sage and warm cream, organic geometry',
-            'molten glass cooling slowly, deep amber and dark ruby with internal light refractions',
-            'lichen growing on volcanic rock, sage green organic patterns on matte black basalt texture',
-            'thin ice forming on dark water surface, delicate crystalline fracture patterns catching soft light',
-            'abstract topographic landscape, contour lines in warm gray dissolving into soft ochre gradient',
-            'smoke rising through a beam of warm light, layered translucent gray and amber wisps',
-            'petri dish culture, organic circular growth patterns in muted earth tones on dark substrate',
-            'tarnished silver surface, dark patina with subtle iridescent oxidation patterns',
-            'slow lava flow at night, deep red and black with thin orange crusting at edges',
-            'morning dew on spider silk, translucent droplets catching soft diffused light against dark background',
-            'eroded sandstone canyon wall, layered warm ochre and rust striations, smooth organic curves',
-            'abstract magnetic field visualization, iron filings in dark metallic patterns on pale surface'
+          'Hydra VJ': [
+            'hydravj dark elliptical moiré forms and yellow diagonal slashes scattered across a bright neon green field, halftone interference texture, slow procedural drift',
+            'hydravj large dark organic blobs with moiré crosshatch texture floating over neon green, halftone interference rippling across curved surfaces, morphing slowly',
+            'hydravj dark teal and magenta horizontal glitch lines with RGB chromatic separation, corrupted broadcast signal texture, organic wave distortion',
+            'hydravj deep crimson and black diagonal streaks with fine violet scan artifacts, visceral abstract texture, digital storm sweeping across darkness',
+            'hydravj bold horizontal bands of warm red-orange and deep cobalt blue undulating like painted dunes, smooth painterly fluid texture',
+            'hydravj dark emerald green vertical fiber texture with magenta organic forms bleeding through at the edges, chromatic fringing, dense procedural textile',
+            'hydravj soft pastel iridescent fluid in magenta teal lavender and green, swirling like holographic oil film on water, smooth luminous color blending',
+            'hydravj smooth luminous gradient sweeping between warm orange cobalt blue and rose, gentle rolling wave motion, shader-driven color field',
+            'hydravj flowing magenta neon green and cyan gradient with slow undulating waves, luminous saturated color field, full-frame abstract video synthesis',
+            'hydravj layered translucent organic shapes drifting across a hot orange and coral field, violet accents beneath, morphing procedural collage',
+            'hydravj large-scale fluid gradients of cobalt blue warm orange yellow and violet sweeping slowly across the frame, smooth color transitions',
+            'hydravj indigo and gold diagonal streaks with purple interference patterns drifting slowly, moiré texture, oscilloscope waveform aesthetic',
+            'hydravj violet and gold moiré interference with rippling diagonal waves and fine-line hatching, CRT phosphor scan texture, video feedback pattern',
+            'hydravj dense saturated blue noise field with scattered pink and green chromatic streaks flowing diagonally, cosmic static, deep digital grain',
+            'hydravj hot magenta and black torn texture with cyan accents, aggressive horizontal tearing and digital fragmentation, high-contrast deconstructed signal',
+            'hydravj deep teal and magenta diagonal fibers with fine noise grain, organic color bleeding between layers, woven digital tapestry',
+            'hydravj thermal imaging palette of cyan orange and yellow revealing a distorted organic form, halftone dot texture',
+            'hydravj emerald green vertical fibers with magenta organic shapes pushing through digital grain, dense textured surface, circuit board meets botanical growth',
+            'hydravj magenta and teal diagonal rope-like striations with chromatic noise, woven fabric texture drifting across the frame, procedural textile',
+            'hydravj teal flower with translucent petals and a warm red-yellow center, subtle scanline overlay, video-synthesized botanical',
+            'hydravj red and cyan luminous smoke flowing against deep maroon darkness, chromatic separation at the edges, ethereal light painting',
+            'hydravj dark botanical close-up with magenta petals and gold particle spray against green-black shadows, digital scan artifacts',
+            'hydravj blue luminous organic form emerging from a deep black void, rippled edge distortion, bioluminescent shape in dark digital ocean'
           ],
           'Datamosh': [
             'I-frame stripped RGB pixel scatter, red and cyan macroblock debris from dual-source codec collision, motion vectors pulling fragments diagonally',
@@ -6677,7 +6693,8 @@
           if (!list.length) return
           var nextIdx = (piIndex + 1) % list.length
           var raw = list[nextIdx]
-          ddPromptEl.value = 'datamosh, ' + raw
+          var activeScene = piSceneSelect.value || ''
+          ddPromptEl.value = (activeScene === 'Datamosh' ? 'datamosh, ' : '') + raw
           piStatus.textContent = 'next (' + (nextIdx + 1) + '/' + list.length + '): ' + raw
         }
 
@@ -6687,7 +6704,8 @@
           var idx = piIndex % list.length
           // If the live field was edited, send that; otherwise use the sequence prompt
           var liveVal = ddPromptEl.value.trim()
-          var expected = 'datamosh, ' + list[idx]
+          var activeScene2 = piSceneSelect.value || ''
+          var expected = (activeScene2 === 'Datamosh' ? 'datamosh, ' : '') + list[idx]
           var prompt = liveVal || expected
           ddPromptEl.value = prompt
           piSendLivePrompt()
@@ -6800,8 +6818,8 @@
         })
 
         // --- Init ---
-        piRebuildSelect('Datamosh')
-        piLoadScene('Datamosh')
+        piRebuildSelect('Hydra VJ')
+        piLoadScene('Hydra VJ')
       })()
 
       // ---- Scope Beat Sequencer ----
